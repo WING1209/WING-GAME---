@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>パズルゲーム - お邪魔対戦</title>
+    <title>パズルゲーム - お邪魔対戦 (マルチ対応)</title>
+    <!-- PeerJS CDN (WebRTC通信用) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -44,7 +46,7 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.9);
             z-index: 10;
         }
         .hidden {
@@ -69,6 +71,10 @@
         }
         .btn:active {
             background: #005f73;
+        }
+        .btn:disabled {
+            background: #555;
+            cursor: not-allowed;
         }
         input, select {
             padding: 10px;
@@ -124,47 +130,69 @@
         .item-btn:disabled {
             background: #555;
         }
-        #player-list {
-            width: 100%;
+        .room-info {
+            background: #333;
+            padding: 10px;
+            border-radius: 6px;
             margin-bottom: 10px;
-            font-size: 12px;
+            word-break: break-all;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <!-- モード・人数選択画面 -->
+    <!-- モード選択画面 -->
     <div id="mode-screen" class="screen">
         <h1>パズル対戦</h1>
         <button class="btn" id="btn-single">1人プレイ</button>
-        <button class="btn" id="btn-ojama-mode">お邪魔対戦</button>
-        
-        <div id="player-count-select" class="hidden">
-            <h2>プレイ人数を選択</h2>
-            <select id="select-players">
-                <option value="2">2人</option>
-                <option value="3">3人</option>
-                <option value="4">4人</option>
-                <option value="5">5人</option>
-            </select>
-            <button class="btn" id="btn-confirm-players">決定</button>
-        </div>
+        <button class="btn" id="btn-create-room-menu">部屋を作る (ホスト)</button>
+        <button class="btn" id="btn-join-room-menu">部屋に入る (ゲスト)</button>
     </div>
 
-    <!-- プレイヤー名入力画面 -->
-    <div id="name-input-screen" class="screen hidden">
-        <h2>プレイヤー名入力</h2>
-        <div id="name-inputs-container"></div>
-        <button class="btn" id="btn-start-order">順番決めへ</button>
+    <!-- 部屋作成設定画面 -->
+    <div id="create-room-screen" class="screen hidden">
+        <h2>部屋作成</h2>
+        <label>自分の名前:</label>
+        <input type="text" id="host-name-input" placeholder="名前を入力">
+        <label>対戦人数:</label>
+        <select id="select-max-players">
+            <option value="2">2人</option>
+            <option value="3">3人</option>
+            <option value="4">4人</option>
+            <option value="5">5人</option>
+        </select>
+        <button class="btn" id="btn-create-room">部屋を作成</button>
+        <button class="btn" style="background:#666" id="btn-back-from-create">戻る</button>
+    </div>
+
+    <!-- 部屋参加画面 -->
+    <div id="join-room-screen" class="screen hidden">
+        <h2>部屋に参加</h2>
+        <input type="text" id="guest-name-input" placeholder="自分の名前">
+        <input type="text" id="join-room-id-input" placeholder="ルームIDを入力">
+        <button class="btn" id="btn-join-room">参加</button>
+        <button class="btn" style="background:#666" id="btn-back-from-join">戻る</button>
+    </div>
+
+    <!-- 待合室画面 -->
+    <div id="lobby-screen" class="screen hidden">
+        <h2>ロビー</h2>
+        <div class="room-info">
+            ルームID: <span id="display-room-id" style="color:#00ffcc; font-weight:bold;">-</span>
+        </div>
+        <div id="lobby-player-list" style="margin-bottom: 15px;"></div>
+        <button class="btn" id="btn-start-order-setup" disabled>全員揃ったら順番決定へ</button>
     </div>
 
     <!-- あみだくじ / じゃんけん 画面 -->
     <div id="order-screen" class="screen hidden">
         <h2 id="order-title">順番決め</h2>
-        <canvas id="amida-canvas" width="300" height="300"></canvas>
+        <canvas id="amida-canvas" width="300" height="250"></canvas>
         <div id="order-result" style="margin-bottom:10px; text-align:center;"></div>
-        <button class="btn" id="btn-start-game">対戦開始！</button>
+        <button class="btn hidden" id="btn-start-game">対戦開始！</button>
+        <div id="waiting-host-msg" class="hidden" style="color:#aaa;">ホストが対戦を開始するのを待っています...</div>
     </div>
 
     <!-- おしつけターゲット選択モーダル -->
