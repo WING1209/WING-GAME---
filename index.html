@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>○o WING GAME玉 o○</title>
+    <!-- PeerJS (通信用ライブラリ) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100dvh;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            background: #1a1a1a;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 1;
+            touch-action: none;
+        }
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(17, 17, 17, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 100;
+            text-align: center;
+        }
+        .overlay-screen h2 {
+            color: #ffcc00;
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
+        
+        .title-logo {
+            font-size: 28px;
+            font-weight: 900;
+            color: #ffcc00;
+            text-shadow: 0 0 12px rgba(255, 204, 0, 0.6);
+            margin-bottom: 40px;
+            animation: dropDown 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes dropDown {
+            0% { transform: translateY(-200px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .blink-text {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4da6ff;
+            animation: blink 1.2s infinite ease-in-out;
+            cursor: pointer;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.2; transform: scale(0.95); }
+        }
+
+        .version-text {
+            font-size: 14px;
+            color: #ffffff;
+            margin-top: 15px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .menu-btn {
+            background: #ffcc00;
+            color: #111;
+            border: none;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 18px;
+            margin: 8px 0;
+            width: 85%;
+            max-width: 280px;
+            cursor: pointer;
+        }
+        .menu-btn:active {
+            transform: scale(0.96);
+            opacity: 0.9;
+        }
+        .menu-btn.sub { background: #4da6ff; color: #fff; }
+        .menu-btn.gray { background: #555; color: #fff; }
+        .menu-btn.danger { background: #ff4d4d; color: #fff; }
+        
+        input.text-input {
+            background: #222;
+            border: 2px solid #ffcc00;
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            width: 220px;
+            margin: 15px 0;
+        }
+        #status-message {
+            color: #ff4d4d;
+            font-size: 14px;
+            margin-top: 10px;
+            height: 20px;
+        }
+        .ranking-table {
+            width: 95%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .ranking-table th, .ranking-table td {
+            border-bottom: 1px solid #444;
+            padding: 8px 4px;
+            text-align: center;
+        }
+        .ranking-table th { color: #ffcc00; }
+
+        .rules-box {
+            background: #222;
+            border: 1px solid #555;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            text-align: left;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            max-width: 330px;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
+        }
+        .rules-box b {
+            color: #ffcc00;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="400" height="750"></canvas>
+
+        <div id="screen-title" class="overlay-screen" style="display:flex; cursor:pointer;" onclick="goToHowToPlay()">
+            <div class="title-logo">○o WING GAME玉 o○</div>
+            <div class="blink-text">- START (画面をタップ) -</div>
+            <div class="version-text">Ver.1.01</div>
+        </div>
+
+        <div id="screen-how-to-play" class="overlay-screen">
+            <h2>🎮 遊び方</h2>
+            <div class="rules-box">
+                <b>【基本操作】</b><br>
+                ・玉を<b>引っ張って狙いを定め、離してショット！</b><br>
+                ・同じ色の玉を<b>3つ以上連結</b>させると消せます。<br><br>
+                <b>【特殊玉を活用しよう】</b><br>
+                ・<b>💣 ボム玉</b>: 右側のボムボタンでセット！着弾点の周囲をまとめて爆破。<br>
+                ・<b>★ レインボー玉</b>: 当たった玉と同じ色の玉を全消し！
+            </div>
+            <button class="menu-btn" onclick="showScreen('screen-mode')">次へ進む ➔</button>
+        </div>
+
+        <div id="screen-mode" class="overlay-screen">
+            <h2>モード選択</h2>
+            <button class="menu-btn" onclick="startSinglePlay()">🎮 ひとりで遊ぶ</button>
+            <button class="menu-btn sub" onclick="showScreen('screen-role-select')">⚔️ フレンド対戦</button>
+            <button class="menu-btn gray" onclick="showRankingBoard()">🏆 スコアランキング</button>
+            <button class="menu-btn gray" onclick="openSettings()">⚙️ 玉画像設定</button>
+        </div>
+
+        <div id="screen-role-select" class="overlay-screen">
+            <h2>対戦設定</h2>
+            <button class="menu-btn" onclick="setupRole('host')">👑 1P（ホスト：部屋を作る）</button>
+            <button class="menu-btn sub" onclick="setupRole('guest')">🎮 2P（ゲスト：部屋に入る）</button>
+            <button class="menu-btn gray" onclick="showScreen('screen-mode')">もどる</button>
+        </div>
+
+        <div id="screen-guest-join" class="overlay-screen">
+            <h2>合言葉を入力</h2>
+            <p style="font-size: 14px; color: #ccc;">1P(ホスト)から教わった4桁の数字を入力</p>
+            <input type="number" id="input-room-code" class="text-input" style="width:160px; letter-spacing:6px;" maxlength="4" placeholder="0000">
+            <br>
+            <button class="menu-btn" onclick="joinRoom()">接続して待機</button>
+            <button class="menu-btn gray" onclick="cancelNetwork('screen-role-select')">もどる</button>
+            <div id="status-message"></div>
+        </div>
+
+        <div id="screen-host-wait" class="overlay-screen">
+            <h2>2Pの接続待ち...</h2>
+            <p style="font-size: 14px; color: #ccc;">以下の4桁を2P(ゲスト)に伝えてください</p>
+            <div id="display-room-code" style="font-size: 52px; color: #ffcc00; letter-spacing: 10px; margin: 20px 0; font-weight: bold;">----</div>
+            <p style="font-size: 13px; color: #888;">相手が接続すると自動でルール設定に進みます</p>
+            <button class="menu-btn gray" onclick="cancelNetwork('screen-role-select')">キャンセル</button>
+        </div>
+
+        <div id="screen-guest-wait-rule" class="overlay-screen">
+            <h2 style="color:#4dff4d;">接続完了！</h2>
+            <p style="font-size: 18px; color: #ffcc00; margin-top: 30px;">対戦モード選択中...</p>
+            <p style="font-size: 14px; color: #aaa;">Wait...</p>
+        </div>
+
+        <div id="screen-host-rule-setup" class="overlay-screen">
+            <h2 style="color:#4dff4d;">マッチング成功！</h2>
+            <p style="font-size: 14px; color: #ccc;">対戦ルールを選択してください</p>
+            
+            <div style="width:100%; margin: 10px 0;">
+                <p style="margin:5px 0; font-size:14px; font-weight:bold;">■ ゲームモード</p>
+                <button class="menu-btn sub" id="btn-mode-ta" onclick="setHostBattleType('タイムアタック')" style="padding:10px; font-size:15px; margin:4px;">⏱️ タイムアタック</button>
+                <button class="menu-btn gray" id="btn-mode-ojama" onclick="setHostBattleType('お邪魔対戦')" style="padding:10px; font-size:15px; margin:4px;">⚔️ お邪魔対戦</button>
+            </div>
+            
+            <div style="width:100%; margin: 10px 0;">
+                <p style="margin:5px 0; font-size:14px; font-weight:bold;">■ 勝利数設定</p>
+                <button class="menu-btn" id="btn-win-1" onclick="setHostTargetWins(1)" style="padding:10px; font-size:15px; margin:4px;">🥇 1勝先取</button>
+                <button class="menu-btn gray" id="btn-win-2" onclick="setHostTargetWins(2)" style="padding:10px; font-size:15px; margin:4px;">🥇🥇 2勝先取</button>
+            </div>
+            
+            <button class="menu-btn" style="background:#ffcc00; margin-top:15px;" onclick="confirmHostBattleStart()">ルール確定 ➔</button>
+        </div>
+
+        <div id="screen-battle-rules-desc" class="overlay-screen">
+            <h2>ルール説明</h2>
+            <div id="rules-text-content" class="rules-box"></div>
+            <button class="menu-btn" onclick="readyToStartBattle()">対戦スタート！ 🔥</button>
+        </div>
+
+        <div id="screen-stage-clear" class="overlay-screen">
+            <h2>STAGE CLEAR!</h2>
+            <p id="clear-score-text" style="font-size: 18px; margin-bottom: 20px; color: #fff;"></p>
+            <button class="menu-btn sub" onclick="nextStageAction()">次のステージへ ➔</button>
+            <button class="menu-btn gray" onclick="returnToTitle()">タイトルへ戻る</button>
+        </div>
+
+        <div id="screen-name-input" class="overlay-screen">
+            <h2 style="color:#4dff4d;">🏆 RANK IN!</h2>
+            <p id="rankin-desc-text" style="font-size: 15px; color: #fff;"></p>
+            <input type="text" id="player-name-input" class="text-input" maxlength="8" placeholder="プレイヤー名">
+            <br>
+            <button class="menu-btn" onclick="submitScoreAndShowRanking()">登録して決定</button>
+        </div>
+
+        <div id="screen-ranking" class="overlay-screen">
+            <h2>🏆 殿堂入り TOP 5</h2>
+            <table class="ranking-table">
+                <thead>
+                    <tr><th>順位</th><th>名前</th><th>到達</th><th>タイム</th><th>スコア</th></tr>
+                </thead>
+                <tbody id="ranking-list-body"></tbody>
+            </table>
+            <button class="menu-btn sub" onclick="returnToTitle()">タイトルへ戻る</button>
+        </div>
+
+        <div id="screen-game-over" class="overlay-screen">
+            <h2 style="color: #ff4d4d;">GAME OVER</h2>
+            <p id="gameover-score-text" style="font-size: 18px; margin-bottom: 20px; color: #fff;"></p>
+            <button class="menu-btn danger" id="btn-retry-solo" onclick="retryStage()">もう一度挑戦 🔄</button>
+            <button class="menu-btn gray" onclick="checkSoloGameOverRankIn()">タイトルへ戻る</button>
+        </div>
+
+        <div id="screen-battle-result" class="overlay-screen">
+            <h2 id="battle-result-title" style="font-size:36px; margin-bottom:10px;"></h2>
+            <p id="battle-result-sub" style="font-size:18px; color:#fff; margin-bottom:30px;"></p>
+            
+            <div id="battle-loser-controls" style="display:none; width:100%; flex-direction:column; align-items:center;">
+                <button class="menu-btn sub" onclick="requestRematch()">もう一度対戦する 🔄</button>
+                <button class="menu-btn gray" onclick="returnToTitle()">タイトルへ戻る</button>
+            </div>
+            <div id="battle-winner-wait" style="display:none;">
+                <p style="color:#aaa; font-size:14px;">相手（敗者）の選択を待っています...</p>
+                <button class="menu-btn gray" style="margin-top:20px;" onclick="returnToTitle()">タイトルへ戻る</button>
+            </div>
+        </div>
+
+        <div id="settings-overlay" class="overlay-screen" style="justify-content: flex-start; padding-top: 40px;">
+            <h2>玉の画像カスタム</h2>
+            <div id="settings-list" style="width: 100%; display: flex; flex-direction: column; align-items: center; max-height: 480px; overflow-y: auto;"></div>
+            <button class="menu-btn sub" style="margin-top: 20px;" onclick="closeSettings()">保存して戻る</button>
+        </div>
+    </div>
+
+    <!-- JavaScriptファイルの読み込み -->
+    <script src="script.js"></script>
+</body>
+</html>
