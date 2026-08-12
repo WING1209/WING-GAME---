@@ -2,222 +2,120 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>パズルゲーム - お邪魔対戦 (マルチ対応)</title>
-    <!-- PeerJS CDN (WebRTC通信用) -->
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-        }
-        body {
-            background-color: #1a1a1a;
-            color: #ffffff;
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-        #game-container {
-            position: relative;
-            width: 100vw;
-            max-width: 480px;
-            height: 100vh;
-            max-height: 800px;
-            background-color: #2b2b2b;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 10;
-        }
-        .hidden {
-            display: none !important;
-        }
-        h1, h2 {
-            margin-bottom: 20px;
-            color: #00ffcc;
-            text-align: center;
-        }
-        .btn {
-            background: #008cba;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            margin: 8px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 80%;
-            max-width: 250px;
-        }
-        .btn:active {
-            background: #005f73;
-        }
-        .btn:disabled {
-            background: #555;
-            cursor: not-allowed;
-        }
-        input, select {
-            padding: 10px;
-            margin: 8px;
-            width: 80%;
-            max-width: 250px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-            text-align: center;
-        }
-        #amida-canvas {
-            background: #ffffff;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-        #game-header {
-            width: 100%;
-            padding: 10px;
-            background: #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 14px;
-        }
-        #canvas-container {
-            position: relative;
-            flex-grow: 1;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        canvas {
-            background: #000;
-        }
-        #action-bar {
-            width: 100%;
-            padding: 10px;
-            background: #222;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-        }
-        .item-btn {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-weight: bold;
-        }
-        .item-btn:disabled {
-            background: #555;
-        }
-        .room-info {
-            background: #333;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            word-break: break-all;
-            text-align: center;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>パズルボブル風お邪魔対戦</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<div id="game-container">
-    <!-- モード選択画面 -->
-    <div id="mode-screen" class="screen">
-        <h1>パズル対戦</h1>
-        <button class="btn" id="btn-single">1人プレイ</button>
-        <button class="btn" id="btn-create-room-menu">部屋を作る (ホスト)</button>
-        <button class="btn" id="btn-join-room-menu">部屋に入る (ゲスト)</button>
-    </div>
-
-    <!-- 部屋作成設定画面 -->
-    <div id="create-room-screen" class="screen hidden">
-        <h2>部屋作成</h2>
-        <label>自分の名前:</label>
-        <input type="text" id="host-name-input" placeholder="名前を入力">
-        <label>対戦人数:</label>
-        <select id="select-max-players">
-            <option value="2">2人</option>
-            <option value="3">3人</option>
-            <option value="4">4人</option>
-            <option value="5">5人</option>
-        </select>
-        <button class="btn" id="btn-create-room">部屋を作成</button>
-        <button class="btn" style="background:#666" id="btn-back-from-create">戻る</button>
-    </div>
-
-    <!-- 部屋参加画面 -->
-    <div id="join-room-screen" class="screen hidden">
-        <h2>部屋に参加</h2>
-        <input type="text" id="guest-name-input" placeholder="自分の名前">
-        <input type="text" id="join-room-id-input" placeholder="ルームIDを入力">
-        <button class="btn" id="btn-join-room">参加</button>
-        <button class="btn" style="background:#666" id="btn-back-from-join">戻る</button>
-    </div>
-
-    <!-- 待合室画面 -->
-    <div id="lobby-screen" class="screen hidden">
-        <h2>ロビー</h2>
-        <div class="room-info">
-            ルームID: <span id="display-room-id" style="color:#00ffcc; font-weight:bold;">-</span>
+    <div id="game-container">
+        <!-- タイトル画面 / メニュー -->
+        <div id="menu-screen" class="screen">
+            <h1>パズルボブル対戦</h1>
+            <div class="menu-buttons">
+                <button id="btn-single" class="btn">ひとりで遊ぶ</button>
+                <button id="btn-friend" class="btn">フレンド対戦</button>
+                <button id="btn-ranking" class="btn">ランキング</button>
+                <button id="btn-custom" class="btn">画像カスタム</button>
+            </div>
         </div>
-        <div id="lobby-player-list" style="margin-bottom: 15px;"></div>
-        <button class="btn" id="btn-start-order-setup" disabled>全員揃ったら順番決定へ</button>
-    </div>
 
-    <!-- あみだくじ / じゃんけん 画面 -->
-    <div id="order-screen" class="screen hidden">
-        <h2 id="order-title">順番決め</h2>
-        <canvas id="amida-canvas" width="300" height="250"></canvas>
-        <div id="order-result" style="margin-bottom:10px; text-align:center;"></div>
-        <button class="btn hidden" id="btn-start-game">対戦開始！</button>
-        <div id="waiting-host-msg" class="hidden" style="color:#aaa;">ホストが対戦を開始するのを待っています...</div>
-    </div>
+        <!-- 何人で遊ぶか選択画面 -->
+        <div id="player-count-screen" class="screen hidden">
+            <h2>何人で遊ぶ？</h2>
+            <div class="menu-buttons">
+                <button class="btn btn-count" data-count="2">2人対戦</button>
+                <button class="btn btn-count" data-count="3">3人対戦</button>
+                <button class="btn btn-count" data-count="4">4人対戦</button>
+                <button class="btn btn-count" data-count="5">5人対戦</button>
+                <button class="btn btn-back" id="btn-count-back">もどる</button>
+            </div>
+        </div>
 
-    <!-- おしつけターゲット選択モーダル -->
-    <div id="target-screen" class="screen hidden">
-        <h2>おしつけ先を選択</h2>
-        <div id="target-buttons"></div>
-        <button class="btn" style="background:#777" id="btn-cancel-target">キャンセル</button>
-    </div>
+        <!-- ホスト/ゲスト選択画面 (2人の場合のみ、またはオンライン用) -->
+        <div id="friend-mode-screen" class="screen hidden">
+            <h2>フレンド対戦</h2>
+            <div class="menu-buttons">
+                <button id="btn-host" class="btn">部屋を作る (ホスト)</button>
+                <button id="btn-join" class="btn">部屋に参加 (ゲスト)</button>
+                <button class="btn btn-back" id="btn-friend-back">もどる</button>
+            </div>
+        </div>
 
-    <!-- メインゲーム画面 -->
-    <div id="game-header">
-        <div id="turn-info">手番: -</div>
-        <div id="status-info">お邪魔蓄積: 0</div>
-    </div>
+        <!-- 対戦モード選択画面 (2人対戦時のみ) -->
+        <div id="mode-select-screen" class="screen hidden">
+            <h2>対戦モード選択</h2>
+            <div class="menu-buttons">
+                <button id="btn-mode-time" class="btn">タイムアタック</button>
+                <button id="btn-mode-ojama" class="btn">お邪魔対戦</button>
+                <button class="btn btn-back" id="btn-mode-back">もどる</button>
+            </div>
+        </div>
 
-    <div id="canvas-container">
-        <canvas id="game-canvas" width="320" height="480"></canvas>
-    </div>
+        <!-- 勝利ルール選択画面 (3人以上、またはお邪魔対戦) -->
+        <div id="win-rule-screen" class="screen hidden">
+            <h2>勝利ルールの選択</h2>
+            <div class="menu-buttons">
+                <button class="btn btn-win" data-wins="1">先に1勝</button>
+                <button class="btn btn-win" data-wins="2">先に2勝</button>
+                <button class="btn btn-back" id="btn-win-back">もどる</button>
+            </div>
+        </div>
 
-    <div id="action-bar">
-        <button id="btn-item-oshitsuke" class="item-btn" disabled>おしつけ (残り1個)</button>
-        <button id="btn-end-turn" class="btn" style="width: auto; margin:0;">ターン終了</button>
-    </div>
-</div>
+        <!-- 名前入力画面 -->
+        <div id="name-input-screen" class="screen hidden">
+            <h2>プレイヤー名の入力</h2>
+            <div class="input-group">
+                <input type="text" id="player-name-input" placeholder="名前を入力" maxlength="10">
+                <button id="btn-name-ok" class="btn">決定</button>
+            </div>
+            <button class="btn btn-back" id="btn-name-back">もどる</button>
+        </div>
 
-<script src="script.js"></script>
+        <!-- 順番決め画面 (あみだくじ / じゃんけん) -->
+        <div id="order-screen" class="screen hidden">
+            <h2>順番決め</h2>
+            <div id="order-content">
+                <!-- じゃんけん or あみだくじ用エリア -->
+            </div>
+            <button id="btn-start-battle" class="btn hidden">対戦開始！</button>
+        </div>
+
+        <!-- 順番大画面表示用オーバーレイ -->
+        <div id="turn-announce-overlay" class="hidden">
+            <div id="turn-announce-text">1番手</div>
+        </div>
+
+        <!-- ゲームプレイ画面 -->
+        <div id="game-screen" class="screen hidden">
+            <div id="game-header">
+                <span id="turn-info">自分のターン</span>
+                <span id="score-info">スコア: 0</span>
+                <button id="btn-pause" class="btn-small">一時停止</button>
+            </div>
+            <div id="play-area">
+                <canvas id="game-canvas"></canvas>
+            </div>
+            <!-- 3人以上専用：おしつけアイテム用UI -->
+            <div id="item-panel" class="hidden">
+                <div class="item-title">おしつけアイテム (残りターン: <span id="item-turn-count">0</span>)</div>
+                <div id="item-targets">
+                    <!-- ターゲット選択用ボタンが動的に入る -->
+                </div>
+            </div>
+            <div id="controls">
+                <button id="btn-left" class="control-btn">◀</button>
+                <button id="btn-shoot" class="control-btn">発射</button>
+                <button id="btn-right" class="control-btn">▶</button>
+            </div>
+        </div>
+
+        <!-- リザルト画面 -->
+        <div id="result-screen" class="screen hidden">
+            <h2 id="result-title">ゲーム終了</h2>
+            <p id="result-text"></p>
+            <button id="btn-restart" class="btn">メニューに戻る</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
 </body>
 </html>
