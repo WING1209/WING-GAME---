@@ -25,7 +25,7 @@
  height: 100vh;
  height: 100dvh;
  overflow: hidden;
- touch-action: none;
+ touch-action: manipulation;
  }
  #game-container {
  position: relative;
@@ -61,11 +61,38 @@
  padding: 24px;
  z-index: 100;
  text-align: center;
+ cursor: pointer;
  }
  .overlay-screen h2 {
  color: #ffcc00;
  font-size: 24px;
  margin-bottom: 15px;
+ }
+ .title-logo {
+ font-size: 28px;
+ font-weight: 900;
+ color: #ffcc00;
+ text-shadow: 0 0 12px rgba(255, 204, 0, 0.6);
+ margin-bottom: 40px;
+ pointer-events: none;
+ }
+ .blink-text {
+ font-size: 20px;
+ font-weight: bold;
+ color: #4da6ff;
+ animation: blink 1.2s infinite ease-in-out;
+ pointer-events: none;
+ }
+ @keyframes blink {
+ 0%, 100% { opacity: 1; transform: scale(1); }
+ 50% { opacity: 0.2; transform: scale(0.95); }
+ }
+ .version-text {
+ font-size: 14px;
+ color: #ffffff;
+ margin-top: 15px;
+ font-weight: bold;
+ pointer-events: none;
  }
  .menu-btn {
  background: #ffcc00;
@@ -79,6 +106,7 @@
  width: 85%;
  max-width: 280px;
  cursor: pointer;
+ touch-action: manipulation;
  }
  .menu-btn:active {
  transform: scale(0.96);
@@ -86,7 +114,6 @@
  }
  .menu-btn.sub { background: #4da6ff; color: #fff; }
  .menu-btn.gray { background: #555; color: #fff; }
- .menu-btn.danger { background: #ff4d4d; color: #fff; }
  input.text-input {
  background: #222;
  border: 2px solid #ffcc00;
@@ -144,11 +171,11 @@
  <div id="game-container">
  <canvas id="gameCanvas" width="400" height="700"></canvas>
 
- <!-- タイトル画面 -->
- <div id="screen-title" class="overlay-screen" style="display: flex;">
+ <!-- タイトル画面（画面全体のタップで遷移） -->
+ <div id="screen-title" class="overlay-screen" style="display: flex;" onclick="goToHowToPlay()">
  <div class="title-logo">○o WING GAME 玉 o○</div>
- <div class="blink-text" onclick="goToHowToPlay()">TAP TO START</div>
- <div class="version-text">Ver 2.1 (Multiplay)</div>
+ <div class="blink-text">TAP TO START</div>
+ <div class="version-text">Ver 2.0 (Multiplay)</div>
  </div>
 
  <!-- ルール説明 -->
