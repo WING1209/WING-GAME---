@@ -1,209 +1,216 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>WING GAME - 2人対戦バブルバトル</title>
-<!-- PeerJS (通信用ライブラリ) -->
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<style>
-* {
-  box-sizing: border-box;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-body {
-  margin: 0;
-  padding: 0;
-  background: #111;
-  color: #fff;
-  font-family: apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-  touch-action: none;
-}
-#game-container {
-  position: relative;
-  width: 100vw;
-  height: 100dvh;
-  max-width: 480px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-canvas {
-  background: #1a1a1a;
-  box-shadow: 0 0 15px rgba(0,0,0,0.8);
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  z-index: 1;
-  touch-action: none;
-}
-.overlay-screen {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(17, 17, 17, 0.95);
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  z-index: 100;
-  text-align: center;
-}
-.overlay-screen h2 {
-  color: #ffcc00;
-  font-size: 26px;
-  margin-bottom: 20px;
-}
-.title-logo {
-  font-size: 28px;
-  font-weight: 900;
-  color: #ffcc00;
-  text-shadow: 0 0 12px rgba(255, 204, 0, 0.6);
-  margin-bottom: 40px;
-  animation: dropDown 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-@keyframes dropDown {
-  0% { transform: translateY(-200px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-}
-.blink-text {
-  font-size: 20px;
-  font-weight: bold;
-  color: #4da6ff;
-  animation: blink 1.2s infinite ease-in-out;
-  cursor: pointer;
-}
-@keyframes blink {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.2; transform: scale(0.95); }
-}
-.menu-btn {
-  background: #ffcc00;
-  color: #111;
-  border: none;
-  padding: 16px 20px;
-  border-radius: 12px;
-  font-weight: bold;
-  font-size: 18px;
-  margin: 8px 0;
-  width: 85%;
-  max-width: 280px;
-  cursor: pointer;
-}
-.menu-btn:active {
-  transform: scale(0.96);
-  opacity: 0.9;
-}
-.menu-btn.sub { background: #4da6ff; color: #fff; }
-.menu-btn.gray { background: #555; color: #fff; }
-
-input.text-input {
-  background: #222;
-  border: 2px solid #ffcc00;
-  color: #fff;
-  font-size: 24px;
-  text-align: center;
-  padding: 10px;
-  border-radius: 10px;
-  width: 220px;
-  margin: 15px 0;
-}
-#status-message {
-  color: #ff4d4d;
-  font-size: 14px;
-  margin-top: 10px;
-  height: 20px;
-}
-.rules-box {
-  background: #222;
-  border: 1px solid #555;
-  padding: 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  text-align: left;
-  line-height: 1.6;
-  margin-bottom: 20px;
-  max-width: 330px;
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
-}
-.rules-box b {
-  color: #ffcc00;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>○o WING GAME 玉 o○</title>
+    <!-- PeerJS (通信用ライブラリ) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100dvh;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            background: #1a1a1a;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 1;
+            touch-action: none;
+        }
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(17, 17, 17, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 100;
+            text-align: center;
+        }
+        .overlay-screen h2 {
+            color: #ffcc00;
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
+        .title-logo {
+            font-size: 28px;
+            font-weight: 900;
+            color: #ffcc00;
+            text-shadow: 0 0 12px rgba(255, 204, 0, 0.6);
+            margin-bottom: 40px;
+            animation: dropDown 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes dropDown {
+            0% { transform: translateY(-200px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .blink-text {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4da6ff;
+            animation: blink 1.2s infinite ease-in-out;
+            cursor: pointer;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.2; transform: scale(0.95); }
+        }
+        .version-text {
+            font-size: 14px;
+            color: #ffffff;
+            margin-top: 15px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .menu-btn {
+            background: #ffcc00;
+            color: #111;
+            border: none;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 18px;
+            margin: 8px 0;
+            width: 85%;
+            max-width: 280px;
+            cursor: pointer;
+        }
+        .menu-btn:active {
+            transform: scale(0.96);
+            opacity: 0.9;
+        }
+        .menu-btn.sub { background: #4da6ff; color: #fff; }
+        .menu-btn.gray { background: #555; color: #fff; }
+        .menu-btn.danger { background: #ff4d4d; color: #fff; }
+        
+        input.text-input {
+            background: #222;
+            border: 2px solid #ffcc00;
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            width: 220px;
+            margin: 15px 0;
+        }
+        #status-message {
+            color: #ff4d4d;
+            font-size: 14px;
+            margin-top: 10px;
+            height: 20px;
+        }
+        .rules-box {
+            background: #222;
+            border: 1px solid #555;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
-<div id="game-container">
-  <canvas id="gameCanvas" width="400" height="750"></canvas>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="400" height="700"></canvas>
 
-  <!-- タイトル画面 -->
-  <div id="screen-title" class="overlay-screen" style="display: flex; cursor:pointer;" onclick="goToRoleSelect()">
-    <div class="title-logo">対戦バブルバトル</div>
-    <div class="blink-text">TAP TO START</div>
-  </div>
+        <!-- タイトル画面 -->
+        <div id="screen-title" class="overlay-screen" style="display: flex;">
+            <div class="title-logo">○o WING★★★GAME 玉 o○</div>
+            <p class="blink-text" onclick="showScreen('screen-role-select')">TAP TO START</p>
+            <p class="version-text">Battle Edition</p>
+        </div>
 
-  <!-- 役割選択画面 (ホスト/ゲスト) -->
-  <div id="screen-role-select" class="overlay-screen">
-    <h2>2人対戦モード</h2>
-    <button class="menu-btn" onclick="setupRole('host')">部屋を作る (ホスト)</button>
-    <button class="menu-btn sub" onclick="setupRole('guest')">部屋に入る (ゲスト)</button>
-    <button class="menu-btn gray" onclick="showScreen('screen-title')">タイトルへ戻る</button>
-  </div>
+        <!-- 役割選択画面 (ホスト/ゲスト) -->
+        <div id="screen-role-select" class="overlay-screen">
+            <h2>対戦メニュー</h2>
+            <button class="menu-btn" onclick="setupRole('host')">部屋を作る (ホスト)</button>
+            <button class="menu-btn sub" onclick="setupRole('guest')">部屋に入る (ゲスト)</button>
+            <button class="menu-btn gray" onclick="showScreen('screen-title')">戻る</button>
+        </div>
 
-  <!-- ホスト待機画面 -->
-  <div id="screen-host-wait" class="overlay-screen">
-    <h2>部屋を作成しました</h2>
-    <p>あい言葉 (ルームコード):</p>
-    <div id="display-room-code" style="font-size: 36px; font-weight: bold; color: #ffcc00; letter-spacing: 4px; margin: 10px 0;">----</div>
-    <p style="font-size:12px; color:#aaa;">相手にこのコードを入力してもらってください</p>
+        <!-- ホスト待機・設定画面 -->
+        <div id="screen-host-wait" class="overlay-screen">
+            <h2>部屋を作成しました</h2>
+            <p>相手に以下の部屋コードを伝えてください</p>
+            <h1 style="color: #4da6ff; font-size: 40px; margin: 20px 0;" id="display-room-code">----</h1>
+            <p id="host-status-message">相手の接続を待っています...</p>
+        </div>
+
+        <div id="screen-host-rule-setup" class="overlay-screen">
+            <h2>対戦設定</h2>
+            <p>勝利条件を設定してください</p>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button id="btn-win-1" class="menu-btn" style="width: auto;" onclick="setHostTargetWins(1)">1勝先取</button>
+                <button id="btn-win-2" class="menu-btn gray" style="width: auto;" onclick="setHostTargetWins(2)">2勝先取</button>
+            </div>
+            <button class="menu-btn danger" onclick="confirmHostBattleStart()">決定して開始</button>
+        </div>
+
+        <!-- ゲスト入室画面 -->
+        <div id="screen-guest-join" class="overlay-screen">
+            <h2>部屋に入る</h2>
+            <p>ホストから教えられた4桁のコードを入力</p>
+            <input type="number" id="input-room-code" class="text-input" placeholder="0000">
+            <button class="menu-btn sub" onclick="joinRoom()">接続する</button>
+            <p id="status-message"></p>
+            <button class="menu-btn gray" onclick="showScreen('screen-role-select')">戻る</button>
+        </div>
+
+        <!-- ゲスト側ルール確認待機 -->
+        <div id="screen-guest-wait-rule" class="overlay-screen">
+            <h2>接続完了</h2>
+            <p>ホストが対戦設定を行っています。<br>しばらくお待ちください...</p>
+        </div>
+
+        <!-- ルール確認画面 (共通) -->
+        <div id="screen-battle-rules-desc" class="overlay-screen">
+            <h2>対戦ルール確認</h2>
+            <div class="rules-box" id="rules-text-content"></div>
+            <p id="ready-status-text" style="margin-top: 10px; font-weight: bold; color: #ffcc00;"></p>
+            <button class="menu-btn danger" onclick="readyToStartBattle()">準備OK！</button>
+        </div>
+    </div>
     
-    <div style="margin: 20px 0; width: 100%;">
-      <p style="margin-bottom: 8px;">【勝利本数設定】</p>
-      <div style="display: flex; justify-content: center; gap: 10px;">
-        <button id="btn-win-1" class="menu-btn" style="width: 100px; padding: 10px;" onclick="setHostTargetWins(1)">1本勝負</button>
-        <button id="btn-win-2" class="menu-btn gray" style="width: 100px; padding: 10px;" onclick="setHostTargetWins(2)">2本先取</button>
-      </div>
-    </div>
-
-    <button class="menu-btn sub" onclick="confirmHostBattleSettings()">設定完了して待つ</button>
-    <button class="menu-btn gray" onclick="showScreen('screen-role-select')">戻る</button>
-  </div>
-
-  <!-- ゲスト参加画面 -->
-  <div id="screen-guest-join" class="overlay-screen">
-    <h2>部屋に入る</h2>
-    <p>あい言葉 (4桁の数字) を入力:</p>
-    <input type="text" id="input-room-code" class="text-input" maxlength="4" placeholder="1234" pattern="\d*">
-    <div id="status-message"></div>
-    <button class="menu-btn" onclick="joinRoom()">接続する</button>
-    <button class="menu-btn gray" onclick="showScreen('screen-role-select')">戻る</button>
-  </div>
-
-  <!-- ルール説明確認画面 -->
-  <div id="screen-battle-rules-desc" class="overlay-screen">
-    <h2>対戦ルール</h2>
-    <div class="rules-box" id="rules-text-content">
-      <!-- JavaScriptで自動生成 -->
-    </div>
-    <button class="menu-btn" onclick="readyToStartBattle()">対戦スタート！</button>
-  </div>
-
-</div>
-
-<!-- JavaScriptファイル読み込み -->
-<script src="script.js"></script>
+    <!-- JavaScriptの読み込み (別ファイルにしている場合は適宜変更) -->
+    <script src="script.js"></script>
 </body>
 </html>
