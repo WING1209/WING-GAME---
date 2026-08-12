@@ -1,863 +1,224 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>パズルボブル - フレンド対戦 & おしつけアイテム版</title>
-  <!-- PeerJS ライブラリ -->
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      user-select: none;
-    }
-    body {
-      background: #111;
-      color: #fff;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      overflow: hidden;
-    }
-    #game-container {
-      position: relative;
-      width: 360px;
-      height: 640px;
-      background: #222;
-      border: 2px solid #555;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 0 20px rgba(0,0,0,0.8);
-    }
-    canvas {
-      display: block;
-      background: #000;
-    }
-
-    /* 画面オーバーレイ共通 */
-    .screen {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(10, 10, 15, 0.92);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-      padding: 20px;
-      text-align: center;
-    }
-    .screen.active {
-      display: flex;
-    }
-
-    h1 {
-      font-size: 26px;
-      color: #00e5ff;
-      margin-bottom: 20px;
-      text-shadow: 0 0 8px #00e5ff;
-    }
-    h2 {
-      font-size: 20px;
-      color: #fff;
-      margin-bottom: 15px;
-    }
-    p {
-      font-size: 14px;
-      color: #ccc;
-      margin-bottom: 15px;
-    }
-
-    /* ボタンデザイン */
-    .menu-btn {
-      width: 80%;
-      padding: 12px;
-      margin: 8px 0;
-      font-size: 16px;
-      font-weight: bold;
-      color: #fff;
-      background: linear-gradient(135deg, #2b5876, #4e4376);
-      border: 1px solid #00e5ff;
-      border-radius: 25px;
-      cursor: pointer;
-      transition: 0.2s;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-    .menu-btn:active {
-      transform: scale(0.95);
-    }
-    .menu-btn.sub {
-      background: linear-gradient(135deg, #11998e, #38ef7d);
-      border-color: #38ef7d;
-    }
-    .menu-btn.cancel {
-      background: linear-gradient(135deg, #cb2d3e, #ef473a);
-      border-color: #ef473a;
-    }
-
-    /* 入力フォーム */
-    input[type="text"] {
-      width: 80%;
-      padding: 10px;
-      font-size: 18px;
-      text-align: center;
-      border-radius: 6px;
-      border: 1px solid #00e5ff;
-      background: #111;
-      color: #fff;
-      margin-bottom: 15px;
-    }
-
-    /* ゲーム内対戦UI */
-    #ingame-ui {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 5;
-      display: none;
-    }
-    .item-btn {
-      padding: 8px 12px;
-      font-size: 12px;
-      font-weight: bold;
-      background: #ff007f;
-      color: #fff;
-      border: none;
-      border-radius: 15px;
-      box-shadow: 0 0 8px #ff007f;
-      cursor: pointer;
-    }
-
-    /* ルーレットアニメテキスト */
-    #roulette-anim-text {
-      font-size: 22px;
-      color: #ffea00;
-      font-weight: bold;
-      animation: blink 0.2s infinite alternate;
-    }
-    @keyframes blink {
-      from { opacity: 0.5; }
-      to { opacity: 1; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>○o WING GAME 玉 o○</title>
+    <!-- PeerJS (通信用ライブラリ) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100dvh;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            background: #1a1a1a;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 1;
+            touch-action: none;
+        }
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(17, 17, 17, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 100;
+            text-align: center;
+        }
+        .overlay-screen h2 {
+            color: #ffcc00;
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
+        .title-logo {
+            font-size: 28px;
+            font-weight: 900;
+            color: #ffcc00;
+            text-shadow: 0 0 12px rgba(255, 204, 0, 0.6);
+            margin-bottom: 40px;
+            animation: dropDown 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes dropDown {
+            0% { transform: translateY(-200px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .version-text {
+            font-size: 14px;
+            color: #ffffff;
+            margin-top: 15px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .menu-btn {
+            background: #ffcc00;
+            color: #111;
+            border: none;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 18px;
+            margin: 8px 0;
+            width: 85%;
+            max-width: 280px;
+            cursor: pointer;
+        }
+        .menu-btn:active {
+            transform: scale(0.96);
+            opacity: 0.9;
+        }
+        .menu-btn.sub { background: #4da6ff; color: #fff; }
+        .menu-btn.gray { background: #555; color: #fff; }
+        input.text-input {
+            background: #222;
+            border: 2px solid #ffcc00;
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            width: 220px;
+            margin: 15px 0;
+        }
+        #status-message {
+            color: #ff4d4d;
+            font-size: 14px;
+            margin-top: 10px;
+            height: 20px;
+        }
+        .rules-box {
+            background: #222;
+            border: 1px solid #555;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            text-align: left;
+            line-height: 1.5;
+            max-width: 320px;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="400" height="700"></canvas>
 
-<div id="game-container">
-  <!-- ゲーム描画キャンバス -->
-  <canvas id="gameCanvas" width="360" height="640"></canvas>
+        <!-- タイトル画面 -->
+        <div id="screen-title" class="overlay-screen" style="display: flex;">
+            <div class="title-logo">WING GAME 玉</div>
+            <button class="menu-btn" onclick="showScreen('screen-role-select')">対戦モード</button>
+            <button class="menu-btn sub" onclick="showScreen('screen-how-to-play')">遊び方</button>
+            <div class="version-text">Version 2026</div>
+        </div>
 
-  <!-- ゲーム内UI (押し付けアイテム等) -->
-  <div id="ingame-ui">
-    <button class="item-btn" onclick="useOshitsukeItem()">押し付けアイテム発動</button>
-  </div>
+        <!-- 遊び方画面 -->
+        <div id="screen-how-to-play" class="overlay-screen">
+            <h2>遊び方</h2>
+            <div class="rules-box">
+                • 引っ張って離すと玉が発射されます。<br>
+                • 同じ色の玉を3つ以上繋げると消えます。<br>
+                • 対戦モードでは相手にお邪魔玉を送ったり、特殊ルールで競い合います！
+            </div>
+            <button class="menu-btn" onclick="showScreen('screen-title')">戻る</button>
+        </div>
 
-  <!-- 1. タイトル画面 -->
-  <div id="screen-title" class="screen active">
-    <h1>パズルボブル</h1>
-    <button class="menu-btn" onclick="startSingleGame()">ひとりであそぶ</button>
-    <button class="menu-btn sub" onclick="showScreen('screen-role-select')">フレンド対戦</button>
-  </div>
+        <!-- ロール選択画面 -->
+        <div id="screen-role-select" class="overlay-screen">
+            <h2>対戦モード</h2>
+            <button class="menu-btn" onclick="setupRole('host')">部屋を作る (ホスト)</button>
+            <button class="menu-btn sub" onclick="setupRole('guest')">部屋に参加 (ゲスト)</button>
+            <button class="menu-btn gray" onclick="showScreen('screen-title')">戻る</button>
+        </div>
 
-  <!-- 2. 役割選択 (ホスト / ゲスト) -->
-  <div id="screen-role-select" class="screen">
-    <h2>フレンド対戦</h2>
-    <button class="menu-btn" onclick="selectRole('host')">部屋をつくる (ホスト)</button>
-    <button class="menu-btn sub" onclick="selectRole('guest')">部屋にはいる (ゲスト)</button>
-    <button class="menu-btn cancel" onclick="showScreen('screen-title')">もどる</button>
-  </div>
+        <!-- ホスト待機画面 -->
+        <div id="screen-host-wait" class="overlay-screen">
+            <h2>対戦設定</h2>
+            <p style="font-size: 14px; color: #ccc; margin-bottom: 5px;">ルームコード</p>
+            <div id="display-room-code" style="font-size: 36px; font-weight: bold; color: #ffcc00; letter-spacing: 4px; margin-bottom: 15px;">----</div>
+            <p style="font-size: 13px; color: #aaa; margin-bottom: 15px;">このコードを対戦相手に伝えてください</p>
+            
+            <div style="margin-bottom: 15px; width: 100%; max-width: 280px; text-align: left;">
+                <p style="font-size: 13px; color: #ffcc00; margin-bottom: 5px;">対戦ルール:</p>
+                <div style="display: flex; gap: 8px;">
+                    <button id="btn-mode-ojama" class="menu-btn sub" style="flex:1; margin:0; font-size:14px; padding:10px;" onclick="setHostBattleType('お邪魔対戦')">お邪魔対戦</button>
+                    <button id="btn-mode-ta" class="menu-btn gray" style="flex:1; margin:0; font-size:14px; padding:10px;" onclick="setHostBattleType('500個消し対戦')">500個消し</button>
+                </div>
+            </div>
 
-  <!-- 3. ホスト：モード選択 -->
-  <div id="screen-host-mode-select" class="screen">
-    <h2>モード選択</h2>
-    <button class="menu-btn" onclick="setHostBattleType('お邪魔対戦')">お邪魔対戦</button>
-    <button class="menu-btn sub" onclick="setHostBattleType('タイムアタック')">タイムアタック (2人)</button>
-    <button class="menu-btn cancel" onclick="showScreen('screen-role-select')">もどる</button>
-  </div>
+            <div style="margin-bottom: 20px; width: 100%; max-width: 280px; text-align: left;">
+                <p style="font-size: 13px; color: #ffcc00; margin-bottom: 5px;">勝利条件 (先勝):</p>
+                <div style="display: flex; gap: 8px;">
+                    <button id="btn-win-1" class="menu-btn" style="flex:1; margin:0; font-size:14px; padding:10px;" onclick="setHostTargetWins(1)">1勝先取</button>
+                    <button id="btn-win-2" class="menu-btn gray" style="flex:1; margin:0; font-size:14px; padding:10px;" onclick="setHostTargetWins(2)">2勝先取</button>
+                </div>
+            </div>
 
-  <!-- 4. ホスト：人数選択 -->
-  <div id="screen-player-count" class="screen">
-    <h2>対戦人数を選択</h2>
-    <button class="menu-btn" onclick="setPlayerCount(2)">2人</button>
-    <button class="menu-btn" onclick="setPlayerCount(3)">3人</button>
-    <button class="menu-btn" onclick="setPlayerCount(4)">4人</button>
-    <button class="menu-btn" onclick="setPlayerCount(5)">5人</button>
-    <button class="menu-btn cancel" onclick="showScreen('screen-host-mode-select')">もどる</button>
-  </div>
+            <button class="menu-btn" onclick="confirmHostBattleSettings()">設定を決定して開始</button>
+            <button class="menu-btn gray" onclick="showScreen('screen-role-select')">戻る</button>
+        </div>
 
-  <!-- 5. ホスト：勝利ルール選択 -->
-  <div id="screen-win-rule-select" class="screen">
-    <h2>勝利条件</h2>
-    <button class="menu-btn" onclick="setHostTargetWins(1)">1本先取 (1勝)</button>
-    <button class="menu-btn" onclick="setHostTargetWins(2)">2本先取 (2勝)</button>
-    <button class="menu-btn cancel" onclick="showScreen('screen-host-mode-select')">もどる</button>
-  </div>
+        <!-- ゲスト参加画面 -->
+        <div id="screen-guest-join" class="overlay-screen">
+            <h2>ルーム参加</h2>
+            <p style="font-size: 14px; color: #ccc;">4桁のルームコードを入力</p>
+            <input type="text" id="input-room-code" class="text-input" maxlength="4" placeholder="0000">
+            <div id="status-message"></div>
+            <button class="menu-btn" onclick="joinRoom()">接続する</button>
+            <button class="menu-btn gray" onclick="showScreen('screen-role-select')">戻る</button>
+        </div>
 
-  <!-- 6. ホスト：部屋待機 -->
-  <div id="screen-host-wait" class="screen">
-    <h2>メンバー待機中</h2>
-    <p>部屋コード:</p>
-    <h1 id="display-room-code" style="font-size: 36px; letter-spacing: 4px;">----</h1>
-    <p id="connected-count-text">接続人数: 1 / 2 人</p>
-    <button class="menu-btn cancel" onclick="returnToTitle()">中止する</button>
-  </div>
+        <!-- ゲスト待機ルール確認画面 -->
+        <div id="screen-guest-wait-rule" class="overlay-screen">
+            <h2>待機中</h2>
+            <p style="font-size: 16px; color: #4da6ff; margin-bottom: 20px;">ホストの設定を待っています...</p>
+            <button class="menu-btn gray" onclick="showScreen('screen-role-select')">退出する</button>
+        </div>
 
-  <!-- 7. ゲスト：ID入力 -->
-  <div id="screen-guest-join" class="screen">
-    <h2>部屋コード入力</h2>
-    <input type="text" id="input-room-code" maxlength="4" placeholder="4桁のコード" pattern="\d*">
-    <p id="status-message" style="color: #ff3366;"></p>
-    <button class="menu-btn" onclick="joinRoom()">参加する</button>
-    <button class="menu-btn cancel" onclick="showScreen('screen-role-select')">もどる</button>
-  </div>
-
-  <!-- 8. ゲスト：ホスト待ち -->
-  <div id="screen-guest-wait-host" class="screen">
-    <h2>ホストの設定待ち...</h2>
-    <p>全員が揃うまでしばらくお待ちください</p>
-    <button class="menu-btn cancel" onclick="returnToTitle()">退出する</button>
-  </div>
-
-  <!-- 9. プレイヤー名入力 -->
-  <div id="screen-player-name" class="screen">
-    <h2>プレイヤー名入力</h2>
-    <input type="text" id="input-player-name" maxlength="8" placeholder="なまえ (8文字以内)">
-    <button id="btn-submit-name" class="menu-btn" onclick="submitPlayerName()">決定</button>
-  </div>
-
-  <!-- 10. 順番決めルーレット画面 -->
-  <div id="screen-turn-order" class="screen">
-    <h2>順番決定</h2>
-    <div id="roulette-anim-text">順番を抽選中...</div>
-    <div id="turn-order-result-container" style="display:none;">
-      <p>あなたの順番は</p>
-      <h1 id="turn-order-large-text" style="font-size: 32px; color: #ffea00;">【 1 番手 】</h1>
+        <!-- バトルルール説明画面 -->
+        <div id="screen-battle-rules-desc" class="overlay-screen">
+            <h2>対戦ルール確認</h2>
+            <div id="rules-text-content" class="rules-box"></div>
+            <button class="menu-btn" onclick="readyToStartBattle()">バトル開始！</button>
+        </div>
     </div>
-  </div>
 
-  <!-- 11. おしつけアイテム ターゲット選択ダイアログ -->
-  <div id="screen-item-target" class="screen">
-    <h2>おしつけ相手を選択</h2>
-    <p>2ターンの間、攻撃の矛先を変更します</p>
-    <div id="target-player-list" style="width: 100%;"></div>
-    <button class="menu-btn cancel" onclick="showScreen('')">キャンセル</button>
-  </div>
-</div>
-
-<script>
-/* ===================================================
-   ゲーム基本設定 ＆ 変数定義
-   =================================================== */
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-const BOARD_ROWS = 12;
-const BOARD_COLS = 8;
-const BUBBLE_RADIUS = 20;
-
-let gameMode = 'single'; // 'single' or 'battle'
-let gameState = 'title';  // 'title', 'playing', 'gameover', 'cleared'
-let grid = [];
-let currentBullet = null;
-let nextBulletColor = '';
-let cannonAngle = Math.PI / 2; // 90度（真上）
-
-const BUBBLE_COLORS = ['#ff3366', '#33ccff', '#33ff66', '#ffcc00', '#cc33ff'];
-
-/* ===================================================
-   フレンド対戦 (2~5人対応 & おしつけアイテム) システム
-   =================================================== */
-
-let maxPlayers = 2;              // 対戦人数 (2〜5人)
-let connections = {};            // ホスト用: { peerId: connection }
-let playersData = [];            // [{ peerId, name, order, isHost, oshitsukeTarget, oshitsukeTurnLeft }, ...]
-let myPlayerName = "";
-let myPeerId = "";
-let currentTurnIndex = 0;        // 現在のターンのプレイヤーインデックス
-let peer = null;
-let conn = null;                 // ゲスト用接続オブジェクト
-const PEER_PREFIX = 'pb-game-room-2026-v7-';
-
-let battleType = 'タイムアタック';  // 'タイムアタック' or 'お邪魔対戦'
-let targetwins = 1;              // 勝利条件 (1勝 or 2勝)
-let myWins = 0;
-let opponentWins = 0;
-let battleRole = '';             // 'host' or 'guest'
-let roomCode = '';
-
-// --- 画面切り替え ---
-function showScreen(screenId) {
-  const screens = document.querySelectorAll('.screen');
-  screens.forEach(s => s.classList.remove('active'));
-  if (screenId) {
-    const target = document.getElementById(screenId);
-    if (target) target.classList.add('active');
-  }
-}
-
-function returnToTitle() {
-  if (peer) {
-    peer.destroy();
-    peer = null;
-  }
-  connections = {};
-  playersData = [];
-  gameState = 'title';
-  showScreen('screen-title');
-}
-
-// --- 役割（ホスト / ゲスト）選択 ---
-function selectRole(role) {
-  battleRole = role;
-  if (role === 'host') {
-    showScreen('screen-host-mode-select');
-  } else {
-    showScreen('screen-guest-join');
-  }
-}
-
-// --- ホスト：モード選択 ---
-function setHostBattleType(type) {
-  battleType = type;
-  if (type === 'お邪魔対戦') {
-    showScreen('screen-player-count');
-  } else {
-    maxPlayers = 2;
-    showScreen('screen-win-rule-select');
-  }
-}
-
-// --- ホスト：人数選択（お邪魔対戦のみ） ---
-function setPlayerCount(count) {
-  maxPlayers = count;
-  showScreen('screen-win-rule-select');
-}
-
-// --- ホスト：勝利ルール選択＆部屋作成 ---
-function setHostTargetWins(wins) {
-  targetwins = wins;
-  createHostRoom();
-}
-
-// --- ホスト：部屋作成＆接続受け入れ ---
-function createHostRoom() {
-  roomCode = Math.floor(1000 + Math.random() * 9000).toString();
-  connections = {};
-  playersData = [];
-
-  peer = new Peer(PEER_PREFIX + roomCode);
-  peer.on('open', (id) => {
-    myPeerId = id;
-    document.getElementById('display-room-code').innerText = roomCode;
-    updateHostWaitUI();
-    showScreen('screen-host-wait');
-  });
-
-  peer.on('connection', (c) => {
-    if (Object.keys(connections).length < maxPlayers - 1) {
-      connections[c.peer] = c;
-      setupHostConnectionListeners(c);
-    } else {
-      c.send({ type: 'room_full' });
-      setTimeout(() => c.close(), 500);
-    }
-  });
-}
-
-function updateHostWaitUI() {
-  const currentCount = Object.keys(connections).length + 1;
-  const statusEl = document.getElementById('connected-count-text');
-  if (statusEl) statusEl.innerText = `接続人数: ${currentCount} / ${maxPlayers} 人`;
-
-  if (currentCount === maxPlayers) {
-    broadcast({ type: 'goto_name_input' });
-    setTimeout(() => {
-      showScreen('screen-player-name');
-    }, 500);
-  }
-}
-
-// ホスト側の接続受信用リスナー
-function setupHostConnectionListeners(c) {
-  c.on('open', () => {
-    updateHostWaitUI();
-  });
-
-  c.on('data', (data) => {
-    if (data.type === 'submit_name') {
-      let existing = playersData.find(p => p.peerId === data.peerId);
-      if (!existing) {
-        playersData.push({
-          peerId: data.peerId,
-          name: data.name,
-          isHost: false,
-          oshitsukeTarget: null,
-          oshitsukeTurnLeft: 0
-        });
-      }
-      checkAllPlayersReady();
-    } else if (data.type === 'sync_turn_action') {
-      // 相手のターン行動同期処理等
-    } else if (data.type === 'sync_item_oshitsuke') {
-      let targetP = playersData.find(p => p.peerId === data.sourcePeerId);
-      if (targetP) {
-        targetP.oshitsukeTarget = data.targetName;
-        targetP.oshitsukeTurnLeft = 2;
-      }
-      broadcast(data);
-    } else if (data.type === 'relay_ojama') {
-      processIncomingAttack(data.fromIndex, data.amount);
-    }
-  });
-
-  c.on('close', () => {
-    delete connections[c.peer];
-    updateHostWaitUI();
-  });
-}
-
-// --- ゲスト：部屋参加 ---
-function joinRoom() {
-  let code = document.getElementById('input-room-code').value;
-  if (code.length !== 4) {
-    document.getElementById('status-message').innerText = '4桁の数字を入力してください';
-    return;
-  }
-  document.getElementById('status-message').innerText = '接続中...';
-  
-  peer = new Peer();
-  peer.on('open', (id) => {
-    myPeerId = id;
-    conn = peer.connect(PEER_PREFIX + code);
-    setupGuestConnectionListeners();
-  });
-
-  peer.on('error', () => {
-    document.getElementById('status-message').innerText = '部屋が見つからないか、接続に失敗しました';
-  });
-}
-
-function setupGuestConnectionListeners() {
-  conn.on('open', () => {
-    showScreen('screen-guest-wait-host');
-  });
-
-  conn.on('data', (data) => {
-    if (data.type === 'room_full') {
-      alert('満員のため参加できませんでした');
-      returnToTitle();
-    } else if (data.type === 'goto_name_input') {
-      showScreen('screen-player-name');
-    } else if (data.type === 'game_start_sync') {
-      playersData = data.players;
-      battleType = data.rules.battleType;
-      targetwins = data.rules.targetwins;
-      maxPlayers = data.rules.maxPlayers;
-      startRouletteSequence();
-    } else if (data.type === 'receive_ojama') {
-      spawnOjamaBallsInCanvas(data.amount);
-    } else if (data.type === 'sync_item_oshitsuke') {
-      let targetP = playersData.find(p => p.peerId === data.sourcePeerId);
-      if (targetP) {
-        targetP.oshitsukeTarget = data.targetName;
-        targetP.oshitsukeTurnLeft = 2;
-      }
-    }
-  });
-}
-
-// --- 名前入力 & 全員準備チェック ---
-function submitPlayerName() {
-  myPlayerName = document.getElementById('input-player-name').value.trim() || "名無し";
-  document.getElementById('btn-submit-name').disabled = true;
-
-  if (battleRole === 'host') {
-    playersData.push({
-      peerId: myPeerId,
-      name: myPlayerName,
-      isHost: true,
-      oshitsukeTarget: null,
-      oshitsukeTurnLeft: 0
-    });
-    checkAllPlayersReady();
-  } else {
-    conn.send({ type: 'submit_name', name: myPlayerName, peerId: myPeerId });
-  }
-}
-
-function checkAllPlayersReady() {
-  if (battleRole !== 'host') return;
-  
-  if (playersData.length === maxPlayers) {
-    let orderArray = Array.from({ length: maxPlayers }, (_, i) => i);
-    orderArray.sort(() => Math.random() - 0.5);
-
-    playersData.forEach((p, index) => {
-      p.order = orderArray[index];
-    });
-
-    playersData.sort((a, b) => a.order - b.order);
-
-    broadcast({
-      type: 'game_start_sync',
-      players: playersData,
-      rules: { targetwins, battleType, maxPlayers }
-    });
-
-    startRouletteSequence();
-  }
-}
-
-function broadcast(data) {
-  Object.values(connections).forEach(c => {
-    if (c.open) c.send(data);
-  });
-}
-
-// --- 順番決めルーレット演出 ---
-function startRouletteSequence() {
-  showScreen('screen-turn-order');
-  
-  let animText = document.getElementById('roulette-anim-text');
-  let resultContainer = document.getElementById('turn-order-result-container');
-  let resultText = document.getElementById('turn-order-large-text');
-
-  if (animText) animText.style.display = 'block';
-  if (resultContainer) resultContainer.style.display = 'none';
-
-  let myOrderRank = playersData.findIndex(p => p.name === myPlayerName) + 1;
-
-  let count = 0;
-  let interval = setInterval(() => {
-    if (animText) {
-      animText.innerText = `順番を抽選中... [ ${Math.floor(Math.random() * maxPlayers) + 1} 番手 ]`;
-    }
-    count++;
-    if (count > 15) {
-      clearInterval(interval);
-      if (animText) animText.style.display = 'none';
-      if (resultContainer) resultContainer.style.display = 'block';
-      
-      if (resultText) {
-        resultText.innerText = `【 ${myOrderRank} 番手 】`;
-      }
-
-      setTimeout(() => {
-        executeBattleStart();
-      }, 2500);
-    }
-  }, 100);
-}
-
-// --- 対戦開始処理 ---
-function executeBattleStart() {
-  gameMode = 'battle';
-  gameState = 'playing';
-  currentTurnIndex = 0;
-
-  let itemUI = document.getElementById('ingame-ui');
-  if (itemUI) {
-    if (battleType === 'お邪魔対戦' && maxPlayers >= 3) {
-      itemUI.style.display = 'flex';
-    } else {
-      itemUI.style.display = 'none';
-    }
-  }
-
-  showScreen('');
-  initGrid();
-  spawnBullet();
-}
-
-// --- お邪魔玉送信 ＆ 「おしつけ」効果判定 ---
-function sendOjamaToOthers(amount) {
-  if (amount <= 0 || battleType !== 'お邪魔対戦') return;
-
-  let senderIndex = currentTurnIndex;
-
-  playersData.forEach((targetPlayer, idx) => {
-    if (idx === senderIndex) return;
-
-    let finalAmount = amount;
-    let finalTarget = targetPlayer;
-
-    if (targetPlayer.oshitsukeTurnLeft > 0 && targetPlayer.oshitsukeTarget) {
-      let victim = playersData.find(p => p.name === targetPlayer.oshitsukeTarget);
-      if (victim) {
-        finalTarget = victim;
-      }
-    }
-
-    if (finalTarget.name === myPlayerName) {
-      spawnOjamaBallsInCanvas(finalAmount);
-    } else if (battleRole === 'host') {
-      let c = connections[finalTarget.peerId];
-      if (c && c.open) {
-        c.send({ type: 'receive_ojama', amount: finalAmount });
-      }
-    } else {
-      conn.send({
-        type: 'relay_ojama',
-        fromIndex: senderIndex,
-        targetPeer: finalTarget.peerId,
-        amount: finalAmount
-      });
-    }
-  });
-}
-
-function processIncomingAttack(fromIndex, amount) {
-  sendOjamaToOthers(amount);
-}
-
-// --- 「おしつけ」アイテム使用ダイアログ ---
-function useOshitsukeItem() {
-  let me = playersData.find(p => p.name === myPlayerName);
-  if (me && me.oshitsukeTurnLeft > 0) {
-    alert("「おしつけ」効果はすでに発動中です！");
-    return;
-  }
-
-  let list = document.getElementById('target-player-list');
-  if (!list) return;
-  list.innerHTML = "";
-
-  playersData.forEach(p => {
-    if (p.name !== myPlayerName) {
-      let btn = document.createElement('button');
-      btn.className = "menu-btn sub";
-      btn.innerText = `${p.name} に押し付ける`;
-      btn.onclick = () => {
-        applyOshitsuke(p.name);
-      };
-      list.appendChild(btn);
-    }
-  });
-
-  showScreen('screen-item-target');
-}
-
-function applyOshitsuke(targetName) {
-  let me = playersData.find(p => p.name === myPlayerName);
-  if (me) {
-    me.oshitsukeTarget = targetName;
-    me.oshitsukeTurnLeft = 2;
-  }
-
-  if (battleRole === 'host') {
-    broadcast({
-      type: 'sync_item_oshitsuke',
-      sourcePeerId: myPeerId,
-      targetName: targetName
-    });
-  } else {
-    conn.send({
-      type: 'sync_item_oshitsuke',
-      sourcePeerId: myPeerId,
-      targetName: targetName
-    });
-  }
-
-  alert(`${targetName} さんに「おしつけ」を設定しました！（2ターンの間無効化）`);
-  showScreen('');
-}
-
-function advanceTurn() {
-  currentTurnIndex = (currentTurnIndex + 1) % maxPlayers;
-
-  if (currentTurnIndex === 0) {
-    playersData.forEach(p => {
-      if (p.oshitsukeTurnLeft > 0) {
-        p.oshitsukeTurnLeft--;
-        if (p.oshitsukeTurnLeft === 0) {
-          p.oshitsukeTarget = null;
-        }
-      }
-    });
-  }
-}
-
-/* ===================================================
-   ゲーム本体描画＆ロジック (パズル領域)
-   =================================================== */
-
-function startSingleGame() {
-  gameMode = 'single';
-  gameState = 'playing';
-  document.getElementById('ingame-ui').style.display = 'none';
-  showScreen('');
-  initGrid();
-  spawnBullet();
-}
-
-function initGrid() {
-  grid = [];
-  for (let r = 0; r < BOARD_ROWS; r++) {
-    grid[r] = [];
-    for (let c = 0; c < BOARD_COLS; c++) {
-      if (r < 4) { // 初期配置（上部4行）
-        let randColor = BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)];
-        grid[r][c] = { color: randColor };
-      } else {
-        grid[r][c] = null;
-      }
-    }
-  }
-}
-
-function getRandomColor() {
-  return BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)];
-}
-
-function spawnBullet() {
-  if (!nextBulletColor) nextBulletColor = getRandomColor();
-  currentBullet = {
-    x: canvas.width / 2,
-    y: canvas.height - 40,
-    color: nextBulletColor,
-    dx: 0,
-    dy: 0,
-    isMoving: false
-  };
-  nextBulletColor = getRandomColor();
-}
-
-function spawnOjamaBallsInCanvas(amount) {
-  // お邪魔玉（灰色）が一番上の行に送られてくる処理例
-  let ojamaAdded = 0;
-  for (let r = 0; r < BOARD_ROWS; r++) {
-    for (let c = 0; c < BOARD_COLS; c++) {
-      if (!grid[r][c] && ojamaAdded < amount) {
-        grid[r][c] = { color: '#888888' }; // お邪魔玉
-        ojamaAdded++;
-      }
-    }
-  }
-}
-
-// 描画ループ
-function updateAndRender() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  if (gameState === 'playing') {
-    // 1. グリッドのバブル描画
-    for (let r = 0; r < BOARD_ROWS; r++) {
-      for (let c = 0; c < BOARD_COLS; c++) {
-        if (grid[r][c]) {
-          let cx = c * (BUBBLE_RADIUS * 2) + BUBBLE_RADIUS + (r % 2 === 1 ? BUBBLE_RADIUS / 2 : 0);
-          let cy = r * (BUBBLE_RADIUS * 2) + BUBBLE_RADIUS;
-          drawBubble(cx, cy, grid[r][c].color);
-        }
-      }
-    }
-
-    // 2. 発射バブルの更新 & 描画
-    if (currentBullet) {
-      if (currentBullet.isMoving) {
-        currentBullet.x += currentBullet.dx;
-        currentBullet.y += currentBullet.dy;
-
-        // 壁バウンド
-        if (currentBullet.x - BUBBLE_RADIUS <= 0 || currentBullet.x + BUBBLE_RADIUS >= canvas.width) {
-          currentBullet.dx *= -1;
-        }
-
-        // 天井または衝突判定
-        if (currentBullet.y - BUBBLE_RADIUS <= 0 || checkCollision(currentBullet)) {
-          snapToGrid(currentBullet);
-          advanceTurn();
-          spawnBullet();
-        }
-      } else {
-        // 発射台
-        let startX = canvas.width / 2;
-        let startY = canvas.height - 40;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(startX + Math.cos(cannonAngle) * 50, startY - Math.sin(cannonAngle) * 50);
-        ctx.stroke();
-      }
-
-      drawBubble(currentBullet.x, currentBullet.y, currentBullet.color);
-    }
-  }
-
-  requestAnimationFrame(updateAndRender);
-}
-
-function drawBubble(x, y, color) {
-  ctx.beginPath();
-  ctx.arc(x, y, BUBBLE_RADIUS - 1, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.closePath();
-}
-
-function checkCollision(bullet) {
-  for (let r = 0; r < BOARD_ROWS; r++) {
-    for (let c = 0; c < BOARD_COLS; c++) {
-      if (grid[r][c]) {
-        let cx = c * (BUBBLE_RADIUS * 2) + BUBBLE_RADIUS + (r % 2 === 1 ? BUBBLE_RADIUS / 2 : 0);
-        let cy = r * (BUBBLE_RADIUS * 2) + BUBBLE_RADIUS;
-        let dist = Math.hypot(bullet.x - cx, bullet.y - cy);
-        if (dist < BUBBLE_RADIUS * 2) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-function snapToGrid(bullet) {
-  let r = Math.floor(bullet.y / (BUBBLE_RADIUS * 2));
-  let c = Math.floor(bullet.x / (BUBBLE_RADIUS * 2));
-  r = Math.max(0, Math.min(BOARD_ROWS - 1, r));
-  c = Math.max(0, Math.min(BOARD_COLS - 1, c));
-
-  grid[r][c] = { color: bullet.color };
-
-  // 簡易消去チェック
-  let erasedCount = 3; // 実際は隣接色の判定処理
-  if (erasedCount >= 3) {
-    sendOjamaToOthers(erasedCount);
-  }
-}
-
-// 操作（タップ / クリックで発射）
-canvas.addEventListener('click', (e) => {
-  if (gameState === 'playing' && currentBullet && !currentBullet.isMoving) {
-    let rect = canvas.getBoundingClientRect();
-    let clickX = e.clientX - rect.left;
-    let clickY = e.clientY - rect.top;
-
-    let startX = canvas.width / 2;
-    let startY = canvas.height - 40;
-    
-    let angle = Math.atan2(startY - clickY, clickX - startX);
-    if (angle > 0.1 && angle < Math.PI - 0.1) {
-      cannonAngle = angle;
-      let speed = 10;
-      currentBullet.dx = Math.cos(angle) * speed;
-      currentBullet.dy = -Math.sin(angle) * speed;
-      currentBullet.isMoving = true;
-    }
-  }
-});
-
-// ゲーム初期起動
-requestAnimationFrame(updateAndRender);
-</script>
+    <script src="script.js"></script>
 </body>
 </html>
