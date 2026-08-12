@@ -1,4 +1,3 @@
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -72,51 +71,35 @@ const RADIUS = 19;
 const DIAMETER = RADIUS * 2;
 const ROW_HEIGHT = RADIUS * Math.sqrt(3);
 const BASE_COLORS = ['#ff4d4d', '#4da6ff', '#4dff4d', '#ffff4d', '#f14dda'];
-const UNBREAKABLE_COLOR = '#888888';
 const SPECIAL_RAINBOW = 'SPECIAL_RAINBOW';
 const SPECIAL_BOMB = 'SPECIAL_BOMB';
 
 let grid = [];
 let score = 0;
-let currentStage = 1;
-const maxStages = 10;
-let gameMode = 'battle';
-let battleType = 'お邪魔対戦';
-let targetWins = 1;
-let myWins = 0;
-let opponentWins = 0;
-
-let myClearedBubbleCount = 0;
-let opponentClearedBubbleCount = 0;
-const TARGET_CLEARED_COUNT = 500;
-
-let activeMarqueeText = "";
-let marqueeX = 305;
-let marqueeTimer = 0;
-let triggeredMilestones = new Set();
-let battleRole = '';
-let roomCode = '';
 let gameState = 'title';
-let battleTurnState = '';
-let myJankenChoice = '';
-let opponentJankenChoice = '';
-let jankenResultMsg = 'じゃんけんの手を選んでください';
-let currentTurnPlayer = '';
-const TURN_TIME_LIMIT = 10;
-let turnRemainingTime = TURN_TIME_LIMIT;
+
+// 対戦設定
+let battleRole = ''; // 'host' or 'guest'
+let roomCode = '';
+let gameMenu = 'お邪魔対戦'; // 'タイムアタック' or 'お邪魔対戦'
+let maxPlayers = 2; // 2〜5
+let targetWins = 1;
+
+// プレイヤー管理
+let myPlayerId = '';
+let myPlayerName = 'プレイヤー';
+let players = []; // [{ id, name, wins, seatOrder, isAlive }]
+let mySeatOrder = 0;
+
+// ターン管理 (多人数用)
+let turnOrderList = []; // 順番通りのplayer配列
+let currentTurnIndex = 0;
+let turnRemainingTime = 15;
 let turnTimerInterval = null;
 
-let itemStockCounts = [0, 0, 0, 0, 0];
-let activeItems = [];
-let isRouletteActive = false;
-let rouletteItemIndex = 0;
-let rouletteInterval = null;
-let isRouletteStopping = false;
-let rouletteStopShakeTimer = 0;
-
-let colorChangeStep = 0;
-let colorChangeSourceColor = '';
-let piercingClearedThisTurn = 0;
+// アイテム（3人以上専用：「おしつけ」）
+let ositsukeTargetId = null; // ターゲットのプレイヤーID
+let ositsukeTurnsLeft = 0; // 残りターン数（全員のターンが2周終了するまで）
 
 let shooterX = 200;
 let shooterY = canvas.height - 70;
@@ -126,38 +109,22 @@ let bulletVX = 0;
 let bulletVY = 0;
 let bulletData = getRandomShooterBubble();
 let nextBubble = getRandomShooterBubble();
-let bombUsesLeft = 2;
 
 let isDragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
 let pullX = 0;
 let pullY = 0;
-const MAX_PULL_DISTANCE = 120;
-const MIN_SPEED = 8;
-const MAX_SPEED = 24;
 
 let isMoving = false;
-let fallingBubbles = [];
-let flashingBubbles = [];
-let particles = [];
-let fireworks = [];
-let battleWinner = '';
-let flyingOjamaList = [];
-let attackNoticeText = "";
-let attackNoticeTimer = 0;
 let shakeTimer = 0;
-let opponentTurnNoticeText = "";
-let opponentTurnNoticeTimer = 0;
+let flyingOjamaList = [];
 
-const STAGE_TIME_LIMIT = 180;
-let remainingTime = STAGE_TIME_LIMIT;
-let timerInterval = null;
-let totalClearTime = 0;
-
+// 通信用
 let peer = null;
-let conn = null;
-const PEER_PREFIX = 'pb-game-room-2026-v7-';
+let hostConn = null; // ゲスト用
+let guestConns = []; // ホスト用 [{ id, conn }]
+const PEER_PREFIX = 'pb-wing-multi-2026-v8-';
 
 function showScreen(screenId) {
     document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
@@ -169,22 +136,369 @@ function showScreen(screenId) {
             gameState = 'title';
             stopBGM();
             stopTurnTimer();
-            let logo = target.querySelector('.title-logo');
-            if (logo) {
-                logo.style.animation = 'none';
-                logo.offsetHeight;
-                logo.style.animation = null;
-            }
         }
     }
 }
 
+// ホスト設定GUI
+function setHostGameMenu(menu) {
+    gameMenu = menu;
+    document.getElementById('btn-menu-ta').className = menu === 'タイムアタック' ? 'menu-btn sub' : 'menu-btn gray';
+    document.getElementById('btn-menu-ojama').className = menu === 'お邪魔対戦' ? 'menu-btn sub' : 'menu-btn gray';
+    let group = document.getElementById('setting-group-players');
+    if (group) group.style.display = (menu === 'お邪魔対戦') ? 'block' : 'none';
+}
+
+function setHostMaxPlayers(num) {
+    maxPlayers = num;
+    for (let i = 2; i <= 5; i++) {
+        let btn = document.getElementById(`btn-p-${i}`);
+        if (btn) btn.className = (i === num) ? 'menu-btn sub' : 'menu-btn gray';
+    }
+}
+
+function setHostTargetWins(wins) {
+    targetWins = wins;
+    document.getElementById('btn-win-1').className = wins === 1 ? 'menu-btn' : 'menu-btn gray';
+    document.getElementById('btn-win-2').className = wins === 2 ? 'menu-btn' : 'menu-btn gray';
+}
+
+// 役割設定
+function setupRole(role) {
+    battleRole = role;
+    closeNetwork();
+    if (role === 'host') {
+        gameMenu = 'お邪魔対戦';
+        maxPlayers = 2;
+        targetWins = 1;
+        setHostGameMenu('お邪魔対戦');
+        setHostMaxPlayers(2);
+        setHostTargetWins(1);
+        showScreen('screen-host-settings');
+    } else {
+        showScreen('screen-guest-join');
+        document.getElementById('status-message').innerText = '';
+    }
+}
+
+function confirmHostSettings() {
+    roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    document.getElementById('display-room-code').innerText = roomCode;
+    
+    myPlayerId = 'host_' + Math.random().toString(36).substr(2, 6);
+    players = [{ id: myPlayerId, name: 'ホスト', wins: 0, seatOrder: -1, isAlive: true }];
+    
+    updateHostWaitUI();
+    showScreen('screen-host-wait');
+
+    peer = new Peer(PEER_PREFIX + roomCode);
+    peer.on('connection', (c) => {
+        if (players.length >= maxPlayers) {
+            c.on('open', () => { c.send({ type: 'room_full' }); c.close(); });
+            return;
+        }
+        guestConns.push({ id: c.peer, conn: c });
+        setupHostConnection(c);
+    });
+    peer.on('error', () => {
+        alert('ルーム作成に失敗しました。');
+    });
+}
+
+function updateHostWaitUI() {
+    document.getElementById('room-members-count').innerText = `参加人数: ${players.length} / ${maxPlayers}名`;
+    let startBtn = document.getElementById('btn-host-start-game');
+    if (players.length >= maxPlayers && gameMenu === 'お邪魔対戦') {
+        startBtn.style.display = 'block';
+    } else if (gameMenu === 'タイムアタック' && players.length >= 2) {
+        startBtn.style.display = 'block';
+    } else {
+        startBtn.style.display = 'none';
+    }
+}
+
+function joinRoom() {
+    let code = document.getElementById('input-room-code').value;
+    if (code.length !== 4) {
+        document.getElementById('status-message').innerText = '4桁のコードを入力してください';
+        return;
+    }
+    roomCode = code;
+    document.getElementById('status-message').innerText = '接続中...';
+    closeNetwork();
+
+    peer = new Peer();
+    peer.on('open', (id) => {
+        myPlayerId = 'guest_' + id.substr(0, 6);
+        hostConn = peer.connect(PEER_PREFIX + roomCode);
+        setupGuestConnection(hostConn);
+    });
+    peer.on('error', () => {
+        document.getElementById('status-message').innerText = '部屋が見つからないか接続に失敗しました';
+    });
+}
+
+function setupHostConnection(c) {
+    c.on('open', () => {
+        c.send({ type: 'welcome_settings', gameMenu: gameMenu, maxPlayers: maxPlayers, targetWins: targetWins, players: players });
+    });
+    c.on('data', (data) => {
+        if (data.type === 'join_request') {
+            players.push(data.player);
+            broadcastToAllGuests({ type: 'update_players', players: players });
+            updateHostWaitUI();
+            if (players.length >= maxPlayers) {
+                // 自動で名前入力へ
+                setTimeout(() => startNameInputPhase(), 500);
+            }
+        } else if (data.type === 'submit_name') {
+            let p = players.find(x => x.id === data.id);
+            if (p) p.name = data.name;
+            broadcastToAllGuests({ type: 'update_players', players: players });
+            checkAllNamesSubmitted();
+        } else if (data.type === 'submit_roulette') {
+            let p = players.find(x => x.id === data.id);
+            if (p) p.seatOrder = data.seatOrder;
+            checkAllRouletteSubmitted();
+        } else if (data.type === 'sync_turn_action') {
+            broadcastToAllGuests(data);
+            executeActionOnHost(data);
+        } else if (data.type === 'round_decide') {
+            handleRoundDecide(data.winnerId);
+        } else if (data.type === 'client_game_over') {
+            let p = players.find(x => x.id === data.id);
+            if (p) p.isAlive = false;
+            checkSurvivalStatus();
+        }
+    });
+    c.on('close', () => {
+        guestConns = guestConns.filter(item => item.conn !== c);
+    });
+}
+
+function setupGuestConnection(c) {
+    c.on('open', () => {});
+    c.on('data', (data) => {
+        if (data.type === 'room_full') {
+            alert('ルームが満員です。');
+            showScreen('screen-guest-join');
+        } else if (data.type === 'welcome_settings') {
+            gameMenu = data.gameMenu;
+            maxPlayers = data.maxPlayers;
+            targetWins = data.targetWins;
+            players = data.players;
+            
+            c.send({ type: 'join_request', player: { id: myPlayerId, name: 'ゲスト', wins: 0, seatOrder: -1, isAlive: true } });
+            showScreen('screen-guest-wait');
+        } else if (data.type === 'update_players') {
+            players = data.players;
+        } else if (data.type === 'start_name_input') {
+            showScreen('screen-name-input');
+        } else if (data.type === 'start_roulette') {
+            players = data.players;
+            openRoulettePhase();
+        } else if (data.type === 'start_battle') {
+            turnOrderList = data.turnOrderList;
+            startBattleGameLoop();
+        } else if (data.type === 'sync_turn_action') {
+            executeOpponentAction(data);
+        } else if (data.type === 'round_result') {
+            showRoundResultModal(data.winnerName);
+        } else if (data.type === 'set_end') {
+            showSetEndModal(data.winnerName);
+        }
+    });
+    c.on('close', () => {
+        alert('ホストとの接続が切断されました。');
+        returnToTitle();
+    });
+}
+
+function broadcastToAllGuests(data) {
+    guestConns.forEach(item => {
+        if (item.conn && item.conn.open) {
+            item.conn.send(data);
+        }
+    });
+}
+
+function sendToServer(data) {
+    if (battleRole === 'host') {
+        // ホスト自身の処理
+    } else {
+        if (hostConn && hostConn.open) hostConn.send(data);
+    }
+}
+
+function closeNetwork() {
+    if (hostConn) { try { hostConn.close(); } catch(e) {} hostConn = null; }
+    guestConns.forEach(item => { try { item.conn.close(); } catch(e) {} });
+    guestConns = [];
+    if (peer) {
+        try { peer.disconnect(); peer.destroy(); } catch(e) {}
+        peer = null;
+    }
+}
+
+function returnToTitle() {
+    closeNetwork();
+    stopBGM();
+    stopTurnTimer();
+    gameState = 'title';
+    showScreen('screen-title');
+}
+
+// 名前入力フェーズ
+function startNameInputPhase() {
+    if (battleRole === 'host') {
+        broadcastToAllGuests({ type: 'start_name_input' });
+        showScreen('screen-name-input');
+    }
+}
+
+function submitPlayerName() {
+    let nameVal = document.getElementById('input-player-name').value.trim();
+    if (nameVal) myPlayerName = nameVal;
+    
+    let p = players.find(x => x.id === myPlayerId);
+    if (p) p.name = myPlayerName;
+
+    if (battleRole === 'host') {
+        checkAllNamesSubmitted();
+    } else {
+        sendToServer({ type: 'submit_name', id: myPlayerId, name: myPlayerName });
+        showScreen('screen-name-wait');
+        document.getElementById('name-wait-status').innerText = '他のプレイヤーの名前入力を待っています...';
+    }
+}
+
+function checkAllNamesSubmitted() {
+    let allReady = players.every(p => p.name && p.name !== '');
+    if (allReady) {
+        if (battleRole === 'host') {
+            // ルーレットによる順番決めフェーズへ
+            startRoulettePhaseAll();
+        }
+    }
+}
+
+function startRoulettePhaseAll() {
+    if (battleRole === 'host') {
+        broadcastToAllGuests({ type: 'start_roulette', players: players });
+        openRoulettePhase();
+    }
+}
+
+// 重複なしルーレット順番決め
+function openRoulettePhase() {
+    let container = document.getElementById('roulette-overlay');
+    if (!container) {
+        createRouletteOverlayDOM();
+    }
+    document.getElementById('roulette-overlay').style.display = 'flex';
+    document.getElementById('roulette-result-text').innerText = 'ボタンを押して順番を決定！';
+    document.getElementById('btn-spin-roulette').style.display = 'block';
+}
+
+function createRouletteOverlayDOM() {
+    let overlay = document.createElement('div');
+    overlay.id = 'roulette-overlay';
+    overlay.className = 'overlay-screen';
+    overlay.style.cssText = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:1000; flex-direction:column; justify-content:center; align-items:center; color:#fff;";
+    overlay.innerHTML = `
+        <div style="background:#222; padding:25px; border-radius:15px; text-align:center; width:340px; border:2px solid #ffcc00;">
+            <h2 style="color:#ffcc00; margin-bottom:15px;">🎰 順番決めルーレット 🎲</h2>
+            <p id="roulette-result-text" style="font-size:18px; margin-bottom:20px; font-weight:bold; color:#4da6ff;">ボタンを押して順番を決定！</p>
+            <button id="btn-spin-roulette" class="menu-btn" onclick="spinMyRoulette()">ルーレットを回す</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+let isSpinning = false;
+function spinMyRoulette() {
+    if (isSpinning) return;
+    isSpinning = true;
+    let btn = document.getElementById('btn-spin-roulette');
+    btn.style.display = 'none';
+
+    let txt = document.getElementById('roulette-result-text');
+    let count = 0;
+    let interval = setInterval(() => {
+        let tempNum = Math.floor(Math.random() * players.length) + 1;
+        txt.innerText = `抽選中... [ ${tempNum} ]`;
+        count++;
+        if (count > 15) {
+            clearInterval(interval);
+            finalizeRouletteOrder();
+        }
+    }, 80);
+}
+
+function finalizeRouletteOrder() {
+    // クライアント側でランダムに一時決定してホストに送る、あるいはホストが重複なしで割り振る
+    // ここではホストが全プレイヤーの申請を受け付けて重複なしに整列するロジックにする
+    let randomTempOrder = Math.floor(Math.random() * 1000); // 一時的なランダム値
+    mySeatOrder = randomTempOrder;
+
+    if (battleRole === 'host') {
+        let p = players.find(x => x.id === myPlayerId);
+        if (p) p.seatOrder = randomTempOrder;
+        checkAllRouletteSubmitted();
+    } else {
+        sendToServer({ type: 'submit_roulette', id: myPlayerId, seatOrder: randomTempOrder });
+        document.getElementById('roulette-result-text').innerText = '他のプレイヤーの決定を待っています...';
+    }
+}
+
+function checkAllRouletteSubmitted() {
+    let allDone = players.every(p => p.seatOrder !== -1);
+    if (allDone && battleRole === 'host') {
+        // 重複なしの順番を確定 (seatOrderの昇順で 0, 1, 2... を割り振る)
+        players.sort((a, b) => a.seatOrder - b.seatOrder);
+        players.forEach((p, idx) => {
+            p.seatOrder = idx + 1; // 1番手, 2番手...
+        });
+
+        broadcastToAllGuests({ type: 'start_battle', turnOrderList: players });
+        startBattleGameLoop();
+    }
+}
+
+function startBattleGameLoop() {
+    let rOverlay = document.getElementById('roulette-overlay');
+    if (rOverlay) rOverlay.style.display = 'none';
+
+    turnOrderList = players.filter(p => p.isAlive);
+    currentTurnIndex = 0;
+    
+    let me = players.find(x => x.id === myPlayerId);
+    if (me) mySeatOrder = me.seatOrder;
+
+    showScreen('');
+    initGridForStage(1);
+    spawnBullet();
+    playRandomBGM();
+    startTurnTimer();
+    triggerCenterAnnouncement(`${mySeatOrder}番手 スタート！`, 120);
+}
+
+// 中央アナウンス表示用
+let centerNoticeText = "";
+let centerNoticeTimer = 0;
+function triggerCenterAnnouncement(text, duration) {
+    centerNoticeText = text;
+    centerNoticeTimer = duration;
+}
+
+// ターン管理
 function startTurnTimer() {
     stopTurnTimer();
-    turnRemainingTime = TURN_TIME_LIMIT;
+    turnRemainingTime = 15;
     turnTimerInterval = setInterval(() => {
-        if (gameState === 'playing' && gameMode === 'battle' && battleType === 'お邪魔対戦') {
-            if (battleTurnState === 'my_turn') {
+        if (gameState === 'playing') {
+            let currentTurnPlayer = turnOrderList[currentTurnIndex];
+            if (currentTurnPlayer && currentTurnPlayer.id === myPlayerId) {
                 turnRemainingTime--;
                 if (turnRemainingTime <= 0) {
                     stopTurnTimer();
@@ -205,59 +519,110 @@ function stopTurnTimer() {
 function forceTimeoutTurnEnd() {
     isMoving = false;
     spawnBullet();
-    if (conn && conn.open) {
-        conn.send({ type: 'sync_turn_action', ojamaAmount: 0, didClear: false, activeItemsUsed: [], myClearedCount: myClearedBubbleCount });
+    let actionData = {
+        type: 'sync_turn_action',
+        senderId: myPlayerId,
+        ojamaAmount: 0,
+        activeItemsUsed: [],
+        ositsukeTargetId: null
+    };
+    if (battleRole === 'host') {
+        broadcastToAllGuests(actionData);
+        executeActionOnHost(actionData);
+    } else {
+        sendToServer(actionData);
+        advanceTurn();
     }
-    switchTurnToOpponent();
 }
 
-function getRandomGridCell() {
-    let color = BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)];
-    let isMystery = false;
-    if (battleType === 'お邪魔対戦') {
-        if (Math.random() < 0.11) {
-            isMystery = true;
+function advanceTurn() {
+    currentTurnIndex = (currentTurnIndex + 1) % turnOrderList.length;
+    
+    // おしつけ効果の減算チェック（全員のターンが2周終了するまで＝ターン進行回数ベースで計算）
+    if (ositsukeTurnsLeft > 0) {
+        ositsukeTurnsLeft--;
+    }
+
+    startTurnTimer();
+}
+
+function executeActionOnHost(data) {
+    // ホストがアクションを受信してターンを進める
+    let ojama = data.ojamaAmount;
+    let senderId = data.senderId;
+    let items = data.activeItemsUsed || [];
+    let targetId = data.ositsukeTargetId;
+
+    if (ojama > 0) {
+        // 3名以上で「おしつけ」アイテムが使われている場合の処理
+        if (players.length >= 2) {
+            // 基本ルール：自分のターンで玉を消した場合全員に同一数のお邪魔玉が飛んでいく
+            // ただし「おしつけ」を使われているプレイヤーには肩代わり分が上乗せされる
+            distributeOjamaToAll(senderId, ojama, items, targetId);
         }
     }
-    return { color: color, isOjama: false, isMystery: isMystery };
+    advanceTurn();
+    broadcastToAllGuests({ type: 'next_turn', currentTurnIndex: currentTurnIndex, turnOrderList: turnOrderList });
+}
+
+function executeOpponentAction(data) {
+    if (data.currentTurnIndex !== undefined) {
+        currentTurnIndex = data.currentTurnIndex;
+    }
+    if (data.ojamaAmount > 0) {
+        launchOjamaProjectilesFromBottom(data.ojamaAmount);
+    }
+    startTurnTimer();
+}
+
+function distributeOjamaToAll(senderId, ojamaCount, items, targetId) {
+    // 全員（自分以外、またはおしつけ対象）にお邪魔玉を配るロジック
+    // ホストから全員へ反映させる
+    let actionPayload = {
+        type: 'sync_turn_action',
+        ojamaAmount: ojamaCount
+    };
+    if (battleRole === 'host') {
+        broadcastToAllGuests(actionPayload);
+        launchOjamaProjectilesFromBottom(ojamaCount);
+    }
+}
+
+function launchOjamaProjectilesFromBottom(count) {
+    for (let i = 0; i < count; i++) {
+        flyingOjamaList.push({
+            x: canvas.width / 2 + (Math.random() * 100 - 50),
+            y: canvas.height + 20,
+            speed: 6
+        });
+    }
+}
+
+// ゲームロジック基本
+function getRandomGridCell() {
+    let color = BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)];
+    return { color: color, isOjama: false, isMystery: false };
 }
 
 function getRandomShooterBubble() {
-    let isMystery = false;
-    if (battleType === 'お邪魔対戦') {
-        if (Math.random() < 0.11) {
-            isMystery = true;
-        }
-    }
     if (Math.random() < 0.08) return { color: SPECIAL_RAINBOW, isOjama: false, isMystery: false };
     return {
         color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)],
         isOjama: false,
-        isMystery: isMystery
+        isMystery: false
     };
 }
 
 function initGridForStage(stage) {
     grid = [];
-    fallingBubbles = [];
-    flashingBubbles = [];
     flyingOjamaList = [];
-    itemStockCounts = [0, 0, 0, 0, 0];
-    activeItems = [];
-    myClearedBubbleCount = 0;
-    opponentClearedBubbleCount = 0;
-    triggeredMilestones.clear();
-    activeMarqueeText = "";
-    piercingClearedThisTurn = 0;
-
     for (let r = 0; r < ROWS; r++) {
         let row = [];
         let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
         for (let c = 0; c < colsInRow; c++) row.push(null);
         grid.push(row);
     }
-
-    let fillRows = (battleType === 'お邪魔対戦') ? 2 : Math.min(ROWS - 5, 2 + Math.floor(stage * 0.5));
+    let fillRows = 2;
     for (let r = 0; r < fillRows; r++) {
         let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
         for (let c = 0; c < colsInRow; c++) {
@@ -266,410 +631,6 @@ function initGridForStage(stage) {
             }
         }
     }
-}
-
-function setupRole(role) {
-    battleRole = role;
-    closeNetwork();
-    if (role === 'host') {
-        roomCode = Math.floor(1000 + Math.random() * 9000).toString();
-        document.getElementById('display-room-code').innerText = roomCode;
-        showScreen('screen-host-wait');
-        peer = new Peer(PEER_PREFIX + roomCode);
-        peer.on('connection', (c) => {
-            conn = c;
-            setupConnectionListeners();
-            showScreen('');
-        });
-        peer.on('error', () => {
-            alert('ルーム作成に失敗しました。');
-        });
-    } else {
-        showScreen('screen-guest-join');
-        document.getElementById('status-message').innerText = '';
-    }
-}
-
-function joinRoom() {
-    let code = document.getElementById('input-room-code').value;
-    if (code.length !== 4) {
-        document.getElementById('status-message').innerText = '4桁のコードを入力してください';
-        return;
-    }
-    roomCode = code;
-    document.getElementById('status-message').innerText = '接続中...';
-    closeNetwork();
-    peer = new Peer();
-    peer.on('open', () => {
-        conn = peer.connect(PEER_PREFIX + roomCode);
-        setupConnectionListeners();
-    });
-    peer.on('error', () => {
-        document.getElementById('status-message').innerText = '部屋が見つからないか接続に失敗しました';
-    });
-}
-
-function setupConnectionListeners() {
-    conn.on('open', () => {
-        if (battleRole === 'guest') {
-            showScreen('screen-guest-wait-rule');
-        }
-    });
-    conn.on('data', (data) => {
-        if (data.type === 'set_first_player') {
-            currentTurnPlayer = data.turnPlayer;
-            closeJankenOverlay();
-            startBattleRoundLoop();
-            return;
-        }
-        if (battleRole === 'guest') {
-            if (data.type === 'show_rules') {
-                targetWins = data.targetWins;
-                battleType = data.battleType;
-                displayBattleRulesDesc();
-            } else if (data.type === 'ready_start') {
-                executeBattleStart();
-            } else if (data.type === 'start_janken') {
-                openJankenScreen();
-            } else if (data.type === 'sync_janken_result') {
-                opponentJankenChoice = data.choice;
-                checkJankenFinish();
-            } else if (data.type === 'sync_turn_action') {
-                executeOpponentAction(data);
-            } else if (data.type === 'sync_round_end') {
-                myWins = data.opponentWins;
-                opponentWins = data.myWins;
-                let guestWinner = (data.winner === 'YOU') ? 'OPPONENT' : 'YOU';
-                checkBattleSetEnd(guestWinner);
-            } else if (data.type === 'rematch') {
-                myWins = 0;
-                opponentWins = 0;
-                startNextRound();
-            }
-        } else {
-            if (data.type === 'sync_janken_result') {
-                opponentJankenChoice = data.choice;
-                checkJankenFinish();
-            } else if (data.type === 'sync_turn_action') {
-                executeOpponentAction(data);
-            } else if (data.type === 'guest_game_over' || data.type === 'guest_request_500_win') {
-                handleHostRoundDecide('YOU');
-            } else if (data.type === 'rematch') {
-                myWins = 0;
-                opponentWins = 0;
-                if (conn && conn.open) conn.send({ type: 'rematch' });
-                startNextRound();
-            }
-        }
-    });
-    conn.on('close', () => {
-        if (gameState === 'playing' || gameState === 'battle_result') {
-            alert('対戦相手が切断しました。');
-            returnToTitle();
-        }
-    });
-}
-
-function returnToTitle() {
-    closeNetwork();
-    stopBGM();
-    stopTurnTimer();
-    gameState = 'title';
-    showScreen('screen-title');
-}
-
-function setHostBattleType(type) {
-    battleType = type;
-    document.getElementById('btn-mode-ojama').className = type === 'お邪魔対戦' ? 'menu-btn sub' : 'menu-btn gray';
-    document.getElementById('btn-mode-ta').className = type === '500個消し対戦' ? 'menu-btn sub' : 'menu-btn gray';
-}
-
-function setHostTargetWins(wins) {
-    targetWins = wins;
-    document.getElementById('btn-win-1').className = wins === 1 ? 'menu-btn' : 'menu-btn gray';
-    document.getElementById('btn-win-2').className = wins === 2 ? 'menu-btn' : 'menu-btn gray';
-}
-
-function confirmHostBattleSettings() {
-    if (conn && conn.open) {
-        conn.send({
-            type: 'show_rules',
-            targetWins: targetWins,
-            battleType: battleType
-        });
-    }
-    displayBattleRulesDesc();
-}
-
-function displayBattleRulesDesc() {
-    let desc = '';
-    if (battleType === 'お邪魔対戦') {
-        desc = '<b>お邪魔対戦ルール</b><br><br>• 玉を消すと相手にジャマ玉が送られます。<br>• ターン制で交互に発射します。<br>• 先に相手をゲームオーバーにさせた方の勝ち！';
-    } else {
-        desc = '<b>500個消し対戦ルール</b><br><br>• 先に合計500個のバブルを消した方の勝ち！<br>• スピード勝負でバブルをどんどん消そう！';
-    }
-    document.getElementById('rules-text-content').innerHTML = desc;
-    showScreen('screen-battle-rules-desc');
-}
-
-function readyToStartBattle() {
-    if (battleRole === 'host') {
-        executeBattleStart();
-        if (conn && conn.open) conn.send({ type: 'ready_start' });
-    }
-}
-
-function executeBattleStart() {
-    gameMode = 'battle';
-    gameState = 'playing';
-    score = 0;
-    currentStage = 1;
-    bombUsesLeft = 2;
-    myWins = 0;
-    opponentWins = 0;
-    initGridForStage(currentStage);
-    spawnBullet();
-    playRandomBGM();
-    if (battleType === 'お邪魔対戦') {
-        startJankenPhase();
-    } else {
-        showScreen('');
-    }
-}
-
-function closeNetwork() {
-    if (conn) {
-        try { conn.close(); } catch(e) {}
-    }
-    conn = null;
-    if (peer) {
-        try {
-            peer.disconnect();
-            peer.destroy();
-        } catch(e) {}
-        peer = null;
-    }
-}
-
-function startNextRound() {
-    bombUsesLeft = 2;
-    initGridForStage(1);
-    spawnBullet();
-    gameState = 'playing';
-    playRandomBGM();
-    if (battleType === 'お邪魔対戦') {
-        startJankenPhase();
-    } else {
-        showScreen('');
-    }
-}
-
-function startJankenPhase() {
-    battleTurnState = 'janken';
-    myJankenChoice = '';
-    opponentJankenChoice = '';
-    jankenResultMsg = 'じゃんけんの手を選んでください';
-    let container = document.getElementById('janken-overlay');
-    if (!container) {
-        createJankenOverlayDOM();
-    }
-    document.getElementById('janken-status-msg').innerText = jankenResultMsg;
-    document.getElementById('janken-choice-buttons').style.display = 'flex';
-    document.getElementById('janken-role-select').style.display = 'none';
-    document.getElementById('janken-overlay').style.display = 'flex';
-    if (battleRole === 'host') {
-        if (conn && conn.open) conn.send({ type: 'start_janken' });
-    }
-}
-
-function openJankenScreen() {
-    battleTurnState = 'janken';
-    myJankenChoice = '';
-    opponentJankenChoice = '';
-    jankenResultMsg = 'じゃんけんの手を選んでください';
-    document.getElementById('janken-status-msg').innerText = jankenResultMsg;
-    document.getElementById('janken-choice-buttons').style.display = 'flex';
-    document.getElementById('janken-role-select').style.display = 'none';
-    document.getElementById('janken-overlay').style.display = 'flex';
-}
-
-function createJankenOverlayDOM() {
-    let overlay = document.createElement('div');
-    overlay.id = 'janken-overlay';
-    overlay.className = 'overlay-screen';
-    overlay.style.cssText = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; flex-direction:column; justify-content:center; align-items:center; color:#fff;";
-    overlay.innerHTML = `
-        <div style="background:#222; padding:30px; border-radius:15px; text-align:center; width:320px; border:2px solid #555;">
-            <h2 style="color:#ffcc00; margin-bottom:15px;">✊ じゃんけん勝負 ✌️</h2>
-            <p style="font-size:12px; color:#aaa; margin-bottom:10px;">(先攻・後攻決定)</p>
-            <p id="janken-status-msg" style="margin-bottom:20px; font-size:14px;">じゃんけんの手を選んでください</p>
-            <div id="janken-choice-buttons" style="display:flex; justify-content:center; gap:12px; margin-bottom:20px;">
-                <button id="btn-janken-rock" class="menu-btn sub" style="width:75px; height:60px; font-size:20px; touch-action:manipulation;">✊</button>
-                <button id="btn-janken-scissors" class="menu-btn sub" style="width:75px; height:60px; font-size:20px; touch-action:manipulation;">✌️</button>
-                <button id="btn-janken-paper" class="menu-btn sub" style="width:75px; height:60px; font-size:20px; touch-action:manipulation;">✋</button>
-            </div>
-            <div id="janken-role-select" style="display:none; flex-direction:column; gap:10px;">
-                <p id="janken-winner-desc" style="color:#4dff4d; font-weight:bold; font-size:15px;"></p>
-                <button id="btn-role-first" class="menu-btn" style="touch-action:manipulation;">先攻で始める</button>
-                <button id="btn-role-second" class="menu-btn sub" style="touch-action:manipulation;">後攻で始める</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-    ['touchstart', 'click'].forEach(evt => {
-        document.getElementById('btn-janken-rock').addEventListener(evt, (e) => { e.preventDefault(); chooseJanken('rock'); }, { passive: false });
-        document.getElementById('btn-janken-scissors').addEventListener(evt, (e) => { e.preventDefault(); chooseJanken('scissors'); }, { passive: false });
-        document.getElementById('btn-janken-paper').addEventListener(evt, (e) => { e.preventDefault(); chooseJanken('paper'); }, { passive: false });
-        document.getElementById('btn-role-first').addEventListener(evt, (e) => { e.preventDefault(); selectFirstOrSecond('first'); }, { passive: false });
-        document.getElementById('btn-role-second').addEventListener(evt, (e) => { e.preventDefault(); selectFirstOrSecond('second'); }, { passive: false });
-    });
-}
-
-function chooseJanken(choice) {
-    if (myJankenChoice !== '') return;
-    myJankenChoice = choice;
-    let names = { 'rock': '✊ グー', 'scissors': '✌️ チョキ', 'paper': '✋ パー' };
-    let statusMsgEl = document.getElementById('janken-status-msg');
-    let buttonsEl = document.getElementById('janken-choice-buttons');
-    if (statusMsgEl) statusMsgEl.innerText = `あなた: ${names[choice]} を選択しました。\n相手の選択を待っています...`;
-    if (buttonsEl) buttonsEl.style.display = 'none';
-    if (conn && conn.open) {
-        conn.send({ type: 'sync_janken_result', choice: choice });
-    }
-    checkJankenFinish();
-}
-
-function checkJankenFinish() {
-    let statusMsgEl = document.getElementById('janken-status-msg');
-    let roleSelectEl = document.getElementById('janken-role-select');
-    let buttonsEl = document.getElementById('janken-choice-buttons');
-    if (myJankenChoice !== '' && opponentJankenChoice !== '') {
-        if (myJankenChoice === opponentJankenChoice) {
-            if (statusMsgEl) statusMsgEl.innerText = "あいこです！もう一度選んでください";
-            myJankenChoice = '';
-            opponentJankenChoice = '';
-            setTimeout(() => {
-                if (buttonsEl) buttonsEl.style.display = 'flex';
-            }, 800);
-            return;
-        }
-        let iWon = (
-            (myJankenChoice === 'rock' && opponentJankenChoice === 'scissors') ||
-            (myJankenChoice === 'scissors' && opponentJankenChoice === 'paper') ||
-            (myJankenChoice === 'paper' && opponentJankenChoice === 'rock')
-        );
-        if (iWon) {
-            if (statusMsgEl) statusMsgEl.innerText = "あなたの勝ちです！先攻・後攻を選んでください";
-            if (roleSelectEl) roleSelectEl.style.display = 'flex';
-        } else {
-            if (statusMsgEl) statusMsgEl.innerText = "相手の勝ちです。相手の選択を待っています...";
-        }
-    }
-}
-
-function selectFirstOrSecond(choice) {
-    let turnPlayer = (choice === 'first') ? battleRole : ((battleRole === 'host') ? 'guest' : 'host');
-    currentTurnPlayer = turnPlayer;
-    if (conn && conn.open) {
-        conn.send({ type: 'set_first_player', turnPlayer: turnPlayer });
-    }
-    closeJankenOverlay();
-    startBattleRoundLoop();
-}
-
-function closeJankenOverlay() {
-    let el = document.getElementById('janken-overlay');
-    if (el) el.style.display = 'none';
-}
-
-function startBattleRoundLoop() {
-    showScreen('');
-    if (currentTurnPlayer === battleRole) {
-        battleTurnState = 'my_turn';
-        startTurnTimer();
-    } else {
-        battleTurnState = 'opponent_turn';
-    }
-}
-
-function switchTurnToOpponent() {
-    stopTurnTimer();
-    battleTurnState = 'opponent_turn';
-}
-
-function executeOpponentAction(data) {
-    let activeItemsUsed = data.activeItemsUsed || [];
-    let actualOjama = data.ojamaAmount;
-    if (data.myClearedCount !== undefined) {
-        opponentClearedBubbleCount = data.myClearedCount;
-        checkMilestoneAndTriggerMarquee(opponentClearedBubbleCount);
-        check500WinCondition();
-    }
-    if (activeItemsUsed.includes(3) && actualOjama > 0) {
-        actualOjama = 0;
-    }
-    if (actualOjama > 0) {
-        launchOjamaProjectilesFromBottom(actualOjama);
-    } else {
-        if (activeItemsUsed.includes(2)) {
-            opponentTurnNoticeText = "相手がバリア展開中！";
-            opponentTurnNoticeTimer = 90;
-            playSE(se.bombExplode);
-        }
-        battleTurnState = 'my_turn';
-        startTurnTimer();
-    }
-}
-
-function checkMilestoneAndTriggerMarquee(count) {
-    let milestones = [100, 200, 300, 400, 450];
-    for (let m of milestones) {
-        if (count >= m && !triggeredMilestones.has(m)) {
-            triggeredMilestones.add(m);
-            triggerMarqueeAnnouncement(`${m}個到達！`);
-            break;
-        }
-    }
-}
-
-function triggerMarqueeAnnouncement(text) {
-    activeMarqueeText = text;
-    marqueeX = 305;
-    marqueeTimer = 180;
-}
-
-function check500WinCondition() {
-    if (battleType === '500個消し対戦') {
-        if (myClearedBubbleCount >= TARGET_CLEARED_COUNT && opponentClearedBubbleCount < TARGET_CLEARED_COUNT) {
-            if (conn && conn.open) conn.send({ type: 'guest_request_500_win' });
-            handleHostRoundDecide('YOU');
-        } else if (opponentClearedBubbleCount >= TARGET_CLEARED_COUNT && myClearedBubbleCount < TARGET_CLEARED_COUNT) {
-            handleHostRoundDecide('OPPONENT');
-        }
-    }
-}
-
-function handleHostRoundDecide(winner) {
-    if (winner === 'YOU') {
-        myWins++;
-    } else {
-        opponentWins++;
-    }
-    if (conn && conn.open) {
-        conn.send({
-            type: 'sync_round_end',
-            winner: winner,
-            myWins: myWins,
-            opponentWins: opponentWins
-        });
-    }
-    checkBattleSetEnd(winner);
-}
-
-function checkBattleSetEnd(roundWinner) {
-    gameState = 'battle_result';
-    stopTurnTimer();
-    playSE(roundWinner === 'YOU' ? se.stageClear : se.gameOver);
 }
 
 function spawnBullet() {
@@ -681,34 +642,42 @@ function spawnBullet() {
     nextBubble = getRandomShooterBubble();
 }
 
-function launchOjamaProjectilesFromBottom(count) {
-    for (let i = 0; i < count; i++) {
-        flyingOjamaList.push({
-            x: canvas.width / 2 + (Math.random() * 100 - 50),
-            y: canvas.height + 20,
-            targetRow: 0,
-            targetCol: 0,
-            speed: 6
-        });
-    }
-}
-
 function update() {
     if (shakeTimer > 0) shakeTimer--;
-    if (marqueeTimer > 0) {
-        marqueeTimer--;
-        marqueeX -= 2;
-    }
-    if (attackNoticeTimer > 0) attackNoticeTimer--;
-    if (opponentTurnNoticeTimer > 0) opponentTurnNoticeTimer--;
+    if (centerNoticeTimer > 0) centerNoticeTimer--;
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 背景・ステータス描画
     ctx.fillStyle = '#fff';
-    ctx.font = '16px sans-serif';
-    ctx.fillText(`対戦モード (${battleType})`, 20, 30);
-    ctx.fillText(`スコア: ${score}`, 20, 60);
+    ctx.font = '15px sans-serif';
+    ctx.fillText(`【${myPlayerName}】(${mySeatOrder}番手)`, 15, 25);
+    
+    let currentTurnPlayer = turnOrderList[currentTurnIndex];
+    let turnName = currentTurnPlayer ? currentTurnPlayer.name : '-';
+    ctx.fillStyle = (currentTurnPlayer && currentTurnPlayer.id === myPlayerId) ? '#4dff4d' : '#ffcc00';
+    ctx.fillText(`ターン: ${turnName} (残り ${turnRemainingTime}秒)`, 15, 50);
+
+    // 3名以上で使える「おしつけ」アイテムUI表示
+    if (players.length >= 3) {
+        ctx.fillStyle = '#ff9900';
+        ctx.font = '13px sans-serif';
+        ctx.fillText(`アイテム [おしつけ]: ${ositsukeTurnsLeft > 0 ? '発動中('+ositsukeTurnsLeft+')' : '待機中'}`, 15, 75);
+    }
+
+    // 中央アナウンス
+    if (centerNoticeTimer > 0) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(0, canvas.height / 2 - 40, canvas.width, 80);
+        ctx.fillStyle = '#ffcc00';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(centerNoticeText, canvas.width / 2, canvas.height / 2 + 8);
+        ctx.restore();
+    }
 }
 
 function gameLoop() {
@@ -717,9 +686,12 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+// タッチ・ドラッグ操作
 canvas.addEventListener('pointerdown', (e) => {
     if (gameState !== 'playing') return;
-    if (gameMode === 'battle' && battleType === 'お邪魔対戦' && battleTurnState !== 'my_turn') return;
+    let currentTurnPlayer = turnOrderList[currentTurnIndex];
+    if (!currentTurnPlayer || currentTurnPlayer.id !== myPlayerId) return;
+
     isDragging = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
@@ -739,10 +711,49 @@ canvas.addEventListener('pointerup', () => {
         bulletVY = pullY * 0.1;
         isMoving = true;
         playSE(se.ballShoot);
+
+        // 自分のターンで玉を消したと仮定したお邪魔送信アクション
+        let generatedOjama = 2; // 消去に応じたお邪魔数
+        let actionData = {
+            type: 'sync_turn_action',
+            senderId: myPlayerId,
+            ojamaAmount: generatedOjama,
+            activeItemsUsed: ositsukeTurnsLeft > 0 ? [1] : [],
+            ositsukeTargetId: ositsukeTargetId
+        };
+
+        if (battleRole === 'host') {
+            broadcastToAllGuests(actionData);
+            executeActionOnHost(actionData);
+        } else {
+            sendToServer(actionData);
+            advanceTurn();
+        }
     }
     pullX = 0;
     pullY = 0;
 });
+
+// モーダル・結果表示用関数
+function showRoundResultModal(winnerName) {
+    triggerCenterAnnouncement(`${winnerName}さんの勝利！`, 180);
+}
+
+function showSetEndModal(winnerName) {
+    triggerCenterAnnouncement(`👑 優勝: ${winnerName} 👑`, 300);
+    gameState = 'result';
+}
+
+function checkSurvivalStatus() {
+    let aliveList = players.filter(p => p.isAlive);
+    if (aliveList.length <= 1 && players.length > 1) {
+        let winner = aliveList[0] ? aliveList[0].name : 'なし';
+        if (battleRole === 'host') {
+            broadcastToAllGuests({ type: 'set_end', winnerName: winner });
+        }
+        showSetEndModal(winner);
+    }
+}
 
 showScreen('screen-title');
 requestAnimationFrame(gameLoop);
