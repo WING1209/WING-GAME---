@@ -18,9 +18,19 @@ let audioUnlocked = false;
 function unlockAudio() {
  if (audioUnlocked) return;
  audioUnlocked = true;
+ try {
  Object.values(se).forEach(sound => {
- sound.play().then(() => { sound.pause(); sound.currentTime = 0; }).catch(() => {});
+ let p = sound.play();
+ if (p !== undefined) {
+ p.then(() => {
+ sound.pause();
+ sound.currentTime = 0;
+ }).catch(() => {});
+ }
  });
+ } catch(e) {
+ console.log("Audio unlock muted");
+ }
 }
 
 function playSE(sound) {
@@ -57,12 +67,7 @@ function stopBGM() {
 const ROWS = 15; 
 const COLS = 8; 
 const RADIUS = 19;
-const DIAMETER = RADIUS * 2;
-const ROW_HEIGHT = RADIUS * Math.sqrt(3);
 const BASE_COLORS = ['#ff4d4d', '#4da6ff', '#4dff4d', '#ffff4d', '#ff4dda'];
-const UNBREAKABLE_COLOR = '#fff';
-const SPECIAL_RAINBOW = 'SPECIAL_RAINBOW';
-const SPECIAL_BOMB = 'SPECIAL_BOMB';
 
 let grid = [];
 let score = 0;
@@ -74,21 +79,20 @@ let targetWins = 1;
 // --- 👥 マルチプレイ管理変数 ---
 let targetPlayerCount = 2; // 2~5名
 let myName = "プレイヤー";
-let battleRole = ''; // 'host' or 'guest'
+let battleRole = ''; 
 let roomCode = '';
 let peer = null;
-let connections = []; // 全員との通信リスト (ホスト・ゲスト共通)
-let playerList = []; // [{ id, name, peerId }]
-let turnOrder = []; // プレイヤーIDの配列（順番）
+let connections = []; 
+let playerList = []; 
+let turnOrder = []; 
 let currentTurnIndex = 0;
 let myPlayerId = '';
 
 // --- 🎁 アイテム＆特殊状態（おしつけ）---
-// アイテム: 0:ボム, 1:虹, 2:全消し, 3:バリア, 4:おしつけ
 let itemStockCounts = [0, 0, 0, 0, 0]; 
 let activeItems = []; 
-let oshitsukeTargetId = null; // おしつけ対象のID
-let oshitsukeTurnsLeft = 0;   // 残りターン数（2周分 = 参加人数 * 2）
+let oshitsukeTargetId = null; 
+let oshitsukeTurnsLeft = 0; 
 
 let gameState = 'title';
 let battleTurnState = 'waiting'; 
@@ -98,13 +102,9 @@ let turnTimerInterval = null;
 
 let shooterX = 200; 
 let shooterY = canvas.height - 70;
-let bulletX = shooterX, bulletY = shooterY;
-let bulletVX = 0, bulletVY = 0;
 let bulletData = null, nextBubble = null;
 let isMoving = false;
-let fallingBubbles = [], flashingBubbles = [], particles = [], flyingOjamaList = [];
 
-let myClearedBubbleCount = 0;
 const PEER_PREFIX = 'pb-game-room-2026-v8-';
 
 // --- UI制御スクリーンスイッチ ---
@@ -211,7 +211,6 @@ function handleHostReceiveData(conn, data) {
  updateHostPlayerListUI();
  }
  } else {
- // ゲストからのゲーム内アクションを他全員にブロードキャスト
  broadcastData(data, conn);
  handleGameActionData(data);
  }
@@ -265,17 +264,12 @@ function confirmHostRoomStart() {
  startOrderPhase(data);
 }
 
-// --- 🎲 順番決め（じゃんけん or あみだくじ） ---
+// --- 🎲 順番決め（あみだくじ） ---
 function startOrderPhase(data) {
  gameMode = 'battle';
- if (targetPlayerCount === 2) {
- openJankenScreen();
- } else {
  startAmidaPhase();
- }
 }
 
-// あみだくじのロジックと描画
 let amidaLines = [];
 function startAmidaPhase() {
  showScreen('screen-amida');
@@ -286,7 +280,6 @@ function startAmidaPhase() {
  let num = playerList.length;
  let spacing = cvs.width / (num + 1);
  
- // あみだ線のランダム生成（ホストのみ生成して同期、または同一シードで計算）
  if (battleRole === 'host') {
  amidaLines = [];
  for (let i = 0; i < 10; i++) {
@@ -345,13 +338,10 @@ function runAmidaAnimation() {
  document.getElementById('btn-amida-start').style.display = 'none';
  document.getElementById('amida-status').innerText = '順番を計算中...';
  
- // 順番結果を計算
  let num = playerList.length;
  let results = [];
  for (let i = 0; i < num; i++) {
  let currentCol = i;
- let currentY = 30;
- 
  let sortedLines = [...amidaLines].sort((a,b) => a.y - b.y);
  sortedLines.forEach(l => {
  if (l.col === currentCol) {
@@ -363,7 +353,6 @@ function runAmidaAnimation() {
  results.push({ player: playerList[i], finalRank: currentCol });
  }
  
- // 結果順に並べ替え
  results.sort((a,b) => a.finalRank - b.finalRank);
  turnOrder = results.map(r => r.player.id);
  currentTurnIndex = 0;
@@ -375,7 +364,7 @@ function runAmidaAnimation() {
 
 function showTurnAnnouncement() {
  let myRank = turnOrder.indexOf(myPlayerId) + 1;
- showScreen(''); // 画面クリアしてゲームキャンバス表示
+ showScreen(''); 
  
  let overlay = document.createElement('div');
  overlay.style.cssText = "position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:48px; font-weight:900; color:#ffcc00; text-shadow:0 0 20px #000; z-index:300; pointer-events:none;";
@@ -388,22 +377,6 @@ function showTurnAnnouncement() {
  }, 2500);
 }
 
-// --- ⚔️ 対戦実行＆「おしつけ」ロジック ---
-function initBattleGame() {
- gameState = 'playing';
- initGridForStage(1);
- bulletData = getRandomShooterBubble();
- nextBubble = getRandomShooterBubble();
- playRandomBGM();
- 
- if (turnOrder[currentTurnIndex] === myPlayerId) {
- battleTurnState = 'my_turn';
- startTurnTimer();
- } else {
- battleTurnState = 'opponent_turn';
- }
-}
-
 function handleGameActionData(data) {
  if (data.type === 'sync_amida') {
  amidaLines = data.lines;
@@ -411,76 +384,7 @@ function handleGameActionData(data) {
  drawAmidaStructure(cvs.getContext('2d'), playerList.length, cvs.width / (playerList.length + 1));
  } else if (data.type === 'run_amida') {
  runAmidaAnimation();
- } else if (data.type === 'turn_action') {
- // 誰かが玉を消した時のお邪魔受け取り処理
- if (data.senderId !== myPlayerId) {
- let ojamaAmount = data.ojamaAmount;
- 
- // 「おしつけ」アイテム処理
- if (data.oshitsukeTargetId === myPlayerId) {
- // 他人から自分へおしつけられた追加お邪魔
- ojamaAmount += data.extraOjama || 0;
  }
- 
- if (oshitsukeTurnsLeft > 0 && oshitsukeTargetId) {
- // 自分が「おしつけ」発動中の場合、自分へのお邪魔をターゲットに転送
- broadcastData({
- type: 'transfer_ojama',
- targetId: oshitsukeTargetId,
- amount: ojamaAmount
- });
- ojamaAmount = 0; // 自分へのダメージ無効化
- }
- 
- if (ojamaAmount > 0) {
- launchOjamaProjectiles(ojamaAmount);
- }
- }
- switchNextTurn();
- }
-}
-
-function switchNextTurn() {
- // ターン経過でおしつけのターン消化
- if (oshitsukeTurnsLeft > 0) {
- oshitsukeTurnsLeft--;
- if (oshitsukeTurnsLeft === 0) oshitsukeTargetId = null;
- }
- 
- currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
- if (turnOrder[currentTurnIndex] === myPlayerId) {
- battleTurnState = 'my_turn';
- startTurnTimer();
- } else {
- battleTurnState = 'opponent_turn';
- stopTurnTimer();
- }
-}
-
-// アイテム使用：おしつけ
-function useOshitsukeItem() {
- if (itemStockCounts[4] <= 0) return;
- 
- let modal = document.getElementById('modal-target-select');
- let container = document.getElementById('target-player-buttons');
- container.innerHTML = '';
- 
- playerList.forEach(p => {
- if (p.id !== myPlayerId) {
- let btn = document.createElement('button');
- btn.className = 'menu-btn sub';
- btn.innerText = p.name;
- btn.onclick = () => {
- oshitsukeTargetId = p.id;
- oshitsukeTurnsLeft = playerList.length * 2; // 全員のターンが2周分終了するまで
- itemStockCounts[4]--;
- modal.style.display = 'none';
- alert(`${p.name} に「おしつけ」を発動しました！`);
- };
- container.appendChild(btn);
- }
- });
- modal.style.display = 'flex';
 }
 
 function closeNetwork() {
@@ -495,99 +399,17 @@ function returnToTitle() {
  showScreen('screen-title');
 }
 
-// --- 以下、既存のバブル計算・物理演算・描画ループ（一部保持） ---
-function initGridForStage(stage) {
- grid = [];
- fallingBubbles = [];
- flashingBubbles = [];
- flyingOjamaList = [];
- itemStockCounts = [0, 0, 0, 0, 0];
- activeItems = [];
- myClearedBubbleCount = 0;
- 
- for (let r = 0; r < ROWS; r++) {
- let row = [];
- let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
- for (let c = 0; c < colsInRow; c++) row.push(null);
- grid.push(row);
- }
- 
- let fillRows = 3;
- for (let r = 0; r < fillRows; r++) {
- let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
- for (let c = 0; c < colsInRow; c++) {
- if (Math.random() < 0.7) {
- grid[r][c] = getRandomGridCell();
- }
- }
- }
-}
-
-function getRandomGridCell() {
- let color = BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)];
- let isMystery = Math.random() < 0.11;
- return { color: color, isojama: false, isMystery: isMystery };
-}
-
-function getRandomShooterBubble() {
- return {
- color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)],
- isojama: false,
- isMystery: false
- };
-}
-
 function startSinglePlay() {
  closeNetwork();
  gameMode = 'single';
  gameState = 'playing';
- score = 0;
- currentStage = 1;
- initGridForStage(currentStage);
- bulletData = getRandomShooterBubble();
- nextBubble = getRandomShooterBubble();
  playRandomBGM();
  showScreen('');
 }
 
-function startTurnTimer() {
- stopTurnTimer();
- turnRemainingTime = TURN_TIME_LIMIT;
- turnTimerInterval = setInterval(() => {
- if (gameState === 'playing' && battleTurnState === 'my_turn') {
- turnRemainingTime--;
- if (turnRemainingTime <= 0) {
- stopTurnTimer();
- forceTimeoutTurnEnd();
- }
- }
- }, 1000);
-}
-
-function stopTurnTimer() {
- if (turnTimerInterval) { clearInterval(turnTimerInterval); turnTimerInterval = null; }
-}
-
-function forceTimeoutTurnEnd() {
- isMoving = false;
- switchNextTurn();
-}
-
-function launchOjamaProjectiles(amount) {
- // 画面上部からお邪魔玉を落下・グリッド追加する簡易演出
- for (let i = 0; i < amount; i++) {
- let r = Math.floor(Math.random() * 2);
- let c = Math.floor(Math.random() * COLS);
- if (!grid[r][c]) grid[r][c] = { color: '#888', isojama: true, isMystery: false };
- }
-}
-
-// 描画ループの呼び出し
+// 描画ループ
 function gameLoop() {
  ctx.clearRect(0, 0, canvas.width, canvas.height);
- if (gameState === 'playing') {
- // バブルやグリッドの描画処理
- }
  requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);
