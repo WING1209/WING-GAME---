@@ -59,21 +59,22 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 24px;
+            padding: 20px;
             z-index: 100;
             text-align: center;
+            overflow-y: auto;
         }
         .overlay-screen h2 {
             color: #ffcc00;
-            font-size: 26px;
-            margin-bottom: 20px;
+            font-size: 24px;
+            margin-bottom: 15px;
         }
         .title-logo {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 900;
             color: #ffcc00;
             text-shadow: 0 0 12px rgba(255, 204, 0, 0.6);
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             animation: dropDown 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
         @keyframes dropDown {
@@ -81,7 +82,7 @@
             100% { transform: translateY(0); opacity: 1; }
         }
         .version-text {
-            font-size: 14px;
+            font-size: 13px;
             color: #ffffff;
             margin-top: 15px;
             font-weight: bold;
@@ -91,11 +92,11 @@
             background: #ffcc00;
             color: #111;
             border: none;
-            padding: 16px 20px;
+            padding: 14px 20px;
             border-radius: 12px;
             font-weight: bold;
-            font-size: 18px;
-            margin: 8px 0;
+            font-size: 16px;
+            margin: 6px 0;
             width: 85%;
             max-width: 280px;
             cursor: pointer;
@@ -106,33 +107,49 @@
         }
         .menu-btn.sub { background: #4da6ff; color: #fff; }
         .menu-btn.gray { background: #555; color: #fff; }
+        .menu-btn.accent { background: #ff4d4d; color: #fff; }
         input.text-input {
             background: #222;
             border: 2px solid #ffcc00;
             color: #fff;
-            font-size: 24px;
+            font-size: 22px;
             text-align: center;
-            padding: 10px;
+            padding: 8px;
             border-radius: 10px;
             width: 220px;
-            margin: 15px 0;
+            margin: 10px 0;
         }
         #status-message {
             color: #ff4d4d;
-            font-size: 14px;
-            margin-top: 10px;
+            font-size: 13px;
+            margin-top: 8px;
             height: 20px;
         }
         .rules-box {
             background: #222;
             border: 1px solid #555;
-            padding: 16px;
+            padding: 14px;
             border-radius: 10px;
-            font-size: 14px;
+            font-size: 13px;
             text-align: left;
-            line-height: 1.5;
+            line-height: 1.4;
             max-width: 320px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+        }
+        .setting-group {
+            margin-bottom: 12px;
+            width: 100%;
+            max-width: 280px;
+            text-align: left;
+        }
+        .setting-label {
+            font-size: 12px;
+            color: #ffcc00;
+            margin-bottom: 4px;
+        }
+        .btn-row {
+            display: flex;
+            gap: 6px;
         }
     </style>
 </head>
@@ -142,10 +159,10 @@
 
         <!-- タイトル画面 -->
         <div id="screen-title" class="overlay-screen" style="display: flex;">
-            <div class="title-logo">WING GAME 玉</div>
-            <button class="menu-btn" onclick="showScreen('screen-role-select')">対戦モード</button>
+            <div class="title-logo">○o WING GAME 玉 o○</div>
+            <button class="menu-btn" onclick="showScreen('screen-role-select')">フレンド対戦</button>
             <button class="menu-btn sub" onclick="showScreen('screen-how-to-play')">遊び方</button>
-            <div class="version-text">Version 2026</div>
+            <div class="version-text">Version 2026的多人</div>
         </div>
 
         <!-- 遊び方画面 -->
@@ -154,68 +171,92 @@
             <div class="rules-box">
                 • 引っ張って離すと玉が発射されます。<br>
                 • 同じ色の玉を3つ以上繋げると消えます。<br>
-                • 対戦モードでは相手にお邪魔玉を送ったり、特殊ルールで競い合います！
+                • 多人数お邪魔対戦では全員にお邪魔玉が飛ぶ！<br>
+                • 3名以上なら専用アイテム「おしつけ」が使えます！
             </div>
             <button class="menu-btn" onclick="showScreen('screen-title')">戻る</button>
         </div>
 
         <!-- ロール選択画面 -->
         <div id="screen-role-select" class="overlay-screen">
-            <h2>対戦モード</h2>
+            <h2>フレンド対戦</h2>
             <button class="menu-btn" onclick="setupRole('host')">部屋を作る (ホスト)</button>
             <button class="menu-btn sub" onclick="setupRole('guest')">部屋に参加 (ゲスト)</button>
             <button class="menu-btn gray" onclick="showScreen('screen-title')">戻る</button>
         </div>
 
+        <!-- ホスト設定画面 -->
+        <div id="screen-host-settings" class="overlay-screen">
+            <h2>対戦設定 (ホスト)</h2>
+            <div class="setting-group">
+                <div class="setting-label">対戦メニュー:</div>
+                <div class="btn-row">
+                    <button id="btn-menu-ta" class="menu-btn gray" style="flex:1; margin:0; font-size:13px; padding:8px;" onclick="setHostGameMenu('タイムアタック')">タイムアタック</button>
+                    <button id="btn-menu-ojama" class="menu-btn sub" style="flex:1; margin:0; font-size:13px; padding:8px;" onclick="setHostGameMenu('お邪魔対戦')">お邪魔対戦</button>
+                </div>
+            </div>
+
+            <div id="setting-group-players" class="setting-group">
+                <div class="setting-label">プレイ人数 (お邪魔対戦のみ有効):</div>
+                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:4px;">
+                    <button id="btn-p-2" class="menu-btn sub" style="margin:0; font-size:12px; padding:8px; width:100%;" onclick="setHostMaxPlayers(2)">2人</button>
+                    <button id="btn-p-3" class="menu-btn gray" style="margin:0; font-size:12px; padding:8px; width:100%;" onclick="setHostMaxPlayers(3)">3人</button>
+                    <button id="btn-p-4" class="menu-btn gray" style="margin:0; font-size:12px; padding:8px; width:100%;" onclick="setHostMaxPlayers(4)">4人</button>
+                    <button id="btn-p-5" class="menu-btn gray" style="margin:0; font-size:12px; padding:8px; width:100%;" onclick="setHostMaxPlayers(5)">5人</button>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">勝利条件 (先勝):</div>
+                <div class="btn-row">
+                    <button id="btn-win-1" class="menu-btn" style="flex:1; margin:0; font-size:13px; padding:8px;" onclick="setHostTargetWins(1)">1勝先取</button>
+                    <button id="btn-win-2" class="menu-btn gray" style="flex:1; margin:0; font-size:13px; padding:8px;" onclick="setHostTargetWins(2)">2勝先取</button>
+                </div>
+            </div>
+
+            <button class="menu-btn" style="margin-top:10px;" onclick="confirmHostSettings()">ルームを作成</button>
+            <button class="menu-btn gray" onclick="showScreen('screen-role-select')">戻る</button>
+        </div>
+
         <!-- ホスト待機画面 -->
         <div id="screen-host-wait" class="overlay-screen">
-            <h2>対戦設定</h2>
-            <p style="font-size: 14px; color: #ccc; margin-bottom: 5px;">ルームコード</p>
-            <div id="display-room-code" style="font-size: 36px; font-weight: bold; color: #ffcc00; letter-spacing: 4px; margin-bottom: 15px;">----</div>
-            <p style="font-size: 13px; color: #aaa; margin-bottom: 15px;">このコードを対戦相手に伝えてください</p>
-            
-            <div style="margin-bottom: 15px; width: 100%; max-width: 280px; text-align: left;">
-                <p style="font-size: 13px; color: #ffcc00; margin-bottom: 5px;">対戦ルール:</p>
-                <div style="display: flex; gap: 8px;">
-                    <button id="btn-mode-ojama" class="menu-btn sub" style="flex:1; margin:0; font-size:14px; padding:10px;" onclick="setHostBattleType('お邪魔対戦')">お邪魔対戦</button>
-                    <button id="btn-mode-ta" class="menu-btn gray" style="flex:1; margin:0; font-size:14px; padding:10px;" onclick="setHostBattleType('500個消し対戦')">500個消し</button>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 20px; width: 100%; max-width: 280px; text-align: left;">
-                <p style="font-size: 13px; color: #ffcc00; margin-bottom: 5px;">勝利条件 (先勝):</p>
-                <div style="display: flex; gap: 8px;">
-                    <button id="btn-win-1" class="menu-btn" style="flex:1; margin:0; font-size:14px; padding:10px;" onclick="setHostTargetWins(1)">1勝先取</button>
-                    <button id="btn-win-2" class="menu-btn gray" style="flex:1; margin:0; font-size:14px; padding:10px;" onclick="setHostTargetWins(2)">2勝先取</button>
-                </div>
-            </div>
-
-            <button class="menu-btn" onclick="confirmHostBattleSettings()">設定を決定して開始</button>
-            <button class="menu-btn gray" onclick="showScreen('screen-role-select')">戻る</button>
+            <h2>待機中...</h2>
+            <p style="font-size: 13px; color: #ccc; margin-bottom: 2px;">ルームコード</p>
+            <div id="display-room-code" style="font-size: 32px; font-weight: bold; color: #ffcc00; letter-spacing: 4px; margin-bottom: 10px;">----</div>
+            <p id="room-members-count" style="font-size: 14px; color: #4da6ff; margin-bottom: 15px;">参加人数: 1 / 2名</p>
+            <button id="btn-host-start-game" class="menu-btn" style="display:none;" onclick="startNameInputPhase()">名前入力へ進む</button>
+            <button class="menu-btn gray" onclick="showScreen('screen-role-select')">解散する</button>
         </div>
 
         <!-- ゲスト参加画面 -->
         <div id="screen-guest-join" class="overlay-screen">
             <h2>ルーム参加</h2>
-            <p style="font-size: 14px; color: #ccc;">4桁のルームコードを入力</p>
+            <p style="font-size: 13px; color: #ccc;">4桁のルームコードを入力</p>
             <input type="text" id="input-room-code" class="text-input" maxlength="4" placeholder="0000">
             <div id="status-message"></div>
             <button class="menu-btn" onclick="joinRoom()">接続する</button>
             <button class="menu-btn gray" onclick="showScreen('screen-role-select')">戻る</button>
         </div>
 
-        <!-- ゲスト待機ルール確認画面 -->
-        <div id="screen-guest-wait-rule" class="overlay-screen">
+        <!-- ゲスト待機画面 -->
+        <div id="screen-guest-wait" class="overlay-screen">
             <h2>待機中</h2>
-            <p style="font-size: 16px; color: #4da6ff; margin-bottom: 20px;">ホストの設定を待っています...</p>
+            <p style="font-size: 15px; color: #4da6ff; margin-bottom: 15px;">ホストの開始を待っています...</p>
             <button class="menu-btn gray" onclick="showScreen('screen-role-select')">退出する</button>
         </div>
 
-        <!-- バトルルール説明画面 -->
-        <div id="screen-battle-rules-desc" class="overlay-screen">
-            <h2>対戦ルール確認</h2>
-            <div id="rules-text-content" class="rules-box"></div>
-            <button class="menu-btn" onclick="readyToStartBattle()">バトル開始！</button>
+        <!-- 名前入力画面 -->
+        <div id="screen-name-input" class="overlay-screen">
+            <h2>プレイヤー名入力</h2>
+            <p style="font-size: 13px; color: #ccc;">あなたの名前を入力してください</p>
+            <input type="text" id="input-player-name" class="text-input" maxlength="10" value="プレイヤー">
+            <button class="menu-btn" style="margin-top:15px;" onclick="submitPlayerName()">決定</button>
+        </div>
+
+        <!-- 名前待機画面 -->
+        <div id="screen-name-wait" class="overlay-screen">
+            <h2>待機中</h2>
+            <p id="name-wait-status" style="font-size: 14px; color: #4da6ff;">他のプレイヤーの名前入力を待っています...</p>
         </div>
     </div>
 
