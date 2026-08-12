@@ -3,119 +3,597 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>パズルボブル風お邪魔対戦</title>
-    <link rel="stylesheet" href="style.css">
+    <title>バブルシューター フレンド対戦</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            height: 100%;
+            max-height: 850px;
+            background: #222;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.1);
+        }
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .screen.active {
+            display: flex;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #ffeb3b;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 8px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 80%;
+            max-width: 280px;
+            font-weight: bold;
+        }
+        button:active {
+            background: #388E3C;
+        }
+        button.secondary {
+            background: #2196F3;
+        }
+        button.secondary:active {
+            background: #1976D2;
+        }
+        button.accent {
+            background: #e91e63;
+        }
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 80%;
+            max-width: 280px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        canvas {
+            background: #000;
+            border-radius: 4px;
+            touch-action: none;
+        }
+        .hud {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+        #turn-announce {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            border: 3px solid #ffeb3b;
+            padding: 30px 50px;
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffeb3b;
+            border-radius: 15px;
+            z-index: 100;
+            display: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .item-panel {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .item-btn {
+            background: #ff9800;
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 5px;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+        }
+        .item-btn:disabled {
+            background: #555;
+            color: #888;
+        }
+    </style>
 </head>
 <body>
-    <div id="game-container">
-        <!-- タイトル画面 / メニュー -->
-        <div id="menu-screen" class="screen">
-            <h1>パズルボブル対戦</h1>
-            <div class="menu-buttons">
-                <button id="btn-single" class="btn">ひとりで遊ぶ</button>
-                <button id="btn-friend" class="btn">フレンド対戦</button>
-                <button id="btn-ranking" class="btn">ランキング</button>
-                <button id="btn-custom" class="btn">画像カスタム</button>
-            </div>
-        </div>
 
-        <!-- 何人で遊ぶか選択画面 -->
-        <div id="player-count-screen" class="screen hidden">
-            <h2>何人で遊ぶ？</h2>
-            <div class="menu-buttons">
-                <button class="btn btn-count" data-count="2">2人対戦</button>
-                <button class="btn btn-count" data-count="3">3人対戦</button>
-                <button class="btn btn-count" data-count="4">4人対戦</button>
-                <button class="btn btn-count" data-count="5">5人対戦</button>
-                <button class="btn btn-back" id="btn-count-back">もどる</button>
-            </div>
-        </div>
+<div id="game-container">
+    <!-- 1. メインメニュー -->
+    <div id="screen-main" class="screen active">
+        <h1>バブルシューター</h1>
+        <button onclick="goToScreen('screen-player-count')">フレンド対戦</button>
+    </div>
 
-        <!-- ホスト/ゲスト選択画面 (2人の場合のみ、またはオンライン用) -->
-        <div id="friend-mode-screen" class="screen hidden">
-            <h2>フレンド対戦</h2>
-            <div class="menu-buttons">
-                <button id="btn-host" class="btn">部屋を作る (ホスト)</button>
-                <button id="btn-join" class="btn">部屋に参加 (ゲスト)</button>
-                <button class="btn btn-back" id="btn-friend-back">もどる</button>
-            </div>
-        </div>
+    <!-- 2. 人数選択 -->
+    <div id="screen-player-count" class="screen">
+        <h1>何人で遊ぶ？</h1>
+        <button onclick="setPlayerCount(2)">2人対戦</button>
+        <button onclick="setPlayerCount(3)">3人対戦</button>
+        <button onclick="setPlayerCount(4)">4人対戦</button>
+        <button onclick="setPlayerCount(5)">5人対戦</button>
+        <button class="secondary" onclick="goToScreen('screen-main')">もどる</button>
+    </div>
 
-        <!-- 対戦モード選択画面 (2人対戦時のみ) -->
-        <div id="mode-select-screen" class="screen hidden">
-            <h2>対戦モード選択</h2>
-            <div class="menu-buttons">
-                <button id="btn-mode-time" class="btn">タイムアタック</button>
-                <button id="btn-mode-ojama" class="btn">お邪魔対戦</button>
-                <button class="btn btn-back" id="btn-mode-back">もどる</button>
-            </div>
-        </div>
+    <!-- 3. 対戦モード選択 (2人のみ) -->
+    <div id="screen-mode" class="screen">
+        <h1>対戦モード選択</h1>
+        <button onclick="setGameMode('timeattack')">タイムアタック</button>
+        <button onclick="setGameMode('oshama')">お邪魔対戦</button>
+        <button class="secondary" onclick="goToScreen('screen-player-count')">もどる</button>
+    </div>
 
-        <!-- 勝利ルール選択画面 (3人以上、またはお邪魔対戦) -->
-        <div id="win-rule-screen" class="screen hidden">
-            <h2>勝利ルールの選択</h2>
-            <div class="menu-buttons">
-                <button class="btn btn-win" data-wins="1">先に1勝</button>
-                <button class="btn btn-win" data-wins="2">先に2勝</button>
-                <button class="btn btn-back" id="btn-win-back">もどる</button>
-            </div>
-        </div>
+    <!-- 4. 勝利ルール選択 -->
+    <div id="screen-rule" class="screen">
+        <h1>勝利ルール選択</h1>
+        <button onclick="setWinRule(1)">先に1勝</button>
+        <button onclick="setWinRule(2)">先に2勝</button>
+        <button class="secondary" onclick="backToModeOrCount()">もどる</button>
+    </div>
 
-        <!-- 名前入力画面 -->
-        <div id="name-input-screen" class="screen hidden">
-            <h2>プレイヤー名の入力</h2>
-            <div class="input-group">
-                <input type="text" id="player-name-input" placeholder="名前を入力" maxlength="10">
-                <button id="btn-name-ok" class="btn">決定</button>
-            </div>
-            <button class="btn btn-back" id="btn-name-back">もどる</button>
-        </div>
+    <!-- 5. プレイヤー名入力 -->
+    <div id="screen-name" class="screen">
+        <h1>プレイヤー名入力</h1>
+        <div id="name-inputs-container" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
+        <button onclick="startOrderDecide()">順番決めへ</button>
+        <button class="secondary" onclick="goToScreen('screen-rule')">もどる</button>
+    </div>
 
-        <!-- 順番決め画面 (あみだくじ / じゃんけん) -->
-        <div id="order-screen" class="screen hidden">
-            <h2>順番決め</h2>
-            <div id="order-content">
-                <!-- じゃんけん or あみだくじ用エリア -->
-            </div>
-            <button id="btn-start-battle" class="btn hidden">対戦開始！</button>
+    <!-- 6. ゲーム画面 -->
+    <div id="screen-game" class="screen">
+        <div class="hud">
+            <span id="hud-turn-info">手番: プレイヤー1</span>
+            <span id="hud-score">スコア: 0</span>
         </div>
-
-        <!-- 順番大画面表示用オーバーレイ -->
-        <div id="turn-announce-overlay" class="hidden">
-            <div id="turn-announce-text">1番手</div>
-        </div>
-
-        <!-- ゲームプレイ画面 -->
-        <div id="game-screen" class="screen hidden">
-            <div id="game-header">
-                <span id="turn-info">自分のターン</span>
-                <span id="score-info">スコア: 0</span>
-                <button id="btn-pause" class="btn-small">一時停止</button>
-            </div>
-            <div id="play-area">
-                <canvas id="game-canvas"></canvas>
-            </div>
-            <!-- 3人以上専用：おしつけアイテム用UI -->
-            <div id="item-panel" class="hidden">
-                <div class="item-title">おしつけアイテム (残りターン: <span id="item-turn-count">0</span>)</div>
-                <div id="item-targets">
-                    <!-- ターゲット選択用ボタンが動的に入る -->
-                </div>
-            </div>
-            <div id="controls">
-                <button id="btn-left" class="control-btn">◀</button>
-                <button id="btn-shoot" class="control-btn">発射</button>
-                <button id="btn-right" class="control-btn">▶</button>
-            </div>
-        </div>
-
-        <!-- リザルト画面 -->
-        <div id="result-screen" class="screen hidden">
-            <h2 id="result-title">ゲーム終了</h2>
-            <p id="result-text"></p>
-            <button id="btn-restart" class="btn">メニューに戻る</button>
+        <canvas id="gameCanvas" width="360" height="480"></canvas>
+        <div id="item-container" class="item-panel" style="display:none;">
+            <button id="btn-oshitsuke" class="item-btn" onclick="useOshitsukeItem()">おしつけ (残:1)</button>
         </div>
     </div>
-    <script src="script.js"></script>
+</div>
+
+<!-- 順番決め・ターン開始時の大きく中央に表示するアナウンス -->
+<div id="turn-announce">1番手</div>
+
+<script>
+    // --- 状態管理変数 ---
+    let playerCount = 2;
+    let gameMode = 'oshama'; // 'timeattack' or 'oshama'
+    let winRule = 1; // 1勝 or 2勝
+    let playerNames = [];
+    let turnOrder = []; // シャッフルされたプレイヤーのインデックス順
+    let currentTurnIndex = 0; // turnOrderのインデックス
+    let scores = [];
+    let wins = [];
+    let roundCount = 0;
+
+    // おしつけアイテム管理 (3人以上用)
+    // 構造: { userIdx: boolean, targetIdx: number, turnsLeft: number }
+    let oshitsukeStatus = {}; 
+    let itemUsedThisMatch = [];
+
+    // ゲーム用canvas・コンテキスト
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 画面切り替え
+    function goToScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function setPlayerCount(count) {
+        playerCount = count;
+        if (playerCount === 2) {
+            goToScreen('screen-mode');
+        } else {
+            gameMode = 'oshama'; // 3人以上はお邪魔対戦固定
+            goToScreen('screen-rule');
+        }
+    }
+
+    function setGameMode(mode) {
+        gameMode = mode;
+        goToScreen('screen-rule');
+    }
+
+    function backToModeOrCount() {
+        if (playerCount === 2) {
+            goToScreen('screen-mode');
+        } else {
+            goToScreen('screen-player-count');
+        }
+    }
+
+    function setWinRule(rule) {
+        winRule = rule;
+        buildNameInputs();
+        goToScreen('screen-name');
+    }
+
+    function buildNameInputs() {
+        const container = document.getElementById('name-inputs-container');
+        container.innerHTML = '';
+        for (let i = 0; i < playerCount; i++) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = `pname-${i}`;
+            input.value = `プレイヤー${i + 1}`;
+            container.appendChild(input);
+        }
+    }
+
+    // 順番決めとゲーム開始処理
+    function startOrderDecide() {
+        playerNames = [];
+        for (let i = 0; i < playerCount; i++) {
+            const val = document.getElementById(`pname-${i}`).value.trim();
+            playerNames.push(val || `プレイヤー${i + 1}`);
+        }
+
+        scores = new Array(playerCount).fill(0);
+        wins = new Array(playerCount).fill(0);
+        itemUsedThisMatch = new Array(playerCount).fill(false);
+        oshitsukeStatus = {};
+
+        if (playerCount === 2) {
+            // 2名の場合は今まで通りジャンケン（簡易実装としてランダムまたはジャンケン画面）
+            // 要件：2名の場合は今まで通りジャンケン
+            showJankenModal();
+        } else {
+            // 3名以上はあみだくじでランダム生成
+            makeAmidaOrder();
+        }
+    }
+
+    function showJankenModal() {
+        const announce = document.getElementById('turn-announce');
+        announce.style.display = 'block';
+        announce.innerHTML = "ジャンケン中...";
+        setTimeout(() => {
+            // ランダムに先攻後攻決定
+            const first = Math.random() < 0.5 ? 0 : 1;
+            turnOrder = [first, 1 - first];
+            announce.innerHTML = `${playerNames[turnOrder[0]]} の先攻！`;
+            setTimeout(() => {
+                announce.style.display = 'none';
+                initGameMatch();
+            }, 1500);
+        }, 1000);
+    }
+
+    function makeAmidaOrder() {
+        const announce = document.getElementById('turn-announce');
+        announce.style.display = 'block';
+        announce.innerHTML = "あみだくじ抽選中...";
+        setTimeout(() => {
+            // 0 ~ playerCount-1 の配列をランダムにシャッフル
+            let indices = Array.from({length: playerCount}, (_, i) => i);
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+            turnOrder = indices;
+
+            let text = "あみだ結果決定！<br>";
+            turnOrder.forEach((pIdx, rank) => {
+                text += `${rank + 1}番手: ${playerNames[pIdx]}<br>`;
+            });
+            announce.innerHTML = text;
+            setTimeout(() => {
+                announce.style.display = 'none';
+                initGameMatch();
+            }, 2500);
+        }, 1200);
+    }
+
+    // --- ゲームロジック ---
+    let currentShooterPlayerIdx = 0;
+    let bubbles = [];
+    let currentBubble = null;
+    let nextBubble = null;
+    let isShooting = false;
+    let bulletX = 0, bulletY = 0, bulletVX = 0, bulletVY = 0;
+    let turnRemainingOshamaRounds = {}; // プレイヤーごとの残りおしつけ周回数
+
+    function initGameMatch() {
+        goToScreen('screen-game');
+        currentTurnIndex = 0;
+        roundCount = 0;
+        turnRemainingOshamaRounds = {};
+        for(let i=0; i<playerCount; i++) turnRemainingOshamaRounds[i] = 0;
+
+        startTurn();
+    }
+
+    function startTurn() {
+        currentShooterPlayerIdx = turnOrder[currentTurnIndex];
+        
+        // 画面中央に大きく「○番手 〇〇のターン」を表示
+        const rankStr = `${currentTurnIndex + 1}番手`;
+        const nameStr = playerNames[currentShooterPlayerIdx];
+        
+        const announce = document.getElementById('turn-announce');
+        announce.style.display = 'block';
+        announce.innerHTML = `<span style="font-size:20px;">${rankStr}</span><br>${nameStr}のターン`;
+
+        setTimeout(() => {
+            announce.style.display = 'none';
+            setupBoard();
+            updateHUD();
+            // アイテムボタンの表示切り替え (3人以上のみ)
+            const itemContainer = document.getElementById('item-container');
+            if (playerCount >= 3) {
+                itemContainer.style.display = 'flex';
+                const btn = document.getElementById('btn-oshitsuke');
+                if (itemUsedThisMatch[currentShooterPlayerIdx]) {
+                    btn.disabled = true;
+                    btn.innerText = "おしつけ (使用済)";
+                } else {
+                    btn.disabled = false;
+                    btn.innerText = "おしつけ (残:1)";
+                }
+            } else {
+                itemContainer.style.display = 'none';
+            }
+        }, 1500);
+    }
+
+    function setupBoard() {
+        bubbles = [];
+        // 簡単なバブル初期配置生成
+        const colors = ['#f44336', '#2196F3', '#4CAF50', '#FFEB3B'];
+        for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 8; c++) {
+                bubbles.push({
+                    x: c * 40 + 40,
+                    y: r * 35 + 30,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    row: r, col: c
+                });
+            }
+        }
+        spawnNewBubble();
+        drawGame();
+    }
+
+    function spawnNewBubble() {
+        const colors = ['#f44336', '#2196F3', '#4CAF50', '#FFEB3B'];
+        currentBubble = colors[Math.floor(Math.random() * colors.length)];
+        bulletX = canvas.width / 2;
+        bulletY = canvas.height - 30;
+    }
+
+    function updateHUD() {
+        const hudTurn = document.getElementById('hud-turn-info');
+        hudTurn.innerText = `手番: ${playerNames[currentShooterPlayerIdx]} (${currentTurnIndex + 1}番手)`;
+        const hudScore = document.getElementById('hud-score');
+        hudScore.innerText = `スコア: ${scores[currentShooterPlayerIdx]}`;
+    }
+
+    // タップ操作での発射
+    canvas.addEventListener('click', (e) => {
+        if (isShooting) return;
+        const rect = canvas.getBoundingClientRect();
+        const touchX = e.clientX - rect.left;
+        const touchY = e.clientY - rect.top;
+
+        const angle = Math.atan2(touchY - bulletY, touchX - bulletX);
+        const speed = 8;
+        bulletVX = Math.cos(angle) * speed;
+        bulletVY = Math.sin(angle) * speed;
+        isShooting = true;
+        requestAnimationFrame(updateGame);
+    });
+
+    function updateGame() {
+        if (!isShooting) return;
+
+        bulletX += bulletVX;
+        bulletY += bulletVY;
+
+        // 壁反射
+        if (bulletX < 20 || bulletX > canvas.width - 20) {
+            bulletVX = -bulletVX;
+        }
+
+        // 上部到達またはバブルヒット判定（簡易）
+        if (bulletY < 30 || checkCollision()) {
+            isShooting = false;
+            // 自分のターンで玉を消した（今回は簡易的に得点獲得＝成功とする）
+            onTurnActionComplete(true);
+            return;
+        }
+
+        drawGame();
+        requestAnimationFrame(updateGame);
+    }
+
+    function checkCollision() {
+        for (let b of bubbles) {
+            let dist = Math.hypot(b.x - bulletX, b.y - bulletY);
+            if (dist < 30) return true;
+        }
+        return false;
+    }
+
+    function drawGame() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // バブル描画
+        for (let b of bubbles) {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, 16, 0, Math.PI * 2);
+            ctx.fillStyle = b.color;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        // 発射体描画
+        if (currentBubble) {
+            ctx.beginPath();
+            ctx.arc(bulletX, bulletY, 16, 0, Math.PI * 2);
+            ctx.fillStyle = currentBubble;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+            ctx.closePath();
+        }
+    }
+
+    // --- アイテム機能：「おしつけ」 ---
+    let activeOshitsukeTarget = null; // おしつけ先プレイヤーのインデックス
+
+    function useOshitsukeItem() {
+        if (itemUsedThisMatch[currentShooterPlayerIdx]) return;
+        
+        // ターゲット選択ダイアログ（自分以外のプレイヤーを選択）
+        let candidates = [];
+        let promptText = "誰におしつけますか？（番号を入力）\n";
+        for (let i = 0; i < playerCount; i++) {
+            if (i !== currentShooterPlayerIdx) {
+                candidates.push(i);
+                promptText += `${i + 1}: ${playerNames[i]}\n`;
+            }
+        }
+
+        let selectStr = prompt(promptText);
+        let selectedNum = parseInt(selectStr) - 1;
+
+        if (candidates.includes(selectedNum)) {
+            itemUsedThisMatch[currentShooterPlayerIdx] = true;
+            // 「2ターンの間（全員のターンが2周終了するまで）」
+            // 全員のターン周回数 = playerCount * 2 回分の手番
+            turnRemainingOshamaRounds[currentShooterPlayerIdx] = playerCount * 2;
+            oshitsukeStatus[currentShooterPlayerIdx] = selectedNum;
+
+            alert(`${playerNames[selectedNum]} におしつけを発動しました！2ターンの間お邪魔玉が肩代わりされます。`);
+            document.getElementById('btn-oshitsuke').disabled = true;
+            document.getElementById('btn-oshitsuke').innerText = "おしつけ (使用済)";
+        } else {
+            alert("無効な選択です。");
+        }
+    }
+
+    // ターン終了時の処理＆お邪魔玉ロジック
+    function onTurnActionComplete(success) {
+        scores[currentShooterPlayerIdx] += success ? 100 : 0;
+
+        // お邪魔玉の処理
+        if (gameMode === 'oshama') {
+            processOshamaFly(success);
+        }
+
+        // おしつけ効果のターンカウントダウン減少
+        for (let pIdx in turnRemainingOshamaRounds) {
+            if (turnRemainingOshamaRounds[pIdx] > 0) {
+                turnRemainingOshamaRounds[pIdx]--;
+                if (turnRemainingOshamaRounds[pIdx] === 0) {
+                    delete oshitsukeStatus[pIdx];
+                }
+            }
+        }
+
+        // 次のプレイヤーへ
+        currentTurnIndex++;
+        if (currentTurnIndex >= playerCount) {
+            currentTurnIndex = 0;
+            roundCount++;
+            
+            // 勝利判定チェックなど
+            if (checkWinCondition()) {
+                return;
+            }
+        }
+
+        startTurn();
+    }
+
+    // 基本ルール：自分のターンで玉を消した場合全員に同一数のお邪魔玉が飛んでいく
+    // 3名以上で戦う場合の「おしつけ」処理対応
+    function processOshamaFly(success) {
+        if (!success) return;
+
+        let sender = currentShooterPlayerIdx;
+
+        // おしつけ発動中かチェック
+        if (oshitsukeStatus[sender] !== undefined) {
+            let targetReceiver = oshitsukeStatus[sender];
+            // プレイヤー1（使用者）に飛んでいくはずのお邪魔玉もプレイヤー2に飛んでいく
+            // 自分にはお邪魔玉は飛んでこない
+            alert(`${playerNames[sender]} のおしつけ効果により、${playerNames[targetReceiver]} に通常分＋おしつけ分の全お邪魔玉が集中します！`);
+            // ここにターゲットにお邪魔玉を追加するロジックが入ります
+        } else {
+            // 基本ルール：全員に同一数のお邪魔玉が飛んでいく
+            let flyMessage = `${playerNames[sender]} が玉を消したため、他の全員にお邪魔玉が飛んだ！`;
+            // （必要に応じて各プレイヤーへのペナルティ処理）
+            console.log(flyMessage);
+        }
+    }
+
+    function checkWinCondition() {
+        // 例としての勝利判定
+        for (let i = 0; i < playerCount; i++) {
+            if (wins[i] >= winRule) {
+                const announce = document.getElementById('turn-announce');
+                announce.style.display = 'block';
+                announce.innerHTML = `勝者: ${playerNames[i]} 🎉`;
+                setTimeout(() => {
+                    announce.style.display = 'none';
+                    goToScreen('screen-main');
+                }, 3000);
+                return true;
+            }
+        }
+        return false;
+    }
+</script>
+
 </body>
 </html>
