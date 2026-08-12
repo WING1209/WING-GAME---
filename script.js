@@ -1,7 +1,12 @@
+// ==========================================
+// 1. 初期設定・キャンバス定義
+// ==========================================
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- 🔊 サウンド（SE & BGM）設定 ---
+// ==========================================
+// 2. オーディオ（SE・BGM）管理
+// ==========================================
 const audioPath = 'audio/';
 
 const se = {
@@ -65,7 +70,9 @@ function stopBGM() {
     } catch(e) {}
 }
 
-// --- 🎮 ゲーム基本パラメータ ---
+// ==========================================
+// 3. ゲーム基本定数・グローバル変数
+// ==========================================
 const ROWS = 15; 
 const COLS =  8;  
 const RADIUS = 19;
@@ -89,13 +96,14 @@ let score = 0;
 let currentStage = 1;
 const maxStages = 10;
 
+// --- 対戦・ゲームモード状態 ---
 let gameMode = 'single'; 
-let battleType = 'お邪魔対戦'; // 常にターン制お邪魔対戦
+let battleType = 'お邪魔対戦'; // ターン制お邪魔対戦
 let targetWins = 1;
 let myWins = 0;
 let opponentWins = 0;
 
-// --- 🎯 消した玉数カウント・マイルストーン演出管理 ---
+// --- カウント・マイルストーン演出 ---
 let myClearedBubbleCount = 0;
 let opponentClearedBubbleCount = 0;
 const TARGET_CLEARED_COUNT = 500;
@@ -104,6 +112,7 @@ let marqueeX = 305;
 let marqueeTimer = 0;
 let triggeredMilestones = new Set(); 
 
+// --- じゃんけん・ターン状態 ---
 let battleRole = ''; 
 let roomCode = '';
 let gameState = 'title';
@@ -117,7 +126,7 @@ const TURN_TIME_LIMIT = 10;
 let turnRemainingTime = TURN_TIME_LIMIT;
 let turnTimerInterval = null;
 
-// --- 🎁 アイテムシステム管理変数 ---
+// --- アイテムシステム管理変数 ---
 let itemStockCounts = [0, 0, 0, 0, 0]; 
 let activeItems = []; 
 let isRouletteActive = false;
@@ -130,6 +139,7 @@ let colorChangeSourceColor = '';
 
 let piercingClearedThisTurn = 0;
 
+// --- 射出・物理計算パラメータ ---
 let shooterX = 200; 
 let shooterY = canvas.height - 70;
 let bulletX = shooterX;
@@ -151,6 +161,7 @@ const MIN_SPEED = 8;
 const MAX_SPEED = 24;
 let isMoving = false;
 
+// --- エフェクト・演出オブジェクト ---
 let fallingBubbles = [];
 let flashingBubbles = [];
 let particles = [];
@@ -165,6 +176,7 @@ let shakeTimer = 0;
 let opponentTurnNoticeText = "";
 let opponentTurnNoticeTimer = 0;
 
+// --- タイムリミット・通信 ---
 const STAGE_TIME_LIMIT = 180; 
 let remainingTime = STAGE_TIME_LIMIT;
 let timerInterval = null;
@@ -174,6 +186,9 @@ let peer = null;
 let conn = null;
 const PEER_PREFIX = 'pb-game-room-2026-v7-';
 
+// ==========================================
+// 4. 画面遷移・タイマー管理
+// ==========================================
 function showScreen(screenId) {
     document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
     if (screenId === '') return;
@@ -253,6 +268,9 @@ function forceTimeoutTurnEnd() {
     switchTurnToOpponent();
 }
 
+// ==========================================
+// 5. ステージ・グリッド初期化
+// ==========================================
 function getRandomGridCell() {
     let color = BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)];
     let isMystery = false;
@@ -343,6 +361,9 @@ function startSinglePlay() {
     showScreen('');
 }
 
+// ==========================================
+// 6. ネットワーク通信 (PeerJS 対戦機能)
+// ==========================================
 function setupRole(role) {
     battleRole = role;
     closeNetwork();
@@ -531,6 +552,9 @@ function startNextRound() {
     startJankenPhase();
 }
 
+// ==========================================
+// 7. じゃんけんフェーズ
+// ==========================================
 function startJankenPhase() {
     battleTurnState = 'janken';
     myJankenChoice = '';
@@ -713,6 +737,9 @@ function executeOpponentAction(data) {
     }
 }
 
+// ==========================================
+// 8. アナウンス（電光掲示板・演出）
+// ==========================================
 function checkMilestoneAndTriggerMarquee(count) {
     let milestones = [100, 200, 300, 400, 450];
     for (let m of milestones) {
@@ -730,6 +757,9 @@ function triggerMarqueeAnnouncement(text) {
     marqueeTimer = 180; 
 }
 
+// ==========================================
+// 9. アイテムシステム (ルーレット & 色変更)
+// ==========================================
 function triggerItemRoulette() {
     isRouletteActive = true;
     isRouletteStopping = false;
@@ -988,6 +1018,9 @@ function clickItemButton(idx) {
     }
 }
 
+// ==========================================
+// 10. お邪魔玉飛来・計算処理
+// ==========================================
 function countWallReflections(launchAngle, speed) {
     let simX = shooterX;
     let simY = shooterY;
@@ -1034,7 +1067,6 @@ function countWallReflections(launchAngle, speed) {
     return reflections;
 }
 
-// 【バグ修正】お邪魔玉の発射処理
 function launchOjamaProjectilesFromBottom(amount) {
     if (amount <= 0) return;
     let safeAmount = Math.min(amount, 15);
@@ -1106,6 +1138,9 @@ function applyOjamaToGrid(cellData, targetR, targetC) {
     checkGameOverCondition();
 }
 
+// ==========================================
+// 11. ゲーム勝敗・勝敗判定 logic
+// ==========================================
 function retryStage() {
     bombUsesLeft = 2;
     remainingTime = STAGE_TIME_LIMIT;
@@ -1338,6 +1373,9 @@ function checkBattleSetEnd(roundWinner) {
     }
 }
 
+// ==========================================
+// 12. パーティクル・紙吹雪演出
+// ==========================================
 function initWinParticles() {
     particles = [];
     fireworks = [];
@@ -1450,6 +1488,9 @@ function drawParticles() {
     }
 }
 
+// ==========================================
+// 13. 入力（タッチ & マウス）イベント処理
+// ==========================================
 function getTouchPos(e) {
     const rect = canvas.getBoundingClientRect();
     let clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
@@ -1590,6 +1631,9 @@ function releaseBullet() {
     pullX = 0; pullY = 0;
 }
 
+// ==========================================
+// 14. 泡（玉）の消去・物理ロジック
+// ==========================================
 function getPixelCoords(r, c) {
     let offsetX = (r % 2 === 1) ? RADIUS : 0;
     let x = c * DIAMETER + RADIUS + offsetX;
@@ -1697,6 +1741,9 @@ function markConnectedFromCeiling(r, c, visited) {
     for (let n of neighbors) markConnectedFromCeiling(r + n[0], c + n[1], visited);
 }
 
+// ==========================================
+// 15. フレーム更新 (Update)
+// ==========================================
 function update() {
     if (gameState === 'gameclear' || gameState === 'battle_result') {
         updateParticles();
@@ -1812,7 +1859,6 @@ function update() {
     }
 }
 
-// 【バグ修正】お邪魔玉送信および発射判定の修正
 function snapBullet() {
     let wasPiercing = activeItems.includes(3);
     isMoving = false;
@@ -1945,6 +1991,9 @@ function snapBullet() {
     checkGameOverCondition();
 }
 
+// ==========================================
+// 16. 描画 (Draw) ロジック
+// ==========================================
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1959,6 +2008,7 @@ function draw() {
         ctx.translate(offsetX, offsetY);
     }
 
+    // --- 右側サイドパネルの描画 ---
     ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(305, 0, 95, canvas.height);
     ctx.strokeStyle = "#444";
@@ -2050,6 +2100,7 @@ function draw() {
     }
     ctx.textAlign = "left";
 
+    // --- デンジャーライン（危険ライン）描画 ---
     let dangerRow = ROWS - 1;
     let dangerY = dangerRow * ROW_HEIGHT + TOP_MARGIN;
     ctx.save();
@@ -2062,6 +2113,7 @@ function draw() {
     ctx.stroke();
     ctx.restore();
 
+    // --- メインフィールドのグリッド玉描画 ---
     for (let r = 0; r < ROWS; r++) {
         let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
         for (let c = 0; c < colsInRow; c++) {
@@ -2092,6 +2144,7 @@ function draw() {
         drawBubble(oj.x, oj.y, oj.cellData.color, RADIUS, true, oj.cellData.isMystery);
     }
 
+    // --- 発射・引っ張りガイド線描画 ---
     if (isDragging) {
         let pullDist = Math.hypot(pullX, pullY);
         if (pullDist > 8) {
@@ -2110,6 +2163,7 @@ function draw() {
         drawBubble(shooterX, shooterY, bulletData.color, RADIUS, false, bulletData.isMystery);
     }
 
+    // --- 各種オーバーレイ通知（電光掲示板・相手のターン・カウントダウン） ---
     if (marqueeTimer > 0 && activeMarqueeText !== "") {
         ctx.save();
         ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
@@ -2292,6 +2346,9 @@ function drawUnbreakableBubble(x, y, r) {
     ctx.strokeStyle = "#ff3333"; ctx.lineWidth = 2.5; ctx.stroke(); ctx.closePath();
 }
 
+// ==========================================
+// 17. カスタムスキン・設定モーダル
+// ==========================================
 function openSettings() {
     let listContainer = document.getElementById('settings-list');
     if (!listContainer) return;
@@ -2366,6 +2423,9 @@ function closeSettings() {
     if (settingsOverlay) settingsOverlay.style.display = 'none';
 }
 
+// ==========================================
+// 18. メインゲームループ・起動処理
+// ==========================================
 function loop() {
     update();
     draw();
