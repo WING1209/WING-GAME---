@@ -3,357 +3,258 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>oo WING GAME玉</title>
-<!-- PeerJS (通信用ライブラリ) -->
+<title>WING GAME</title>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
 * {
-    box-sizing: border-box;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
+  box-sizing: border-box;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 body {
-    margin: 0;
-    padding: 0;
-    background: #111;
-    color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-    touch-action: none;
+  margin: 0;
+  padding: 0;
+  background: #111;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
 }
 #game-container {
-    position: relative;
-    width: 100vw;
-    height: 100dvh;
-    max-width: 480px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 canvas {
-    background: #1a1a1a;
-    box-shadow: 0 0 15px rgba(0,0,0,0.8);
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    z-index: 1;
-    touch-action: none;
+  background: #1a1a1a;
+  box-shadow: 0 0 15px rgba(0,0,0,0.8);
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 1;
+  touch-action: none;
 }
 .overlay-screen {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(17, 17, 17, 0.95);
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    z-index: 100;
-    text-align: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(17, 17, 17, 0.95);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+  text-align: center;
 }
 .overlay-screen h2 {
-    color: #ffcc00;
-    font-size: 24px;
-    margin-bottom: 16px;
-}
-.title-logo {
-    font-size: 28px;
-    font-weight: 900;
-    color: #ffcc00;
-    text-shadow: 0 0 12px rgba(255, 204, 0, 0.6);
-    margin-bottom: 30px;
-    animation: dropDown 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-@keyframes dropDown {
-    0% { transform: translateY(-200px); opacity: 0; }
-    100% { transform: translateY(0); opacity: 1; }
+  color: #ffcc00;
+  font-size: 24px;
+  margin-bottom: 15px;
 }
 .menu-btn {
-    width: 220px;
-    height: 48px;
-    margin: 8px 0;
-    font-size: 16px;
-    font-weight: bold;
-    color: #fff;
-    background: linear-gradient(180deg, #ff9900, #cc7700);
-    border: none;
-    border-radius: 24px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-    cursor: pointer;
-    touch-action: manipulation;
-}
-.menu-btn:active {
-    transform: scale(0.96);
+  background: #ff9800;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 25px;
+  margin: 8px 0;
+  width: 80%;
+  max-width: 260px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  touch-action: manipulation;
 }
 .menu-btn.sub {
-    background: linear-gradient(180deg, #555, #333);
+  background: #2196f3;
 }
 .menu-btn.gray {
-    background: #444;
-    color: #888;
+  background: #555;
 }
-.form-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-    width: 100%;
+.menu-btn:active {
+  transform: scale(0.96);
 }
-.form-group label {
-    font-size: 14px;
-    color: #ffcc00;
+input[type="text"], select {
+  width: 80%;
+  max-width: 260px;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: #222;
+  color: #fff;
+  margin-bottom: 15px;
+  text-align: center;
 }
-select, input[type="text"] {
-    width: 200px;
-    height: 40px;
-    font-size: 16px;
-    text-align: center;
-    border-radius: 8px;
-    border: 2px solid #ffcc00;
-    background: #222;
-    color: #fff;
+/* 右側GUIパネル */
+#right-gui-panel {
+  position: absolute;
+  right: 5px;
+  top: 50px;
+  width: 110px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 6px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-
-/* ==========================================
-   追加：画面上のGUI・プレイヤー名・アイテムボタン設定
-   ========================================== */
-
-/* 左上：参加プレイヤー一覧（2～5人） */
-.left-player-panel {
-    position: absolute;
-    left: 8px;
-    top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    z-index: 50;
-    pointer-events: none;
+.my-name-display {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffcc00;
+  text-align: center;
+  border-bottom: 1px solid #555;
+  padding-bottom: 4px;
 }
-.player-badge {
-    font-size: 11px;
-    font-weight: bold;
-    padding: 3px 6px;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.6);
-    color: #ccc;
-    border: 1px solid #555;
+.gui-item-btn {
+  background: #333;
+  color: #fff;
+  border: 1px solid #666;
+  border-radius: 6px;
+  padding: 6px 4px;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
 }
-.player-badge.active-turn {
-    color: #00ffff;
-    border-color: #00ffff;
-    background: rgba(0, 255, 255, 0.2);
+.gui-item-btn.active {
+  background: #4caf50;
+  font-weight: bold;
 }
-
-/* 右上：自分の名前＆大型GUIパネル */
-.right-gui-panel {
-    position: absolute;
-    right: 8px;
-    top: 10px;
-    width: 95px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    z-index: 50;
+.gui-item-btn.large {
+  font-size: 13px;
+  padding: 8px 4px;
+  border: 2px solid #ff9800;
 }
-
-/* 自プレイヤー名表示（強調・大きめ） */
-.my-player-display {
-    width: 100%;
-    font-size: 14px;
-    font-weight: bold;
-    color: #ffcc00;
-    background: rgba(0, 0, 0, 0.85);
-    border: 2px solid #ffcc00;
-    border-radius: 8px;
-    padding: 6px 2px;
-    text-align: center;
-    word-break: break-all;
-    box-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
+/* ルーレット・演出モーダル */
+#center-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.9);
+  border: 2px solid #ffcc00;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  z-index: 200;
+  display: none;
+  width: 80%;
+  max-width: 300px;
 }
-
-/* 大型アイテムボタン */
-.large-item-btn {
-    width: 90px;
-    height: 52px;
-    font-size: 13px;
-    font-weight: bold;
-    color: #fff;
-    background: linear-gradient(180deg, #ff4d4d, #990000);
-    border: 2px solid #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.6);
-    touch-action: manipulation;
-    cursor: pointer;
-}
-.large-item-btn:active {
-    transform: scale(0.95);
-}
-.large-item-btn.blue {
-    background: linear-gradient(180deg, #4da6ff, #0059b3);
-}
-.large-item-btn.green {
-    background: linear-gradient(180deg, #4dff4d, #009900);
-}
-
-/* GAME START演出アニメーション */
-.game-start-overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 40px;
-    font-weight: 900;
-    color: #ff3333;
-    text-shadow: 0 0 20px #ffff00, 0 0 10px #ffffff;
-    z-index: 2000;
-    white-space: nowrap;
-    pointer-events: none;
-    animation: zoomIn 0.6s ease-out;
-}
-@keyframes zoomIn {
-    0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-}
-
-/* モーダルダイアログ（ターゲット選択用） */
-.modal-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.85);
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 1500;
+#big-announce {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  font-weight: 900;
+  color: #ffeb3b;
+  text-shadow: 0 0 10px #ff5722;
+  z-index: 300;
+  display: none;
+  pointer-events: none;
+  text-align: center;
+  width: 100%;
 }
 </style>
 </head>
 <body>
-
 <div id="game-container">
-    <!-- ゲームメインキャンバス -->
-    <canvas id="gameCanvas"></canvas>
+  <canvas id="gameCanvas" width="400" height="660"></canvas>
 
-    <!-- 左上：対戦プレイヤー一覧表示エリア -->
-    <div id="left-player-panel" class="left-player-panel"></div>
+  <!-- 右側GUIパネル -->
+  <div id="right-gui-panel" style="display:none;">
+    <div id="gui-my-name" class="my-name-display">PLAYER</div>
+    <button class="gui-item-btn" id="btn-item-oshitsuke" onclick="useItemOshitsuke()">おしつけ</button>
+    <button class="gui-item-btn" id="btn-item-hassha" onclick="useItemHassha()">発射</button>
+    <button class="gui-item-btn" id="btn-item-bougyo" onclick="useItemBougyo()">防御</button>
+  </div>
 
-    <!-- 右上：大型GUI（自分の名前 ＋ 追加アイテム3種） -->
-    <div class="right-gui-panel">
-        <div id="my-player-name-display" class="my-player-display">PLAYER</div>
-        <button id="btn-item-push" class="large-item-btn" onclick="useSpecialItem('push')">おしつけ</button>
-        <button id="btn-item-shoot" class="large-item-btn blue" onclick="useSpecialItem('forced_shoot')">発 射</button>
-        <button id="btn-item-guard" class="large-item-btn green" onclick="useSpecialItem('guard')">防 御</button>
-    </div>
+  <!-- タイトル画面 -->
+  <div id="screen-title" class="overlay-screen" style="display:flex;">
+    <h1 style="color:#ffcc00; font-size:32px; margin-bottom:30px;">WING★GAME</h1>
+    <button class="menu-btn" onclick="selectMainMenu('host')">ホスト</button>
+    <button class="menu-btn sub" onclick="selectMainMenu('guest')">ゲスト</button>
+    <button class="menu-btn gray" onclick="selectMainMenu('exit')">終了</button>
+  </div>
 
-    <!-- ① タイトル画面 -->
-    <div id="screen-title" class="overlay-screen" style="display: flex;">
-        <div class="title-logo">oo WING GAME玉</div>
-        <button class="menu-btn" onclick="showScreen('screen-multi-menu')">複数人対戦</button>
-        <button class="menu-btn sub" onclick="startSinglePlay()">1人プレイ</button>
-    </div>
+  <!-- ホスト設定：人数選択 -->
+  <div id="screen-host-players" class="overlay-screen">
+    <h2>対戦人数の選択</h2>
+    <select id="select-player-count">
+      <option value="2">2人対戦</option>
+      <option value="3">3人対戦</option>
+      <option value="4">4人対戦</option>
+      <option value="5">5人対戦</option>
+    </select>
+    <button class="menu-btn" onclick="confirmPlayerCount()">次へ</button>
+  </div>
 
-    <!-- ② 複数人対戦メインメニュー（ホスト・ゲスト・戻る） -->
-    <div id="screen-multi-menu" class="overlay-screen">
-        <h2>複数人対戦</h2>
-        <button class="menu-btn" onclick="setupMultiplayerRole('host')">ホスト（部屋作成）</button>
-        <button class="menu-btn" onclick="setupMultiplayerRole('guest')">ゲスト（部屋参加）</button>
-        <button class="menu-btn sub" onclick="showScreen('screen-title')">戻 る</button>
-    </div>
+  <!-- ホスト設定：ID・ゲームルール設定 -->
+  <div id="screen-host-rules" class="overlay-screen">
+    <h2>部屋設定</h2>
+    <p>共有ID: <span id="display-room-id" style="font-size:22px; color:#4da6ff; font-weight:bold;">----</span></p>
+    <label>勝利条件:</label>
+    <select id="select-win-condition">
+      <option value="1">1勝先取</option>
+      <option value="2">2勝先取</option>
+    </select>
+    <label>お邪魔玉倍率:</label>
+    <select id="select-ojama-rate">
+      <option value="1">1倍 (標準)</option>
+      <option value="2">2倍</option>
+      <option value="3">3倍</option>
+    </select>
+    <button class="menu-btn" onclick="startHostWaiting()">待機部屋を開く</button>
+  </div>
 
-    <!-- ③ ホスト設定画面（人数、勝利条件、お邪魔玉倍率） -->
-    <div id="screen-host-config" class="overlay-screen">
-        <h2>ホスト設定</h2>
-        <div class="form-group">
-            <label>対戦人数 (2～5人):</label>
-            <select id="select-max-players">
-                <option value="2">2人</option>
-                <option value="3">3人</option>
-                <option value="4">4人</option>
-                <option value="5">5人</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>勝利条件:</label>
-            <select id="select-target-wins">
-                <option value="1">先に1勝</option>
-                <option value="2">先に2勝</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>お邪魔玉倍率設定:</label>
-            <select id="select-ojama-rate">
-                <option value="1">1倍 (そのまま)</option>
-                <option value="2">2倍 (2倍飛ぶ)</option>
-                <option value="3">3倍 (3倍飛ぶ)</option>
-            </select>
-        </div>
-        <button class="menu-btn" onclick="confirmHostConfig()">ID発行・接続待機へ</button>
-        <button class="menu-btn sub" onclick="showScreen('screen-multi-menu')">戻 る</button>
-    </div>
+  <!-- ゲスト参加画面 -->
+  <div id="screen-guest-join" class="overlay-screen">
+    <h2>ID入力</h2>
+    <input type="text" id="input-room-id" maxlength="4" placeholder="4桁のIDを入力">
+    <button class="menu-btn" onclick="joinRoomByCode()">接続</button>
+    <p id="guest-status-msg" style="color:#ff4d4d; font-size:14px;"></p>
+  </div>
 
-    <!-- ④ ホスト接続待機画面 -->
-    <div id="screen-host-wait-players" class="overlay-screen">
-        <h2>対戦相手を待っています...</h2>
-        <p>ルームIDナンバー</p>
-        <div id="display-room-code" style="font-size: 36px; font-weight: bold; color: #ffcc00; margin: 15px 0;">----</div>
-        <p id="wait-player-count-text" style="color: #aaa;">接続人数: 1 / 2 人</p>
-    </div>
+  <!-- 待機部屋 ＆ 名前入力 -->
+  <div id="screen-lobby" class="overlay-screen">
+    <h2>プレイヤー登録</h2>
+    <p id="lobby-status">接続プレイヤーを待っています...</p>
+    <input type="text" id="input-player-name" maxlength="6" placeholder="名前 (全角6文字以内)">
+    <button class="menu-btn" id="btn-submit-name" onclick="submitPlayerName()">決定</button>
+  </div>
 
-    <!-- ⑤ ゲスト用ID入力画面 -->
-    <div id="screen-guest-join" class="overlay-screen">
-        <h2>ルームID入力</h2>
-        <div class="form-group">
-            <input type="text" id="input-room-code" maxlength="4" placeholder="4桁の数字">
-        </div>
-        <p id="status-message" style="color: #ff4d4d; font-size: 14px; min-height: 20px;"></p>
-        <button class="menu-btn" onclick="joinRoom()">参 加</button>
-        <button class="menu-btn sub" onclick="showScreen('screen-multi-menu')">戻 る</button>
-    </div>
+  <!-- モーダル・演出用 -->
+  <div id="center-modal">
+    <h3 id="modal-title" style="color:#ffcc00; margin-top:0;">ルーレット</h3>
+    <p id="modal-body" style="font-size:18px; margin:15px 0;"></p>
+    <button class="menu-btn" id="modal-btn" onclick="handleModalClick()">タップ</button>
+  </div>
 
-    <!-- ⑥ プレイヤー名入力画面（全角6文字制限） -->
-    <div id="screen-input-name" class="overlay-screen">
-        <h2>プレイヤー名入力</h2>
-        <p style="font-size: 12px; color: #aaa;">(全角6文字以内で入力してください)</p>
-        <div class="form-group">
-            <input type="text" id="input-player-name" maxlength="6" placeholder="なまえ">
-        </div>
-        <button class="menu-btn" onclick="submitPlayerName()">確 定</button>
-    </div>
-
-    <!-- ⑦ ルーレット順番決定画面 -->
-    <div id="screen-order-roulette" class="overlay-screen">
-        <h2>順番決定ルーレット</h2>
-        <p style="font-size: 13px; color: #aaa;">画面をタップしてルーレットを停止してください</p>
-        <div id="roulette-number-box" style="font-size: 48px; font-weight: 900; color: #ffcc00; margin: 25px 0; min-height: 60px;">?</div>
-        <div id="roulette-result-display" style="font-size: 20px; font-weight: bold; color: #00ffff; min-height: 30px;"></div>
-        <button id="btn-ready-start" class="menu-btn" style="display: none; margin-top: 20px;" onclick="sendReadyStart()">ゲーム開始準備</button>
-    </div>
-
-    <!-- ターゲット選択用モーダルダイアログ（おしつけ・発射アイテム用） -->
-    <div id="modal-target-select" class="modal-overlay">
-        <h3 style="color: #ffcc00; margin-bottom: 15px;">対象プレイヤーを選択</h3>
-        <div id="target-player-buttons" style="display: flex; flex-direction: column; gap: 10px;"></div>
-    </div>
+  <!-- 画面中央ビッグアナウンス -->
+  <div id="big-announce"></div>
 </div>
 
-<!-- JavaScriptコードの読み込み -->
 <script src="script.js"></script>
 </body>
 </html>
