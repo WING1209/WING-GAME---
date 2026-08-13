@@ -2,90 +2,676 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>パズル対戦ゲーム</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CYBER PUZZLE BATTLE</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        /* ==========================================
+           スマホ専用 ネオン・サイバーUI スタイル
+           ========================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            background-color: #05050a;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* スマホのアスペクト比に固定したフレーム */
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 430px; /* iPhone Pro Maxクラスの幅 */
+            max-height: 932px;
+            background: radial-gradient(circle at center, #101428 0%, #05050a 100%);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* キャンバス描画領域 */
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* UIオーバーレイ共通 */
+        .overlay-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(5, 5, 10, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            gap: 20px;
+            z-index: 100;
+        }
+
+        /* タイトルロゴ（ネオン発光アニメーション） */
+        .main-title-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .sub-title {
+            font-size: 12px;
+            letter-spacing: 4px;
+            color: #00f3ff;
+            text-shadow: 0 0 8px #00f3ff;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .main-logo {
+            font-size: 38px;
+            font-weight: 900;
+            font-style: italic;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #00f3ff, #ff0055);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 12px rgba(0, 243, 255, 0.6));
+            animation: pulseGlow 2s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { filter: drop-shadow(0 0 10px rgba(0, 243, 255, 0.5)); }
+            100% { filter: drop-shadow(0 0 20px rgba(255, 0, 85, 0.8)); }
+        }
+
+        /* モダン・スマホ用ガラスモルフィズムカード */
+        .menu-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            padding: 20px;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.05);
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #d0d5e0;
+            font-weight: 600;
+        }
+
+        input, select {
+            padding: 10px 14px;
+            font-size: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            background-color: rgba(15, 20, 35, 0.8);
+            color: #00f3ff;
+            outline: none;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* アクションボタン（スマホ操作に適したサイズとネオンエフェクト） */
+        .btn-action {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #05050a;
+            background: linear-gradient(90deg, #00f3ff, #00aaff);
+            border: none;
+            border-radius: 14px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .btn-action:active {
+            transform: scale(0.97);
+            box-shadow: 0 0 5px rgba(0, 243, 255, 0.8);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #aaa;
+            box-shadow: none;
+        }
+
+        /* ゲーム操作用UI */
+        #game-ui {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            z-index: 10;
+        }
+
+        .item-bar {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-item {
+            flex: 1;
+            padding: 10px 4px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #00f3ff;
+            color: #00f3ff;
+            border-radius: 10px;
+            backdrop-filter: blur(4px);
+        }
+
+        .status-badge {
+            font-size: 13px;
+            color: #ff0055;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+    </style>
 </head>
 <body>
     <div id="game-container">
         <!-- ゲーム描画用キャンバス (360x640固定解像度) -->
         <canvas id="gameCanvas" width="360" height="640"></canvas>
 
-        <!-- 1. タイトル画面 -->
+        <!-- 1. スタイリッシュタイトル画面 -->
         <div id="screen-title" class="overlay-screen">
-            <h1 class="main-logo">パズル対戦</h1>
-            <button onclick="selectMainMenu('host')">部屋を作る (ホスト)</button>
-            <button onclick="selectMainMenu('guest')">部屋に入る (ゲスト)</button>
+            <div class="main-title-container">
+                <div class="sub-title">REAL-TIME MULTI PUZZLE</div>
+                <div class="main-logo">CYBER SPHERE</div>
+            </div>
+            <button class="btn-action" onclick="selectMainMenu('host')">部屋を作る (HOST)</button>
+            <button class="btn-action btn-secondary" onclick="selectMainMenu('guest')">部屋に入る (GUEST)</button>
         </div>
 
         <!-- 2. ホスト設定画面 -->
         <div id="screen-host-config" class="overlay-screen" style="display:none;">
-            <h2>対戦設定</h2>
+            <h2 style="color:#00f3ff; font-style:italic;">MATCH CONFIG</h2>
             <div class="menu-box">
-                <label>人数: 
+                <label>対戦人数
                     <select id="select-max-players">
-                        <option value="2">2人</option>
-                        <option value="3">3人</option>
-                        <option value="4">4人</option>
-                        <option value="5">5人</option>
+                        <option value="2">2 Players</option>
+                        <option value="3">3 Players</option>
+                        <option value="4">4 Players</option>
                     </select>
                 </label>
-                <label>勝利数: 
+                <label>先取数
                     <select id="select-target-wins">
-                        <option value="1">1本先取</option>
-                        <option value="2">2本先取</option>
-                        <option value="3">3本先取</option>
+                        <option value="1">1 WIN</option>
+                        <option value="2">2 WINS</option>
+                        <option value="3">3 WINS</option>
                     </select>
                 </label>
-                <label>お邪魔倍率: 
+                <label>お邪魔倍率
                     <select id="select-ojama-mult">
-                        <option value="1">1倍</option>
-                        <option value="2">2倍</option>
+                        <option value="1">1.0x</option>
+                        <option value="2">2.0x</option>
                     </select>
                 </label>
             </div>
-            <button onclick="confirmHostSettings()">部屋作成</button>
+            <button class="btn-action" onclick="confirmHostSettings()">ルーム作成</button>
         </div>
 
-        <!-- 3. ホスト部屋待機画面 -->
+        <!-- 3. ホスト待機画面 -->
         <div id="screen-host-wait" class="overlay-screen" style="display:none;">
-            <h2>部屋コード: <span id="display-room-code">----</span></h2>
-            <p id="host-wait-status">サーバー接続中...</p>
+            <div class="sub-title">ROOM CODE</div>
+            <div id="display-room-code" style="font-size: 48px; font-weight: 900; color: #00f3ff; letter-spacing: 6px;">----</div>
+            <div id="host-wait-status" class="status-badge">CONNECTING...</div>
         </div>
 
         <!-- 4. ゲスト部屋参加画面 -->
         <div id="screen-guest-join" class="overlay-screen" style="display:none;">
-            <h2>部屋コード入力</h2>
-            <input type="number" id="input-room-code" placeholder="4桁の数字">
-            <button onclick="joinRoom()">参加</button>
-            <p id="guest-status-msg"></p>
+            <h2 style="color:#00f3ff; font-style:italic;">ENTER CODE</h2>
+            <input type="number" id="input-room-code" placeholder="4桁のコード" style="font-size: 24px; width: 80%;">
+            <button class="btn-action" onclick="joinRoom()">接続する</button>
+            <p id="guest-status-msg" class="status-badge"></p>
         </div>
 
         <!-- 5. プレイヤー名前入力画面 -->
         <div id="screen-name-input" class="overlay-screen" style="display:none;">
-            <h2>名前入力</h2>
-            <input type="text" id="input-player-name" maxlength="6" placeholder="名前 (6文字まで)">
-            <button onclick="submitPlayerName()">完了</button>
-            <p id="name-wait-msg"></p>
+            <h2 style="color:#00f3ff; font-style:italic;">PLAYER NAME</h2>
+            <input type="text" id="input-player-name" maxlength="6" placeholder="名前 (6文字まで)" style="font-size: 18px; width: 80%;">
+            <button class="btn-action" onclick="submitPlayerName()">完了</button>
+            <p id="name-wait-msg" class="status-badge"></p>
         </div>
 
         <!-- 6. 順番決めルーレット画面 -->
         <div id="screen-roulette" class="overlay-screen" style="display:none;">
-            <h2>順番決めルーレット</h2>
-            <div id="roulette-display" style="font-size: 56px; font-weight: bold; margin: 20px; color:#ffcc00;">1</div>
-            <p id="my-order-result" style="font-size: 18px; height: 24px;"></p>
-            <button id="btn-roulette-action" onclick="handleRouletteTap()">ストップ</button>
+            <div class="sub-title">TURN ORDER</div>
+            <div id="roulette-display" style="font-size: 72px; font-weight: 900; color:#ff0055; text-shadow:0 0 20px #ff0055;">1</div>
+            <p id="my-order-result" style="font-size: 16px; height: 24px; color:#00f3ff;"></p>
+            <button id="btn-roulette-action" class="btn-action" onclick="handleRouletteTap()">STOP</button>
         </div>
 
-        <!-- 7. ゲームプレイ用UI (アイテムボタン等) -->
-        <div id="game-ui" style="display:none; position:absolute; bottom:5px; right:5px; z-index:10;">
-            <button onclick="useItemOshitsuke()" style="padding:4px 8px; font-size:11px;">押し付け</button>
-            <button onclick="useItemForceShoot()" style="padding:4px 8px; font-size:11px;">強制発射</button>
-            <button onclick="useItemDefense()" style="padding:4px 8px; font-size:11px;">ガード</button>
+        <!-- 7. ゲームプレイUI -->
+        <div id="game-ui">
+            <div class="item-bar">
+                <button class="btn-item" onclick="useItemOshitsuke()">押し付け</button>
+                <button class="btn-item" onclick="useItemForceShoot()">強制発射</button>
+                <button class="btn-item" onclick="useItemDefense()">ガード</button>
+            </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- ==========================================
+       ロジック JavaScript
+       ========================================== -->
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const PEER_PREFIX = 'cyber-puzzle-v2026-';
+        const ROWS = 15;
+        const COLS = 8;
+        const RADIUS = 19;
+        const DIAMETER = RADIUS * 2;
+        const ROW_HEIGHT = RADIUS * Math.sqrt(3);
+        const BASE_COLORS = ['#ff0055', '#00f3ff', '#00ff66', '#ffe600', '#b000ff'];
+        const SPECIAL_RAINBOW = 'SPECIAL_RAINBOW';
+
+        let gameState = 'title';
+        let battleRole = '';
+        let roomCode = '';
+        let myPlayerId = 0;
+        let maxPlayers = 2;
+        let targetWins = 1;
+        let ojamaMultiplier = 1;
+
+        let peer = null;
+        let guestConn = null;
+        let hostConnections = [];
+
+        let players = []; 
+        let readyCount = 0;
+
+        let rouletteState = 'idle';
+        let myOrderNum = 0;
+        let rouletteInterval = null;
+
+        let battleTurnState = 'waiting'; 
+        let currentTurnPlayerId = 0;
+        let grid = [];
+
+        let shooterX = 180;
+        let shooterY = 570;
+        let bulletX = shooterX;
+        let bulletY = shooterY;
+        let bulletVX = 0;
+        let bulletVY = 0;
+        let bulletData = null;
+        let nextBubble = null;
+        let isMoving = false;
+        const MAX_SPEED = 18;
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
+            if (screenId) {
+                let el = document.getElementById(screenId);
+                if (el) el.style.display = 'flex';
+            }
+        }
+
+        function selectMainMenu(choice) {
+            closeNetwork();
+            if (choice === 'host') {
+                battleRole = 'host';
+                showScreen('screen-host-config');
+            } else if (choice === 'guest') {
+                battleRole = 'guest';
+                document.getElementById('guest-status-msg').innerText = '';
+                showScreen('screen-guest-join');
+            }
+        }
+
+        function closeNetwork() {
+            if (guestConn) { try { guestConn.close(); } catch(e){} guestConn = null; }
+            hostConnections.forEach(c => { try { c.close(); } catch(e){} });
+            hostConnections = [];
+            if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
+        }
+
+        function confirmHostSettings() {
+            maxPlayers = parseInt(document.getElementById('select-max-players').value);
+            targetWins = parseInt(document.getElementById('select-target-wins').value);
+            ojamaMultiplier = parseInt(document.getElementById('select-ojama-mult').value);
+
+            roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+            document.getElementById('display-room-code').innerText = roomCode;
+            document.getElementById('host-wait-status').innerText = "CONNECTING...";
+            showScreen('screen-host-wait');
+
+            peer = new Peer(PEER_PREFIX + roomCode);
+            players = [{ id: 0, name: '', order: 0, wins: 0 }];
+            myPlayerId = 0;
+
+            peer.on('open', () => updateHostWaitStatus());
+
+            peer.on('connection', (conn) => {
+                let assignedId = players.length;
+                if (assignedId >= maxPlayers) { conn.close(); return; }
+
+                hostConnections.push(conn);
+                players.push({ id: assignedId, name: '', order: 0, wins: 0 });
+
+                conn.on('open', () => {
+                    conn.send({ type: 'init_guest', playerId: assignedId, maxPlayers: maxPlayers, ojamaMult: ojamaMultiplier, players: players });
+                    updateHostWaitStatus();
+                    if (players.length === maxPlayers) {
+                        broadcastHost({ type: 'start_name_input', players: players });
+                        showScreen('screen-name-input');
+                    }
+                });
+
+                conn.on('data', (data) => handleHostReceiveData(assignedId, data));
+            });
+        }
+
+        function updateHostWaitStatus() {
+            let el = document.getElementById('host-wait-status');
+            if (el) el.innerText = `WAITING... (${players.length}/${maxPlayers})`;
+        }
+
+        function joinRoom() {
+            let code = document.getElementById('input-room-code').value.trim();
+            let statusMsg = document.getElementById('guest-status-msg');
+
+            if (code.length !== 4) { statusMsg.innerText = "4桁のコードを入力してください"; return; }
+            roomCode = code;
+            statusMsg.innerText = "CONNECTING...";
+
+            peer = new Peer();
+            peer.on('open', () => {
+                guestConn = peer.connect(PEER_PREFIX + roomCode);
+                guestConn.on('open', () => { statusMsg.innerText = "CONNECTED!"; });
+                guestConn.on('data', handleGuestReceiveData);
+            });
+        }
+
+        function broadcastHost(data) {
+            hostConnections.forEach(c => { if (c && c.open) c.send(data); });
+        }
+
+        function handleHostReceiveData(fromId, data) {
+            if (data.type === 'submit_name') {
+                let p = players.find(item => item.id === fromId);
+                if (p) p.name = data.name;
+                broadcastHost({ type: 'sync_players', players: players });
+                checkAllNamesSubmitted();
+            } else if (data.type === 'ready_start') {
+                readyCount++;
+                if (readyCount === maxPlayers) {
+                    broadcastHost({ type: 'game_start_signal', players: players });
+                    launchGameStartNotice();
+                }
+            }
+        }
+
+        function handleGuestReceiveData(data) {
+            if (data.type === 'init_guest') {
+                myPlayerId = data.playerId;
+                maxPlayers = data.maxPlayers;
+                if (data.players) players = data.players;
+            } else if (data.type === 'start_name_input') {
+                if (data.players) players = data.players;
+                showScreen('screen-name-input');
+            } else if (data.type === 'start_roulette') {
+                players = data.players;
+                showScreen('screen-roulette');
+                startRouletteAnimation();
+            } else if (data.type === 'game_start_signal') {
+                if (data.players) players = data.players;
+                launchGameStartNotice();
+            }
+        }
+
+        function submitPlayerName() {
+            let inputName = document.getElementById('input-player-name').value.trim();
+            if (!inputName) inputName = "P" + (myPlayerId + 1);
+
+            let myP = players.find(p => p.id === myPlayerId);
+            if (myP) myP.name = inputName;
+
+            document.getElementById('name-wait-msg').innerText = "WAITING FOR OTHERS...";
+
+            if (battleRole === 'host') {
+                checkAllNamesSubmitted();
+            } else if (guestConn && guestConn.open) {
+                guestConn.send({ type: 'submit_name', name: inputName });
+            }
+        }
+
+        function checkAllNamesSubmitted() {
+            if (players.length < maxPlayers) return;
+            if (players.every(p => p.name && p.name.trim() !== '')) {
+                let orders = Array.from({length: maxPlayers}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+                players.forEach((p, idx) => p.order = orders[idx]);
+
+                broadcastHost({ type: 'start_roulette', players: players });
+                showScreen('screen-roulette');
+                startRouletteAnimation();
+            }
+        }
+
+        function startRouletteAnimation() {
+            rouletteState = 'running';
+            let disp = document.getElementById('roulette-display');
+            let count = 1;
+            rouletteInterval = setInterval(() => {
+                disp.innerText = count;
+                count = (count % maxPlayers) + 1;
+            }, 80);
+        }
+
+        function handleRouletteTap() {
+            let btn = document.getElementById('btn-roulette-action');
+            if (rouletteState === 'running') {
+                clearInterval(rouletteInterval);
+                rouletteState = 'stopped';
+                let myP = players.find(p => p.id === myPlayerId);
+                myOrderNum = myP ? myP.order : 1;
+                document.getElementById('roulette-display').innerText = myOrderNum;
+                document.getElementById('my-order-result').innerText = `YOU ARE NO. ${myOrderNum}`;
+                btn.innerText = "READY";
+            } else if (rouletteState === 'stopped') {
+                rouletteState = 'ready_wait';
+                btn.innerText = "WAITING...";
+                if (battleRole === 'host') {
+                    readyCount++;
+                    if (readyCount === maxPlayers) {
+                        broadcastHost({ type: 'game_start_signal', players: players });
+                        launchGameStartNotice();
+                    }
+                } else if (guestConn && guestConn.open) {
+                    guestConn.send({ type: 'ready_start' });
+                }
+            }
+        }
+
+        function launchGameStartNotice() {
+            showScreen('');
+            document.getElementById('game-ui').style.display = 'block';
+            gameState = 'playing';
+
+            initGridForBattle();
+            bulletData = null;
+            spawnBullet();
+
+            let firstPlayer = players.find(p => p && p.order === 1);
+            currentTurnPlayerId = firstPlayer ? firstPlayer.id : 0;
+            battleTurnState = (myPlayerId === currentTurnPlayerId) ? 'my_turn' : 'opponent_turn';
+
+            let notice = document.createElement('div');
+            notice.style.cssText = "position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); font-size:32px; font-weight:900; color:#00f3ff; text-shadow:0 0 15px #00f3ff; z-index:200; pointer-events:none; font-style:italic;";
+            notice.innerText = "BATTLE START!";
+            document.getElementById('game-container').appendChild(notice);
+
+            setTimeout(() => notice.remove(), 2000);
+        }
+
+        function getRandomGridCell() {
+            return { color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)] };
+        }
+
+        function getRandomShooterBubble() {
+            if (Math.random() < 0.08) return { color: SPECIAL_RAINBOW };
+            return { color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)] };
+        }
+
+        function initGridForBattle() {
+            grid = [];
+            for (let r = 0; r < ROWS; r++) {
+                let row = [];
+                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+                for (let c = 0; c < colsInRow; c++) row.push(null);
+                grid.push(row);
+            }
+            for (let r = 0; r < 5; r++) {
+                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+                for (let c = 0; c < colsInRow; c++) {
+                    grid[r][c] = getRandomGridCell();
+                }
+            }
+        }
+
+        function spawnBullet() {
+            bulletData = bulletData ? nextBubble : getRandomShooterBubble();
+            nextBubble = getRandomShooterBubble();
+
+            shooterX = 180;
+            shooterY = 570;
+            bulletX = shooterX;
+            bulletY = shooterY;
+            bulletVX = 0;
+            bulletVY = 0;
+            isMoving = false;
+        }
+
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+        let touchStartX = 0, touchStartY = 0;
+
+        function handleTouchStart(e) {
+            if (gameState !== 'playing' || isMoving) return;
+            e.preventDefault();
+            let touch = e.touches[0];
+            let rect = canvas.getBoundingClientRect();
+            touchStartX = touch.clientX - rect.left;
+            touchStartY = touch.clientY - rect.top;
+        }
+
+        function handleTouchEnd(e) {
+            if (gameState !== 'playing' || isMoving) return;
+            e.preventDefault();
+            let touch = e.changedTouches[0];
+            let rect = canvas.getBoundingClientRect();
+            let dx = touchStartX - (touch.clientX - rect.left);
+            let dy = touchStartY - (touch.clientY - rect.top);
+
+            if (dy > 20) {
+                let angle = Math.atan2(dx, dy);
+                bulletVX = Math.sin(angle) * MAX_SPEED;
+                bulletVY = -Math.cos(angle) * MAX_SPEED;
+                isMoving = true;
+            }
+        }
+
+        function useItemOshitsuke() { alert("お邪魔攻撃発動！"); }
+        function useItemForceShoot() { alert("強制発射！"); }
+        function useItemDefense() { alert("シールド展開！"); }
+
+        function gameLoop() {
+            ctx.fillStyle = '#05050a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === 'playing') {
+                for (let r = 0; r < ROWS; r++) {
+                    if (!grid[r]) continue;
+                    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+                    let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
+
+                    for (let c = 0; c < colsInRow; c++) {
+                        let cell = grid[r][c];
+                        if (cell) {
+                            let cx = rowXOffset + c * DIAMETER;
+                            let cy = RADIUS + r * ROW_HEIGHT;
+
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, RADIUS - 2, 0, Math.PI * 2);
+                            ctx.fillStyle = (cell.color === SPECIAL_RAINBOW) ? '#ffffff' : cell.color;
+                            ctx.shadowColor = cell.color;
+                            ctx.shadowBlur = 8;
+                            ctx.fill();
+                            ctx.shadowBlur = 0;
+                        }
+                    }
+                }
+
+                if (isMoving && bulletData) {
+                    bulletX += bulletVX;
+                    bulletY += bulletVY;
+                    if (bulletX - RADIUS < 0 || bulletX + RADIUS > canvas.width) bulletVX = -bulletVX;
+                    if (bulletY - RADIUS < 0) {
+                        isMoving = false;
+                        spawnBullet();
+                    }
+                }
+
+                if (bulletData) {
+                    ctx.beginPath();
+                    ctx.arc(bulletX, bulletY, RADIUS - 2, 0, Math.PI * 2);
+                    ctx.fillStyle = (bulletData.color === SPECIAL_RAINBOW) ? '#ffffff' : bulletData.color;
+                    ctx.shadowColor = bulletData.color;
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+
+                if (nextBubble) {
+                    ctx.beginPath();
+                    ctx.arc(35, 605, RADIUS * 0.75, 0, Math.PI * 2);
+                    ctx.fillStyle = (nextBubble.color === SPECIAL_RAINBOW) ? '#ffffff' : nextBubble.color;
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = (battleTurnState === 'my_turn') ? '#00f3ff' : '#ff0055';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText((battleTurnState === 'my_turn') ? "YOUR TURN (SWIPE UP)" : "WAITING...", 180, 632);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
+    </script>
 </body>
 </html>
