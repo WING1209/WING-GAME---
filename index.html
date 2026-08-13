@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>wing game</title>
-<!-- PeerJS (通信用ライブラリ) -->
+<title>wing GAME</title>
+<!-- PeerJS ライブラリ -->
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
 * { box-sizing: border-box; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -12,7 +12,7 @@ body { margin: 0; padding: 0; background: #111; color: #fff; font-family: -apple
 #game-container { position: relative; width: 100vw; height: 100dvh; max-width: 480px; display: flex; flex-direction: row; align-items: center; justify-content: center; }
 canvas { background: #1a1a1a; box-shadow: 0 0 15px rgba(0,0,0,0.8); display: block; width: 75%; height: 100%; object-fit: contain; z-index: 1; touch-action: none; }
 
-/* 右側GUI (レイアウトは変更せず、文字やボタンサイズのみ調整可能に) */
+/* 右側GUI */
 #sidebar-gui { width: 25%; height: 100%; background: #222; border-left: 2px solid #444; display: flex; flex-direction: column; align-items: center; padding: 8px 4px; z-index: 10; overflow-y: auto; }
 .my-name-display { font-size: 16px; font-weight: bold; color: #ffcc00; text-align: center; border: 2px solid #ffcc00; padding: 4px; border-radius: 6px; width: 100%; margin-bottom: 8px; word-break: break-all; }
 .item-btn-large { width: 100%; height: 42px; font-size: 13px; font-weight: bold; margin-bottom: 6px; background: #ff9800; color: #fff; border: none; border-radius: 6px; cursor: pointer; touch-action: manipulation; }
@@ -21,7 +21,6 @@ canvas { background: #1a1a1a; box-shadow: 0 0 15px rgba(0,0,0,0.8); display: blo
 .overlay-screen h2 { color: #ffcc00; font-size: 24px; margin-bottom: 16px; }
 .menu-btn { width: 200px; padding: 12px; margin: 8px 0; background: #2196F3; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; touch-action: manipulation; }
 .menu-btn.sub { background: #555; }
-.menu-btn.gray { background: #333; color: #888; }
 .menu-btn.red { background: #f44336; }
 input, select { padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #555; background: #333; color: #fff; text-align: center; margin: 6px 0; width: 200px; }
 </style>
@@ -31,7 +30,7 @@ input, select { padding: 10px; font-size: 16px; border-radius: 6px; border: 1px 
 <div id="game-container">
     <canvas id="gameCanvas" width="360" height="640"></canvas>
     
-    <!-- 右側GUI (既存配置のまま維持) -->
+    <!-- 右側GUI -->
     <div id="sidebar-gui">
         <div id="my-player-name" class="my-name-display">PLAYER</div>
         <div style="font-size: 11px; color: #aaa; margin-bottom: 4px;">ITEM STOCK</div>
@@ -42,7 +41,7 @@ input, select { padding: 10px; font-size: 16px; border-radius: 6px; border: 1px 
 
     <!-- 初期メニュー -->
     <div id="screen-title" class="overlay-screen" style="display: flex;">
-        <h1 style="color:#ffcc00; font-size:28px;">BOMBER GAME</h1>
+        <h1 style="color:#ffcc00; font-size:28px;">WING GAME</h1>
         <button class="menu-btn" onclick="selectMainMenu('host')">ホスト</button>
         <button class="menu-btn" onclick="selectMainMenu('guest')">ゲスト</button>
         <button class="menu-btn red" onclick="selectMainMenu('exit')">終了</button>
@@ -79,7 +78,7 @@ input, select { padding: 10px; font-size: 16px; border-radius: 6px; border: 1px 
     <div id="screen-host-wait" class="overlay-screen">
         <h2>部屋IDナンバー</h2>
         <div id="display-room-code" style="font-size:36px; color:#ffcc00; font-weight:bold; letter-spacing:4px; margin:15px 0;">----</div>
-        <p id="host-wait-status">参加者を待っています... (1/2)</p>
+        <p id="host-wait-status">サーバーに接続中...</p>
     </div>
 
     <!-- ゲストID入力画面 -->
@@ -87,7 +86,7 @@ input, select { padding: 10px; font-size: 16px; border-radius: 6px; border: 1px 
         <h2>IDナンバー入力</h2>
         <input type="number" id="input-room-code" placeholder="4桁のID" maxlength="4">
         <button class="menu-btn" onclick="joinRoom()">接続</button>
-        <p id="guest-status-msg" style="color:#ff4d4d; font-size:14px;"></p>
+        <p id="guest-status-msg" style="color:#ff4d4d; font-size:14px; margin-top:10px;"></p>
     </div>
 
     <!-- プレイヤー名前入力画面 -->
@@ -96,7 +95,7 @@ input, select { padding: 10px; font-size: 16px; border-radius: 6px; border: 1px 
         <p style="font-size:12px; color:#aaa;">全角6文字以内</p>
         <input type="text" id="input-player-name" maxlength="6" placeholder="名前を入力">
         <button class="menu-btn" onclick="submitPlayerName()">決定</button>
-        <p id="name-wait-msg" style="color:#4da6ff; font-size:14px;"></p>
+        <p id="name-wait-msg" style="color:#4da6ff; font-size:14px; margin-top:10px;"></p>
     </div>
 
     <!-- ルーレット・準備画面 -->
