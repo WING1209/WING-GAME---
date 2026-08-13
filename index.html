@@ -1,1184 +1,865 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CYBER PAZZLU BATTLE</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-        }
-
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #05050a;
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #game-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            max-width: 100%;
-            max-height: 100%;
-            background: radial-gradient(circle at center, #101428 0%, #05050a 100%);
-            display: flex;
-            flex-direction: row;
-            overflow: hidden;
-        }
-
-        /* 左側：ゲーム描画エリア */
-        #canvas-wrapper {
-            position: relative;
-            flex: 1;
-            height: 100%;
-            background-color: #0d111e;
-        }
-
-        #gameCanvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        /* ポップアップ選択中の暗転マスク */
-        #screen-blackout {
-            position: absolute;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.95);
-            z-index: 250;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            color: #00f3ff;
-            font-weight: bold;
-            font-size: 18px;
-            letter-spacing: 2px;
-        }
-
-        /* 右側：GUIパネル（ボタンサイズを大きく調整） */
-        #side-gui {
-            width: 130px;
-            height: 100%;
-            background: rgba(15, 23, 42, 0.95);
-            border-left: 2px solid rgba(0, 243, 255, 0.3);
-            display: flex;
-            flex-direction: column;
-            padding: 8px 6px;
-            gap: 8px;
-            z-index: 20;
-            overflow-y: auto;
-        }
-
-        .player-info-card {
-            background: rgba(0, 243, 255, 0.1);
-            border: 1px solid #00f3ff;
-            border-radius: 6px;
-            padding: 6px;
-            text-align: center;
-        }
-
-        .player-name-title {
-            font-size: 13px;
-            font-weight: 900;
-            color: #00f3ff;
-            text-shadow: 0 0 5px #00f3ff;
-            word-break: break-all;
-        }
-
-        .score-display {
-            font-size: 11px;
-            color: #ffe600;
-            margin-top: 2px;
-            font-weight: bold;
-        }
-
-        .item-section-title {
-            font-size: 10px;
-            color: #888;
-            letter-spacing: 1px;
-            text-align: center;
-        }
-
-        .item-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        /* アイテムボタンの大型化・押しやすさ向上 */
-        .btn-item-card {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1.5px solid rgba(0, 243, 255, 0.5);
-            border-radius: 8px;
-            padding: 10px 6px;
-            color: #fff;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            touch-action: manipulation;
-        }
-
-        .btn-item-card:active {
-            background: rgba(0, 243, 255, 0.3);
-        }
-
-        .btn-item-card.disabled {
-            opacity: 0.25;
-            pointer-events: none;
-            border-color: #444;
-        }
-
-        .item-count {
-            background: #ff0055;
-            color: #fff;
-            border-radius: 10px;
-            padding: 2px 6px;
-            font-size: 10px;
-            font-weight: 900;
-        }
-
-        /* オーバーレイ全般 */
-        .overlay-screen {
-            position: absolute;
-            inset: 0;
-            background: rgba(5, 5, 10, 0.95);
-            backdrop-filter: blur(8px);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            gap: 16px;
-            z-index: 100;
-        }
-
-        .sub-title { font-size: 11px; letter-spacing: 3px; color: #00f3ff; font-weight: 700; }
-        .main-logo {
-            font-size: 28px;
-            font-weight: 900;
-            font-style: italic;
-            background: linear-gradient(135deg, #00f3ff, #ff0055);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .menu-box {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(0, 243, 255, 0.2);
-            padding: 16px;
-            border-radius: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 90%;
-        }
-
-        label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #d0d5e0; }
-        input, select { padding: 6px 8px; font-size: 13px; border-radius: 6px; border: 1px solid rgba(0, 243, 255, 0.3); background-color: rgba(15, 20, 35, 0.8); color: #00f3ff; text-align: center; }
-
-        .btn-action {
-            width: 90%;
-            padding: 12px;
-            font-size: 14px;
-            font-weight: 800;
-            color: #05050a;
-            background: linear-gradient(90deg, #00f3ff, #00aaff);
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-
-        .btn-secondary { background: transparent; border: 1px solid rgba(255, 255, 255, 0.2); color: #aaa; }
-        .status-badge { font-size: 11px; color: #ff0055; font-weight: bold; }
-
-        /* ダイアログ（色選択・ターゲット選択） */
-        .modal-dialog {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: #0f172a;
-            border: 2px solid #00f3ff;
-            border-radius: 12px;
-            padding: 16px;
-            z-index: 300;
-            width: 85%;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            text-align: center;
-        }
-
-        .color-selector-box { display: flex; justify-content: space-around; margin: 10px 0; }
-        .color-dot { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; }
-        .target-btn { padding: 8px; background: rgba(0,243,255,0.2); border: 1px solid #00f3ff; color: #fff; border-radius: 6px; font-weight: bold; }
-    </style>
+<meta charset="UTF-8">
+<!-- スマホ専用:全機種画面フィット設定 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>CYBER PUZZLE BATTLE</title>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #05050a;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100%;
+  max-height: 100%;
+  background: #05050a;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+#canvas-wrapper {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  background-color: #0d111e;
+}
+#gameCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#side-gui {
+  width: 110px;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.95);
+  border-left: 2px solid rgba(0, 243, 255, 0.3);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 4px;
+  gap: 6px;
+  z-index: 20;
+  overflow-y: auto;
+}
+.player-info-card {
+  background: rgba(0, 243, 255, 0.1);
+  border: 1px solid #00f3ff;
+  border-radius: 6px;
+  padding: 4px;
+  text-align: center;
+}
+.player-name-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: #00f3ff;
+  text-shadow: 0 0 5px #00f3ff;
+  word-break: break-all;
+}
+.score-display {
+  font-size: 10px;
+  color: #ffe600;
+  margin-top: 2px;
+  font-weight: bold;
+}
+.item-section-title {
+  font-size: 9px;
+  color: #888;
+  letter-spacing: 1px;
+  text-align: center;
+}
+.item-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.btn-item-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 243, 255, 0.4);
+  border-radius: 6px;
+  padding: 5px 3px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.btn-item-card.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+  border-color: #444;
+}
+.item-count {
+  background: #ff0055;
+  color: #fff;
+  border-radius: 8px;
+  padding: 1px 4px;
+  font-size: 8px;
+}
+.overlay-screen {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 5, 10, 0.95);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  gap: 16px;
+  z-index: 100;
+}
+.sub-title {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: #00f3ff;
+  font-weight: 700;
+}
+.main-logo {
+  font-size: 28px;
+  font-weight: 900;
+  font-style: italic;
+  background: linear-gradient(135deg, #00f3ff, #ff0055);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.version-tag {
+  font-size: 12px;
+  color: #00f3ff;
+  margin-top: 4px;
+  text-align: center;
+  font-weight: bold;
+}
+.menu-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 243, 255, 0.2);
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 90%;
+}
+label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #d0d5e0;
+}
+input, select {
+  padding: 6px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  background-color: rgba(15, 20, 35, 0.8);
+  color: #00f3ff;
+  text-align: center;
+}
+.btn-action {
+  width: 90%;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #05050a;
+  background: linear-gradient(90deg, #00f3ff, #00aaff);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.btn-secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #aaa;
+}
+.status-badge {
+  font-size: 11px;
+  color: #ff0055;
+  font-weight: bold;
+}
+</style>
 </head>
 <body>
-    <div id="game-container">
-        <!-- 左側：メインゲーム画面 -->
-        <div id="canvas-wrapper">
-            <canvas id="gameCanvas"></canvas>
-            <div id="screen-blackout">THINKING...</div>
-        </div>
+<div id="game-container">
+  <div id="canvas-wrapper">
+    <canvas id="gameCanvas"></canvas>
+  </div>
 
-        <!-- 右側：GUIパネル -->
-        <div id="side-gui" style="display:none;">
-            <div class="player-info-card">
-                <div class="sub-title">PLAYER</div>
-                <div id="gui-player-name" class="player-name-title">---</div>
-                <div class="score-display">消去: <span id="gui-cleared-count">0</span>/500</div>
-            </div>
-
-            <div class="item-section-title">ITEMS (MAX 5)</div>
-            <div class="item-grid">
-                <button id="btn-item-double" class="btn-item-card" onclick="useItem('double')">お邪魔2倍 <span id="cnt-double" class="item-count">0</span></button>
-                <button id="btn-item-triple" class="btn-item-card" onclick="useItem('triple')">お邪魔3倍 <span id="cnt-triple" class="item-count">0</span></button>
-                <button id="btn-item-skip" class="btn-item-card" onclick="useItem('skip')">スキップ <span id="cnt-skip" class="item-count">0</span></button>
-                <button id="btn-item-pierce" class="btn-item-card" onclick="useItem('pierce')">貫通 <span id="cnt-pierce" class="item-count">0</span></button>
-                <button id="btn-item-color" class="btn-item-card" onclick="useItem('color')">色替え <span id="cnt-color" class="item-count">0</span></button>
-                <button id="btn-item-redirect" class="btn-item-card" onclick="useItem('redirect')">おしつけ <span id="cnt-redirect" class="item-count">0</span></button>
-                <button id="btn-item-forceshoot" class="btn-item-card" onclick="useItem('forceshoot')">発射 <span id="cnt-forceshoot" class="item-count">0</span></button>
-                <button id="btn-item-defense" class="btn-item-card" onclick="useItem('defense')">防御 <span id="cnt-defense" class="item-count">0</span></button>
-            </div>
-        </div>
-
-        <!-- UI画面群 -->
-        <div id="screen-title" class="overlay-screen">
-            <div>
-                <div class="sub-title" style="text-align:center;">REAL-TIME MULTI PUZZLE</div>
-                <div class="main-logo">CYBER SPHERE</div>
-            </div>
-            <button class="btn-action" onclick="selectMainMenu('host')">部屋を作る (HOST)</button>
-            <button class="btn-action btn-secondary" onclick="selectMainMenu('guest')">部屋に入る (GUEST)</button>
-        </div>
-
-        <div id="screen-host-config" class="overlay-screen" style="display:none;">
-            <h2 style="color:#00f3ff; font-size:18px;">MATCH CONFIG</h2>
-            <div class="menu-box">
-                <label>対戦人数
-                    <select id="select-max-players">
-                        <option value="2">2 Players</option>
-                        <option value="3">3 Players</option>
-                        <option value="4">4 Players</option>
-                    </select>
-                </label>
-                <label>先取数
-                    <select id="select-target-wins"><option value="1">1 WIN</option></select>
-                </label>
-                <label>お邪魔倍率
-                    <select id="select-ojama-mult"><option value="1">1.0x</option><option value="2">2.0x</option></select>
-                </label>
-            </div>
-            <button class="btn-action" onclick="confirmHostSettings()">ルーム作成</button>
-        </div>
-
-        <div id="screen-host-wait" class="overlay-screen" style="display:none;">
-            <div class="sub-title">ROOM CODE</div>
-            <div id="display-room-code" style="font-size: 40px; font-weight: 900; color: #00f3ff;">----</div>
-            <div id="host-wait-status" class="status-badge">CONNECTING...</div>
-        </div>
-
-        <div id="screen-guest-join" class="overlay-screen" style="display:none;">
-            <h2 style="color:#00f3ff; font-size:18px;">ENTER CODE</h2>
-            <input type="number" id="input-room-code" placeholder="4桁コード" style="font-size: 20px; width: 70%;">
-            <button class="btn-action" onclick="joinRoom()">接続する</button>
-            <p id="guest-status-msg" class="status-badge"></p>
-        </div>
-
-        <div id="screen-name-input" class="overlay-screen" style="display:none;">
-            <h2 style="color:#00f3ff; font-size:18px;">PLAYER NAME</h2>
-            <input type="text" id="input-player-name" maxlength="6" placeholder="名前 (6文字以内)" style="font-size: 16px; width: 70%;">
-            <button class="btn-action" onclick="submitPlayerName()">完了</button>
-            <p id="name-wait-msg" class="status-badge"></p>
-        </div>
-
-        <div id="screen-roulette" class="overlay-screen" style="display:none;">
-            <div class="sub-title">TURN ORDER</div>
-            <div id="roulette-display" style="font-size: 60px; font-weight: 900; color:#ff0055;">1</div>
-            <p id="my-order-result" style="font-size: 14px; color:#00f3ff;"></p>
-            <button id="btn-roulette-action" class="btn-action" onclick="handleRouletteTap()">STOP</button>
-        </div>
-
-        <div id="modal-container" style="display:none;"></div>
+  <div id="side-gui" style="display:none;">
+    <div class="player-info-card">
+      <div class="sub-title">PLAYER</div>
+      <div id="gui-player-name" class="player-name-title">---</div>
+      <div class="score-display">消去: <span id="gui-cleared-count">0</span>/500</div>
     </div>
+    <div class="item-section-title">ITEMS</div>
+    <div class="item-grid">
+      <button id="btn-item-double" class="btn-item-card" onclick="useItem('double')">お邪魔2倍 <span id="cnt-double" class="item-count">0</span></button>
+      <button id="btn-item-triple" class="btn-item-card" onclick="useItem('triple')">お邪魔3倍 <span id="cnt-triple" class="item-count">0</span></button>
+      <button id="btn-item-skip" class="btn-item-card" onclick="useItem('skip')">スキップ <span id="cnt-skip" class="item-count">0</span></button>
+      <button id="btn-item-pierce" class="btn-item-card" onclick="useItem('pierce')">貫通 <span id="cnt-pierce" class="item-count">0</span></button>
+      <button id="btn-item-color" class="btn-item-card" onclick="useItem('color')">色替え <span id="cnt-color" class="item-count">0</span></button>
+      <button id="btn-item-redirect" class="btn-item-card" onclick="useItem('redirect')">おしつけ <span id="cnt-redirect" class="item-count">0</span></button>
+      <button id="btn-item-forceshoot" class="btn-item-card" onclick="useItem('forceshoot')">発射 <span id="cnt-forceshoot" class="item-count">0</span></button>
+      <button id="btn-item-defense" class="btn-item-card" onclick="useItem('defense')">防御 <span id="cnt-defense" class="item-count">0</span></button>
+    </div>
+  </div>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const PEER_PREFIX = 'cyber-puzzle-v2026-fix3-';
+  <!-- タイトル画面 -->
+  <div id="screen-title" class="overlay-screen">
+    <div>
+      <div class="sub-title" style="text-align:center;">REAL-TIME MULTI PUZZLE</div>
+      <div class="main-logo">CYBER SPHERE</div>
+      <div class="version-tag">Ver1.01</div>
+    </div>
+    <button class="btn-action" onclick="selectMainMenu('host')">部屋を作る (HOST)</button>
+    <button class="btn-action btn-secondary" onclick="selectMainMenu('guest')">部屋に入る (GUEST)</button>
+  </div>
 
-        const ROWS = 15;
-        const COLS = 8;
-        let RADIUS = 16;
-        let DIAMETER = RADIUS * 2;
-        let ROW_HEIGHT = RADIUS * Math.sqrt(3);
+  <div id="screen-host-config" class="overlay-screen" style="display:none;">
+    <h2 style="color:#00f3ff; font-size: 18px;">MATCH CONFIG</h2>
+    <div class="menu-box">
+      <label>対戦人数
+        <select id="select-max-players">
+          <option value="2">2 Players</option>
+          <option value="3">3 Players</option>
+          <option value="4">4 Players</option>
+        </select>
+      </label>
+      <label>先取数
+        <select id="select-target-wins"><option value="1">1 WIN</option></select>
+      </label>
+      <label>お邪魔倍率
+        <select id="select-ojama-mult"><option value="1">1.0x</option><option value="2">2.0x</option></select>
+      </label>
+    </div>
+    <button class="btn-action" onclick="confirmHostSettings()">ルーム作成</button>
+  </div>
 
-        const BASE_COLORS = ['#ff0055', '#00f3ff', '#00ff66', '#ffe600', '#b000ff'];
+  <div id="screen-host-wait" class="overlay-screen" style="display:none;">
+    <div class="sub-title">ROOM CODE</div>
+    <div id="display-room-code" style="font-size: 40px; font-weight: 900; color: #00f3ff;">----</div>
+    <div id="host-wait-status" class="status-badge">CONNECTING...</div>
+  </div>
 
-        let gameState = 'title';
-        let battleRole = '';
-        let roomCode = '';
-        let myPlayerId = 0;
-        let maxPlayers = 2;
-        let ojamaMultiplier = 1;
+  <div id="screen-guest-join" class="overlay-screen" style="display:none;">
+    <h2 style="color:#00f3ff; font-size:18px;">ENTER CODE</h2>
+    <input type="number" id="input-room-code" placeholder="4桁コード" style="font-size: 20px; width: 70%;">
+    <button class="btn-action" onclick="joinRoom()">接続する</button>
+    <p id="guest-status-msg" class="status-badge"></p>
+  </div>
 
-        let peer = null;
-        let guestConn = null;
-        let hostConnections = [];
+  <div id="screen-name-input" class="overlay-screen" style="display:none;">
+    <h2 style="color:#00f3ff; font-size: 18px;">PLAYER NAME</h2>
+    <input type="text" id="input-player-name" maxlength="6" placeholder="名前(6文字以内)" style="font-size: 16px; width: 70%;">
+    <button class="btn-action" onclick="submitPlayerName()">完了</button>
+    <p id="name-wait-msg" class="status-badge"></p>
+  </div>
 
-        let players = [];
-        let readyCount = 0;
-        let rouletteState = 'idle';
-        let rouletteInterval = null;
+  <div id="screen-roulette" class="overlay-screen" style="display:none;">
+    <div class="sub-title">TURN ORDER</div>
+    <div id="roulette-display" style="font-size: 60px; font-weight: 900; color:#ff0055;">1</div>
+    <p id="my-order-result" style="font-size: 14px; color:#00f3ff;"></p>
+    <button id="btn-roulette-action" class="btn-action" onclick="handleRouletteTap()">STOP</button>
+  </div>
+</div>
 
-        let battleTurnState = 'waiting';
-        let currentTurnPlayerId = 0;
-        let grid = [];
-        let clearedCount = 0;
-        let isEliminated = false;
-        let isCheckingVictory = true;
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const PEER_PREFIX = 'cyber-puzzle-v2026-fix2-';
+const ROWS = 15;
+const COLS = 8;
+let RADIUS = 16;
+let DIAMETER = RADIUS * 2;
+let ROW_HEIGHT = RADIUS * Math.sqrt(3);
 
-        let turnTimer = 10;
-        let turnTimerInterval = null;
-        let isTimerPaused = false; // アイテム使用時のタイマーストップフラグ
+const BASE_COLORS = ['#ff0055', '#00f3ff', '#00ff66', '#ffe600', '#b000ff'];
+let gameState = 'title';
+let battleRole = '';
+let roomCode = '';
+let myPlayerId = 0;
+let maxPlayers = 2;
+let ojamaMultiplier = 1;
+let peer = null;
+let guestConn = null;
+let hostConnections = [];
+let players = [];
+let readyCount = 0;
+let rouletteState = 'idle';
+let rouletteInterval = null;
+let battleTurnState = 'waiting';
+let currentTurnPlayerId = 0;
+let grid = [];
+let clearedCount = 0;
+let turnTimer = 10;
+let turnTimerInterval = null;
+let bgPatternCanvas = null;
 
-        // 各アイテムストック上限5個
-        let inventory = { double: 0, triple: 0, skip: 0, pierce: 0, color: 0, redirect: 0, forceshoot: 0, defense: 0 };
-        let activeBuffs = { multiplier: 1, isPiercing: false, redirectTarget: null, isDefending: false };
+// 発射台・物理変数
+let shooterX = 0, shooterY = 0;
+let bulletX = 0, bulletY = 0;
+let bulletVX = 0, bulletVY = 0;
+let bulletData = null, nextBubble = null;
+let isMoving = false;
+const MAX_SPEED = 18;
 
-        // 物理・発射操作
-        let shooterX = 0, shooterY = 0;
-        let bulletX = 0, bulletY = 0;
-        let bulletVX = 0, bulletVY = 0;
-        let bulletData = null, nextBubble = null;
-        let isMoving = false;
+// 引っ張り操作用
+let isDragging = false;
+let dragStartX = 0, dragStartY = 0;
+let dragCurrentX = 0, dragCurrentY = 0;
 
-        // 引っ張り操作
-        let isDragging = false;
-        let dragStartX = 0, dragStartY = 0;
-        let dragCurrentX = 0, dragCurrentY = 0;
+function getRandomColor() {
+  if (Math.random() < 0.20) return 'rainbow';
+  return BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)];
+}
 
-        // 落下アニメーション用のパーティクル配列
-        let fallingBubbles = [];
-        let flyingOjamaBalls = [];
-        let DEAD_LINE_Y = 0;
+function generateRandomBackground() {
+  bgPatternCanvas = document.createElement('canvas');
+  bgPatternCanvas.width = canvas.width;
+  bgPatternCanvas.height = canvas.height;
+  const bgCtx = bgPatternCanvas.getContext('2d');
+  
+  const gradients = [
+    ['#050510', '#1a0b2e', '#050510'],
+    ['#051015', '#0b2b3a', '#020b14'],
+    ['#150510', '#3a0b25', '#10020b']
+  ];
+  const chosenG = gradients[Math.floor(Math.random() * gradients.length)];
+  const grad = bgCtx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, chosenG[0]);
+  grad.addColorStop(0.5, chosenG[1]);
+  grad.addColorStop(1, chosenG[2]);
+  bgCtx.fillStyle = grad;
+  bgCtx.fillRect(0, 0, canvas.width, canvas.height);
 
-        function resizeCanvas() {
-            let wrapper = document.getElementById('canvas-wrapper');
-            canvas.width = wrapper.clientWidth;
-            canvas.height = wrapper.clientHeight;
+  // スターダストノイズ描画
+  bgCtx.fillStyle = '#ffffff';
+  for (let i = 0; i < 40; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const r = Math.random() * 1.5;
+    bgCtx.globalAlpha = Math.random() * 0.7 + 0.3;
+    bgCtx.beginPath();
+    bgCtx.arc(x, y, r, 0, Math.PI * 2);
+    bgCtx.fill();
+  }
+  bgCtx.globalAlpha = 1.0;
+}
 
-            RADIUS = canvas.width / (COLS * 2 + 1);
-            DIAMETER = RADIUS * 2;
-            ROW_HEIGHT = RADIUS * Math.sqrt(3);
+function resizeCanvas() {
+  let wrapper = document.getElementById('canvas-wrapper');
+  canvas.width = wrapper.clientWidth;
+  canvas.height = wrapper.clientHeight;
+  RADIUS = canvas.width / (COLS * 2 + 1);
+  DIAMETER = RADIUS * 2;
+  ROW_HEIGHT = RADIUS * Math.sqrt(3);
+  shooterX = canvas.width / 2;
+  shooterY = canvas.height - 50;
+  if (!isMoving) {
+    bulletX = shooterX;
+    bulletY = shooterY;
+  }
+  generateRandomBackground();
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-            shooterX = canvas.width / 2;
-            shooterY = canvas.height - 50;
-            DEAD_LINE_Y = shooterY - (DIAMETER * 2);
+function showScreen(id) {
+  document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
+  if (id && document.getElementById(id)) document.getElementById(id).style.display = 'flex';
+}
 
-            if (!isMoving) {
-                bulletX = shooterX;
-                bulletY = shooterY;
-            }
+function selectMainMenu(choice) {
+  closeNetwork();
+  if (choice === 'host') { battleRole = 'host'; showScreen('screen-host-config'); }
+  else { battleRole = 'guest'; showScreen('screen-guest-join'); }
+}
+
+function closeNetwork() {
+  if (guestConn) try { guestConn.close(); } catch(e){}
+  hostConnections.forEach(c => { try { c.close(); } catch(e){} });
+  if (peer) try { peer.destroy(); } catch(e){}
+}
+
+function confirmHostSettings() {
+  maxPlayers = parseInt(document.getElementById('select-max-players').value);
+  ojamaMultiplier = parseInt(document.getElementById('select-ojama-mult').value);
+  roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+  document.getElementById('display-room-code').innerText = roomCode;
+  showScreen('screen-host-wait');
+  peer = new Peer(PEER_PREFIX + roomCode);
+  players = [{ id: 0, name: '', order: 0, wins: 0, eliminated: false }];
+  myPlayerId = 0;
+  peer.on('open', () => document.getElementById('host-wait-status').innerText = `WAITING... (1/${maxPlayers})`);
+  peer.on('connection', (conn) => {
+    let assignedId = players.length;
+    if (assignedId >= maxPlayers) { conn.close(); return; }
+    hostConnections.push(conn);
+    players.push({ id: assignedId, name: '', order: 0, wins: 0, eliminated: false });
+    conn.on('open', () => {
+      conn.send({ type: 'init_guest', playerId: assignedId, maxPlayers, ojamaMult: ojamaMultiplier, players });
+      document.getElementById('host-wait-status').innerText = `WAITING... (${players.length}/${maxPlayers})`;
+      if (players.length === maxPlayers) {
+        broadcastHost({ type: 'start_name_input', players });
+        showScreen('screen-name-input');
+      }
+    });
+    conn.on('data', (d) => handleHostReceiveData(assignedId, d));
+  });
+}
+
+function joinRoom() {
+  let code = document.getElementById('input-room-code').value.trim();
+  if (code.length !== 4) return;
+  roomCode = code;
+  peer = new Peer();
+  peer.on('open', () => {
+    guestConn = peer.connect(PEER_PREFIX + roomCode);
+    guestConn.on('data', handleGuestReceiveData);
+  });
+}
+
+function broadcastHost(data) { hostConnections.forEach(c => { if (c && c.open) c.send(data); }); }
+function sendToHost(data) { if (guestConn && guestConn.open) guestConn.send(data); }
+
+function handleHostReceiveData(fromId, data) {
+  if (data.type === 'submit_name') {
+    let p = players.find(i => i.id === fromId);
+    if (p) p.name = data.name;
+    broadcastHost({ type: 'sync_players', players });
+    checkAllNamesSubmitted();
+  } else if (data.type === 'ready_start') {
+    readyCount++;
+    if (readyCount === maxPlayers) {
+      broadcastHost({ type: 'game_start_signal', players });
+      launchGameStartNotice();
+    }
+  } else if (data.type === 'end_turn') {
+    advanceTurnHost();
+  }
+}
+
+function handleGuestReceiveData(data) {
+  if (data.type === 'init_guest') {
+    myPlayerId = data.playerId;
+    maxPlayers = data.maxPlayers;
+    if (data.players) players = data.players;
+  } else if (data.type === 'start_name_input') {
+    showScreen('screen-name-input');
+  } else if (data.type === 'start_roulette') {
+    players = data.players;
+    showScreen('screen-roulette');
+    startRouletteAnimation();
+  } else if (data.type === 'game_start_signal') {
+    launchGameStartNotice();
+  } else if (data.type === 'sync_turn') {
+    currentTurnPlayerId = data.currentTurnPlayerId;
+    onTurnChanged();
+  }
+}
+
+function submitPlayerName() {
+  let inputName = document.getElementById('input-player-name').value.trim() || "P" + (myPlayerId + 1);
+  let myP = players.find(p => p.id === myPlayerId);
+  if (myP) myP.name = inputName;
+  document.getElementById('name-wait-msg').innerText = "WAITING FOR OTHERS...";
+  if (battleRole === 'host') checkAllNamesSubmitted();
+  else sendToHost({ type: 'submit_name', name: inputName });
+}
+
+function checkAllNamesSubmitted() {
+  if (players.length < maxPlayers) return;
+  if (players.every(p => p.name && p.name.trim() !== '')) {
+    let orders = Array.from({length: maxPlayers}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+    players.forEach((p, idx) => p.order = orders[idx]);
+    broadcastHost({ type: 'start_roulette', players });
+    showScreen('screen-roulette');
+    startRouletteAnimation();
+  }
+}
+
+function startRouletteAnimation() {
+  rouletteState = 'running';
+  let count = 1;
+  rouletteInterval = setInterval(() => {
+    document.getElementById('roulette-display').innerText = count;
+    count = (count % maxPlayers) + 1;
+  }, 80);
+}
+
+function handleRouletteTap() {
+  let btn = document.getElementById('btn-roulette-action');
+  if (rouletteState === 'running') {
+    clearInterval(rouletteInterval);
+    rouletteState = 'stopped';
+    let myP = players.find(p => p.id === myPlayerId);
+    let order = myP ? myP.order : 1;
+    document.getElementById('roulette-display').innerText = order;
+    document.getElementById('my-order-result').innerText = `YOU ARE NO. ${order}`;
+    btn.innerText = "READY";
+  } else if (rouletteState === 'stopped') {
+    rouletteState = 'ready_wait';
+    btn.innerText = "WAITING...";
+    if (battleRole === 'host') {
+      readyCount++;
+      if (readyCount === maxPlayers) {
+        broadcastHost({ type: 'game_start_signal', players });
+        launchGameStartNotice();
+      }
+    } else sendToHost({ type: 'ready_start' });
+  }
+}
+
+function launchGameStartNotice() {
+  showScreen('');
+  document.getElementById('side-gui').style.display = 'flex';
+  let myP = players.find(p => p.id === myPlayerId);
+  document.getElementById('gui-player-name').innerText = myP ? myP.name : 'PLAYER';
+  
+  generateRandomBackground();
+  gameState = 'playing';
+  initGridForBattle();
+  bulletData = null;
+  spawnBullet();
+  
+  let firstPlayer = players.find(p => p && p.order === 1);
+  currentTurnPlayerId = firstPlayer ? firstPlayer.id : 0;
+  onTurnChanged();
+  requestAnimationFrame(gameLoop);
+}
+
+// タッチ（スリングショット）操作
+canvas.addEventListener('touchstart', (e) => {
+  if (gameState !== 'playing' || isMoving || battleTurnState !== 'my_turn') return;
+  e.preventDefault();
+  let touch = e.touches[0];
+  let rect = canvas.getBoundingClientRect();
+  let tx = touch.clientX - rect.left;
+  let ty = touch.clientY - rect.top;
+  if (Math.hypot(tx - bulletX, ty - bulletY) < RADIUS * 3) {
+    isDragging = true;
+    dragStartX = bulletX;
+    dragStartY = bulletY;
+    dragCurrentX = tx;
+    dragCurrentY = ty;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (!isDragging) return;
+  e.preventDefault();
+  let touch = e.touches[0];
+  let rect = canvas.getBoundingClientRect();
+  dragCurrentX = touch.clientX - rect.left;
+  dragCurrentY = touch.clientY - rect.top;
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+  if (!isDragging) return;
+  e.preventDefault();
+  isDragging = false;
+  let dx = dragStartX - dragCurrentX;
+  let dy = dragStartY - dragCurrentY;
+  if (dy < -10) { // 上向き引っ張り時
+    let angle = Math.atan2(dx, dy);
+    shootBulletAngle(angle);
+  }
+}, { passive: false });
+
+function shootBulletAngle(angle) {
+  bulletVX = Math.sin(angle) * MAX_SPEED;
+  bulletVY = Math.cos(angle) * MAX_SPEED;
+  isMoving = true;
+}
+
+function forceAutoShoot() {
+  if (isMoving) return;
+  shootBulletAngle((Math.random() * 0.8) - 0.4);
+}
+
+function onTurnChanged() {
+  clearInterval(turnTimerInterval);
+  turnTimer = 10;
+  battleTurnState = (currentTurnPlayerId === myPlayerId) ? 'my_turn' : 'opponent_turn';
+  turnTimerInterval = setInterval(() => {
+    if (gameState !== 'playing') return;
+    turnTimer--;
+    if (turnTimer <= 0) {
+      forceAutoShoot();
+    }
+  }, 1000);
+}
+
+function endMyTurn() {
+  clearInterval(turnTimerInterval);
+  battleTurnState = 'waiting';
+  if (battleRole === 'host') advanceTurnHost();
+  else sendToHost({ type: 'end_turn' });
+}
+
+function advanceTurnHost() {
+  let active = players.filter(p => !p.eliminated);
+  if (active.length <= 1) return;
+  let currentP = players.find(p => p.id === currentTurnPlayerId);
+  let nextOrder = (currentP ? currentP.order : 1) % maxPlayers + 1;
+  let nextP = players.find(p => p.order === nextOrder);
+  currentTurnPlayerId = nextP ? nextP.id : 0;
+  broadcastHost({ type: 'sync_turn', currentTurnPlayerId });
+  onTurnChanged();
+}
+
+function initGridForBattle() {
+  grid = [];
+  for (let r = 0; r < ROWS; r++) {
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+    let row = [];
+    for (let c = 0; c < colsInRow; c++) row.push(null);
+    grid.push(row);
+  }
+  for (let r = 0; r < 5; r++) {
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+    for (let c = 0; c < colsInRow; c++) {
+      grid[r][c] = { color: getRandomColor() };
+    }
+  }
+}
+
+function spawnBullet() {
+  bulletData = nextBubble ? nextBubble : { color: getRandomColor() };
+  nextBubble = { color: getRandomColor() };
+  bulletX = shooterX;
+  bulletY = shooterY;
+  bulletVX = 0;
+  bulletVY = 0;
+  isMoving = false;
+}
+
+function updateBulletPhysics() {
+  if (!isMoving || !bulletData) return;
+  bulletX += bulletVX;
+  bulletY += bulletVY;
+
+  if (bulletX - RADIUS < 0) { bulletX = RADIUS; bulletVX = -bulletVX; }
+  else if (bulletX + RADIUS > canvas.width) { bulletX = canvas.width - RADIUS; bulletVX = -bulletVX; }
+
+  let hit = false;
+  let firstTouchedColor = null;
+
+  if (bulletY <= RADIUS) hit = true;
+
+  if (!hit) {
+    for (let r = 0; r < ROWS; r++) {
+      let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+      let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
+      for (let c = 0; c < colsInRow; c++) {
+        if (grid[r][c]) {
+          let cx = rowXOffset + c * DIAMETER;
+          let cy = RADIUS + r * ROW_HEIGHT;
+          if (Math.hypot(bulletX - cx, bulletY - cy) < DIAMETER) {
+            hit = true;
+            firstTouchedColor = grid[r][c].color;
+            break;
+          }
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+      }
+      if (hit) break;
+    }
+  }
 
-        function showScreen(id) {
-            document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
-            if (id && document.getElementById(id)) document.getElementById(id).style.display = 'flex';
+  if (hit) {
+    isMoving = false;
+    if (bulletData.color === 'rainbow') {
+      handleRainbowHit(firstTouchedColor);
+    } else {
+      snapBulletToGrid();
+    }
+  }
+}
+
+function snapBulletToGrid() {
+  let bestR = 0, bestC = 0, minDist = 9999;
+  for (let r = 0; r < ROWS; r++) {
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+    let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
+    for (let c = 0; c < colsInRow; c++) {
+      if (!grid[r][c]) {
+        let cx = rowXOffset + c * DIAMETER;
+        let cy = RADIUS + r * ROW_HEIGHT;
+        let d = Math.hypot(bulletX - cx, bulletY - cy);
+        if (d < minDist) { minDist = d; bestR = r; bestC = c; }
+      }
+    }
+  }
+  grid[bestR][bestC] = { color: bulletData.color };
+  checkMatchAndClear(bestR, bestC);
+  endTurnAndNext();
+}
+
+function handleRainbowHit(targetColor) {
+  if (targetColor) {
+    let cleared = 0;
+    for (let r = 0; r < ROWS; r++) {
+      let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+      for (let c = 0; c < colsInRow; c++) {
+        if (grid[r][c] && grid[r][c].color === targetColor) {
+          grid[r][c] = null;
+          cleared++;
         }
-
-        function selectMainMenu(choice) {
-            closeNetwork();
-            if (choice === 'host') { battleRole = 'host'; showScreen('screen-host-config'); }
-            else { battleRole = 'guest'; showScreen('screen-guest-join'); }
-        }
-
-        function closeNetwork() {
-            if (guestConn) try { guestConn.close(); } catch(e){}
-            hostConnections.forEach(c => { try { c.close(); } catch(e){} });
-            if (peer) try { peer.destroy(); } catch(e){}
-        }
-
-        function confirmHostSettings() {
-            maxPlayers = parseInt(document.getElementById('select-max-players').value);
-            ojamaMultiplier = parseInt(document.getElementById('select-ojama-mult').value);
-            roomCode = Math.floor(1000 + Math.random() * 9000).toString();
-            document.getElementById('display-room-code').innerText = roomCode;
-            showScreen('screen-host-wait');
-
-            peer = new Peer(PEER_PREFIX + roomCode);
-            players = [{ id: 0, name: '', order: 0, wins: 0, eliminated: false }];
-            myPlayerId = 0;
-
-            peer.on('open', () => document.getElementById('host-wait-status').innerText = `WAITING... (1/${maxPlayers})`);
-            peer.on('connection', (conn) => {
-                let assignedId = players.length;
-                if (assignedId >= maxPlayers) { conn.close(); return; }
-                hostConnections.push(conn);
-                players.push({ id: assignedId, name: '', order: 0, wins: 0, eliminated: false });
-
-                conn.on('open', () => {
-                    conn.send({ type: 'init_guest', playerId: assignedId, maxPlayers, ojamaMult: ojamaMultiplier, players });
-                    document.getElementById('host-wait-status').innerText = `WAITING... (${players.length}/${maxPlayers})`;
-                    if (players.length === maxPlayers) {
-                        broadcastHost({ type: 'start_name_input', players });
-                        showScreen('screen-name-input');
-                    }
-                });
-                conn.on('data', (d) => handleHostReceiveData(assignedId, d));
-            });
-        }
-
-        function joinRoom() {
-            let code = document.getElementById('input-room-code').value.trim();
-            if (code.length !== 4) return;
-            roomCode = code;
-            peer = new Peer();
-            peer.on('open', () => {
-                guestConn = peer.connect(PEER_PREFIX + roomCode);
-                guestConn.on('data', handleGuestReceiveData);
-            });
-        }
-
-        function broadcastHost(data) { hostConnections.forEach(c => { if (c && c.open) c.send(data); }); }
-        function sendToHost(data) { if (guestConn && guestConn.open) guestConn.send(data); }
-
-        function handleHostReceiveData(fromId, data) {
-            if (data.type === 'submit_name') {
-                let p = players.find(i => i.id === fromId);
-                if (p) p.name = data.name;
-                broadcastHost({ type: 'sync_players', players });
-                checkAllNamesSubmitted();
-            } else if (data.type === 'ready_start') {
-                readyCount++;
-                if (readyCount === maxPlayers) {
-                    broadcastHost({ type: 'game_start_signal', players });
-                    launchGameStartNotice();
-                }
-            } else if (data.type === 'send_ojama') {
-                handleOjamaRouting(data.targetId, data.count);
-            } else if (data.type === 'player_eliminated') {
-                let p = players.find(i => i.id === fromId);
-                if (p) p.eliminated = true;
-                checkVictoryConditionHost();
-            } else if (data.type === 'end_turn') {
-                advanceTurnHost();
-            }
-        }
-
-        function handleGuestReceiveData(data) {
-            if (data.type === 'init_guest') { myPlayerId = data.playerId; maxPlayers = data.maxPlayers; if (data.players) players = data.players; }
-            else if (data.type === 'start_name_input') { showScreen('screen-name-input'); }
-            else if (data.type === 'start_roulette') { players = data.players; showScreen('screen-roulette'); startRouletteAnimation(); }
-            else if (data.type === 'game_start_signal') { launchGameStartNotice(); }
-            else if (data.type === 'receive_ojama') { if (data.targetId === myPlayerId) triggerOjamaFlyIn(data.count); }
-            else if (data.type === 'sync_turn') { currentTurnPlayerId = data.currentTurnPlayerId; onTurnChanged(); }
-            else if (data.type === 'game_over_win') { showGameOverBanner(data.winnerName + " WIN!"); }
-        }
-
-        function submitPlayerName() {
-            let inputName = document.getElementById('input-player-name').value.trim() || "P" + (myPlayerId + 1);
-            let myP = players.find(p => p.id === myPlayerId);
-            if (myP) myP.name = inputName;
-            document.getElementById('name-wait-msg').innerText = "WAITING FOR OTHERS...";
-            if (battleRole === 'host') checkAllNamesSubmitted();
-            else sendToHost({ type: 'submit_name', name: inputName });
-        }
-
-        function checkAllNamesSubmitted() {
-            if (players.length < maxPlayers) return;
-            if (players.every(p => p.name && p.name.trim() !== '')) {
-                let orders = Array.from({length: maxPlayers}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
-                players.forEach((p, idx) => p.order = orders[idx]);
-                broadcastHost({ type: 'start_roulette', players });
-                showScreen('screen-roulette');
-                startRouletteAnimation();
-            }
-        }
-
-        function startRouletteAnimation() {
-            rouletteState = 'running';
-            let count = 1;
-            rouletteInterval = setInterval(() => {
-                document.getElementById('roulette-display').innerText = count;
-                count = (count % maxPlayers) + 1;
-            }, 80);
-        }
-
-        function handleRouletteTap() {
-            let btn = document.getElementById('btn-roulette-action');
-            if (rouletteState === 'running') {
-                clearInterval(rouletteInterval);
-                rouletteState = 'stopped';
-                let myP = players.find(p => p.id === myPlayerId);
-                let order = myP ? myP.order : 1;
-                document.getElementById('roulette-display').innerText = order;
-                document.getElementById('my-order-result').innerText = `YOU ARE NO. ${order}`;
-                btn.innerText = "READY";
-            } else if (rouletteState === 'stopped') {
-                rouletteState = 'ready_wait';
-                btn.innerText = "WAITING...";
-                if (battleRole === 'host') {
-                    readyCount++;
-                    if (readyCount === maxPlayers) {
-                        broadcastHost({ type: 'game_start_signal', players });
-                        launchGameStartNotice();
-                    }
-                } else sendToHost({ type: 'ready_start' });
-            }
-        }
-
-        function launchGameStartNotice() {
-            showScreen('');
-            document.getElementById('side-gui').style.display = 'flex';
-            let myP = players.find(p => p.id === myPlayerId);
-            document.getElementById('gui-player-name').innerText = myP ? myP.name : 'PLAYER';
-
-            resizeCanvas();
-            gameState = 'playing';
-            initGridForBattle();
-            bulletData = null;
-            spawnBullet();
-            updateGUIItemButtons();
-
-            let firstPlayer = players.find(p => p && p.order === 1);
-            currentTurnPlayerId = firstPlayer ? firstPlayer.id : 0;
-            onTurnChanged();
-        }
-
-        // --- タッチ＆引っ張り（威力可変）処理 ---
-        canvas.addEventListener('touchstart', (e) => {
-            if (gameState !== 'playing' || isMoving || battleTurnState !== 'my_turn' || isTimerPaused) return;
-            e.preventDefault();
-            let touch = e.touches[0];
-            let rect = canvas.getBoundingClientRect();
-            let tx = touch.clientX - rect.left;
-            let ty = touch.clientY - rect.top;
-
-            if (Math.hypot(tx - bulletX, ty - bulletY) < RADIUS * 3.5) {
-                isDragging = true;
-                dragStartX = bulletX;
-                dragStartY = bulletY;
-                dragCurrentX = tx;
-                dragCurrentY = ty;
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            let touch = e.touches[0];
-            let rect = canvas.getBoundingClientRect();
-            dragCurrentX = touch.clientX - rect.left;
-            dragCurrentY = touch.clientY - rect.top;
-        }, { passive: false });
-
-        canvas.addEventListener('touchend', (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            isDragging = false;
-
-            let dx = dragStartX - dragCurrentX;
-            let dy = dragStartY - dragCurrentY;
-            let dist = Math.hypot(dx, dy);
-
-            if (dist > 10) {
-                // 引っ張り距離に応じて威力を可変（最大速度26）
-                let speed = Math.min(Math.max(dist * 0.18, 8), 26);
-                let angle = Math.atan2(dx, dy);
-                bulletVX = Math.sin(angle) * speed;
-                bulletVY = -Math.cos(angle) * speed;
-                isMoving = true;
-            }
-        }, { passive: false });
-
-        function forceAutoShoot() {
-            if (isMoving) return;
-            let speed = 15;
-            let angle = (Math.random() * 1.0) - 0.5;
-            bulletVX = Math.sin(angle) * speed;
-            bulletVY = -Math.cos(angle) * speed;
-            isMoving = true;
-        }
-
-        function onTurnChanged() {
-            clearInterval(turnTimerInterval);
-            turnTimer = 10;
-            battleTurnState = (currentTurnPlayerId === myPlayerId) ? 'my_turn' : 'opponent_turn';
-
-            turnTimerInterval = setInterval(() => {
-                if (gameState !== 'playing' || isTimerPaused) return;
-                turnTimer--;
-                if (turnTimer <= 0) {
-                    clearInterval(turnTimerInterval);
-                    if (battleTurnState === 'my_turn' && !isMoving) forceAutoShoot();
-                }
-            }, 1000);
-            updateGUIItemButtons();
-        }
-
-        function endMyTurn() {
-            clearInterval(turnTimerInterval);
-            battleTurnState = 'waiting';
-            activeBuffs.multiplier = 1;
-            activeBuffs.isPiercing = false;
-            activeBuffs.isDefending = false;
-
-            spawnGimmickBubble();
-            if (battleRole === 'host') advanceTurnHost();
-            else sendToHost({ type: 'end_turn' });
-        }
-
-        function advanceTurnHost() {
-            let active = players.filter(p => !p.eliminated);
-            if (active.length <= 1) { checkVictoryConditionHost(); return; }
-            let currentP = players.find(p => p.id === currentTurnPlayerId);
-            let nextOrder = (currentP ? currentP.order : 1) % maxPlayers + 1;
-            let nextP = players.find(p => p.order === nextOrder);
-
-            while (nextP && nextP.eliminated) {
-                nextOrder = (nextOrder % maxPlayers) + 1;
-                nextP = players.find(p => p.order === nextOrder);
-            }
-
-            currentTurnPlayerId = nextP ? nextP.id : 0;
-            broadcastHost({ type: 'sync_turn', currentTurnPlayerId });
-            onTurnChanged();
-        }
-
-        function initGridForBattle() {
-            grid = [];
-            for (let r = 0; r < ROWS; r++) {
-                let row = [];
-                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                for (let c = 0; c < colsInRow; c++) row.push(null);
-                grid.push(row);
-            }
-            for (let r = 0; r < 5; r++) {
-                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                for (let c = 0; c < colsInRow; c++) {
-                    grid[r][c] = { color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)], isGimmick: false };
-                }
-            }
-        }
-
-        function spawnGimmickBubble() {
-            if (Math.random() < 0.20) {
-                let emptyCells = [];
-                for (let r = 0; r < 6; r++) {
-                    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                    for (let c = 0; c < colsInRow; c++) if (grid[r] && grid[r][c]) emptyCells.push({r, c});
-                }
-                if (emptyCells.length > 0) {
-                    let target = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-                    grid[target.r][target.c].isGimmick = true;
-                }
-            }
-        }
-
-        function spawnBullet() {
-            bulletData = bulletData ? nextBubble : { color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)], isGimmick: false };
-            nextBubble = { color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)], isGimmick: false };
-            bulletX = shooterX;
-            bulletY = shooterY;
-            bulletVX = 0; bulletVY = 0;
-            isMoving = false;
-        }
-
-        function updateBulletPhysics() {
-            if (!isMoving || !bulletData) return;
-
-            bulletX += bulletVX;
-            bulletY += bulletVY;
-
-            if (bulletX - RADIUS < 0) { bulletX = RADIUS; bulletVX = -bulletVX; }
-            else if (bulletX + RADIUS > canvas.width) { bulletX = canvas.width - RADIUS; bulletVX = -bulletVX; }
-
-            let hit = false;
-            if (bulletY <= RADIUS) hit = true;
-
-            if (!hit) {
-                for (let r = 0; r < ROWS; r++) {
-                    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                    let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
-                    for (let c = 0; c < colsInRow; c++) {
-                        if (grid[r][c]) {
-                            let cx = rowXOffset + c * DIAMETER;
-                            let cy = RADIUS + r * ROW_HEIGHT;
-                            if (Math.hypot(bulletX - cx, bulletY - cy) < DIAMETER - 2) { hit = true; break; }
-                        }
-                    }
-                    if (hit) break;
-                }
-            }
-
-            if (hit) { isMoving = false; snapBulletToGrid(); }
-        }
-
-        function snapBulletToGrid() {
-            let bestR = 0, bestC = 0, minDist = 9999;
-            for (let r = 0; r < ROWS; r++) {
-                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
-                for (let c = 0; c < colsInRow; c++) {
-                    if (!grid[r][c]) {
-                        let cx = rowXOffset + c * DIAMETER;
-                        let cy = RADIUS + r * ROW_HEIGHT;
-                        let d = Math.hypot(bulletX - cx, bulletY - cy);
-                        if (d < minDist) { minDist = d; bestR = r; bestC = c; }
-                    }
-                }
-            }
-            grid[bestR][bestC] = { color: bulletData.color, isGimmick: bulletData.isGimmick };
-            checkMatchAndClear(bestR, bestC);
-        }
-
-        // --- 同色マッチ消去＆浮遊玉の物理落下ロジック ---
-        function checkMatchAndClear(startR, startC) {
-            let targetColor = grid[startR][startC].color;
-            let matched = [];
-            let visited = Array.from({length: ROWS}, () => Array(COLS).fill(false));
-
-            function dfs(r, c) {
-                if (r < 0 || r >= ROWS) return;
-                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                if (c < 0 || c >= colsInRow) return;
-                if (visited[r][c] || !grid[r][c] || grid[r][c].color !== targetColor) return;
-
-                visited[r][c] = true;
-                matched.push({r, c, isGimmick: grid[r][c].isGimmick, color: grid[r][c].color});
-
-                let neighbors = (r % 2 === 0) ? 
-                    [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] :
-                    [[r-1, c], [r-1, c+1], [r, c-1], [r, c+1], [r+1, c], [r+1, c+1]];
-
-                for (let [nr, nc] of neighbors) dfs(nr, nc);
-            }
-
-            dfs(startR, startC);
-
-            if (matched.length >= 3) {
-                // 消えた玉を落下アニメーションに登録
-                matched.forEach(cell => {
-                    addFallingBubble(cell.r, cell.c, cell.color);
-                    grid[cell.r][cell.c] = null;
-                    if (cell.isGimmick) grantRandomItem();
-                });
-
-                // 孤立した（天井と接続されていない）玉を検知して一緒に落下
-                let floating = findFloatingBubbles();
-                floating.forEach(cell => {
-                    addFallingBubble(cell.r, cell.c, cell.color);
-                    grid[cell.r][cell.c] = null;
-                    if (cell.isGimmick) grantRandomItem();
-                });
-
-                // 巻き込まれて落ちた玉も消去カウント（得点）に加算
-                let totalCleared = matched.length + floating.length;
-                clearedCount += totalCleared;
-                document.getElementById('gui-cleared-count').innerText = clearedCount;
-
-                sendOjamaToOpponent(totalCleared * (ojamaMultiplier * activeBuffs.multiplier));
-
-                if (clearedCount >= 500) { triggerVictory(); return; }
-            }
-
-            checkDeadLineLoss();
-            endMyTurn();
-            spawnBullet();
-        }
-
-        // 天井繋がり検知DFS
-        function findFloatingBubbles() {
-            let connected = Array.from({length: ROWS}, () => Array(COLS).fill(false));
-            let queue = [];
-
-            // 1. 最上段（天井）の玉を起点として登録
-            if (grid[0]) {
-                for (let c = 0; c < COLS; c++) {
-                    if (grid[0][c]) {
-                        connected[0][c] = true;
-                        queue.push({r: 0, c});
-                    }
-                }
-            }
-
-            // 2. 探索
-            while (queue.length > 0) {
-                let {r, c} = queue.shift();
-                let neighbors = (r % 2 === 0) ? 
-                    [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] :
-                    [[r-1, c], [r-1, c+1], [r, c-1], [r, c+1], [r+1, c], [r+1, c+1]];
-
-                for (let [nr, nc] of neighbors) {
-                    if (nr >= 0 && nr < ROWS) {
-                        let colsInRow = (nr % 2 === 0) ? COLS : COLS - 1;
-                        if (nc >= 0 && nc < colsInRow && grid[nr][nc] && !connected[nr][nc]) {
-                            connected[nr][nc] = true;
-                            queue.push({r: nr, c: nc});
-                        }
-                    }
-                }
-            }
-
-            // 3. 天井に繋がっていない孤立玉をリストアップ
-            let floating = [];
-            for (let r = 0; r < ROWS; r++) {
-                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                for (let c = 0; c < colsInRow; c++) {
-                    if (grid[r][c] && !connected[r][c]) {
-                        floating.push({r, c, color: grid[r][c].color, isGimmick: grid[r][c].isGimmick});
-                    }
-                }
-            }
-            return floating;
-        }
-
-        function addFallingBubble(r, c, color) {
-            let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
-            fallingBubbles.push({
-                x: rowXOffset + c * DIAMETER,
-                y: RADIUS + r * ROW_HEIGHT,
-                vy: -2 + Math.random() * -3, // ポンと軽く浮き上がってから落下
-                vx: (Math.random() - 0.5) * 4,
-                color: color
-            });
-        }
-
-        function updateFallingBubbles() {
-            for (let i = fallingBubbles.length - 1; i >= 0; i--) {
-                let p = fallingBubbles[i];
-                p.vy += 0.8; // 重力加速度
-                p.x += p.vx;
-                p.y += p.vy;
-
-                // 画面外下に落ちたら削除
-                if (p.y > canvas.height + 50) {
-                    fallingBubbles.splice(i, 1);
-                }
-            }
-        }
-
-        function sendOjamaToOpponent(count) {
-            let targetId = activeBuffs.redirectTarget;
-            if (targetId === null) {
-                let opp = players.filter(p => p.id !== myPlayerId && !p.eliminated);
-                if (opp.length > 0) targetId = opp[Math.floor(Math.random() * opp.length)].id;
-            }
-            if (targetId !== null) {
-                if (battleRole === 'host') handleOjamaRouting(targetId, count);
-                else sendToHost({ type: 'send_ojama', targetId, count });
-            }
-        }
-
-        function handleOjamaRouting(targetId, count) {
-            if (targetId === myPlayerId) triggerOjamaFlyIn(count);
-            else broadcastHost({ type: 'receive_ojama', targetId, count });
-        }
-
-        function triggerOjamaFlyIn(count) {
-            if (count <= 0) return;
-            isCheckingVictory = false;
-            for (let i = 0; i < count; i++) {
-                flyingOjamaBalls.push({
-                    x: Math.random() * (canvas.width - 40) + 20,
-                    y: canvas.height + 30,
-                    targetColor: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)],
-                    speed: 12 + Math.random() * 6
-                });
-            }
-        }
-
-        function updateFlyingOjama() {
-            for (let i = flyingOjamaBalls.length - 1; i >= 0; i--) {
-                let ball = flyingOjamaBalls[i];
-                ball.y -= ball.speed;
-                if (ball.y < 100) {
-                    landOjamaInGrid(ball.targetColor);
-                    flyingOjamaBalls.splice(i, 1);
-                }
-            }
-            if (flyingOjamaBalls.length === 0 && !isCheckingVictory) {
-                isCheckingVictory = true;
-                checkDeadLineLoss();
-            }
-        }
-
-        function landOjamaInGrid(color) {
-            for (let r = 0; r < ROWS; r++) {
-                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                for (let c = 0; c < colsInRow; c++) {
-                    if (!grid[r][c]) { grid[r][c] = { color, isGimmick: false }; return; }
-                }
-            }
-        }
-
-        function checkDeadLineLoss() {
-            if (!isCheckingVictory || isEliminated) return;
-            for (let r = 0; r < ROWS; r++) {
-                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                for (let c = 0; c < colsInRow; c++) {
-                    if (grid[r][c] && (RADIUS + r * ROW_HEIGHT) >= DEAD_LINE_Y) {
-                        isEliminated = true;
-                        if (battleRole === 'host') {
-                            let p = players.find(p => p.id === myPlayerId);
-                            if (p) p.eliminated = true;
-                            checkVictoryConditionHost();
-                        } else sendToHost({ type: 'player_eliminated' });
-                        return;
-                    }
-                }
-            }
-        }
-
-        function checkVictoryConditionHost() {
-            let active = players.filter(p => !p.eliminated);
-            if (active.length === 1) {
-                broadcastHost({ type: 'game_over_win', winnerName: active[0].name });
-                showGameOverBanner(active[0].name + " WIN!");
-            }
-        }
-
-        function triggerVictory() {
-            let myP = players.find(p => p.id === myPlayerId);
-            showGameOverBanner((myP ? myP.name : "YOU") + " WIN!");
-        }
-
-        function showGameOverBanner(msg) {
-            gameState = 'ended';
-            let notice = document.createElement('div');
-            notice.style.cssText = "position:absolute; top:50%; left:35%; transform:translate(-50%, -50%); font-size:32px; font-weight:900; color:#ffe600; text-shadow:0 0 20px #ffe600; z-index:300;";
-            notice.innerText = msg;
-            document.getElementById('game-container').appendChild(notice);
-        }
-
-        function grantRandomItem() {
-            const keys = Object.keys(inventory);
-            let pick = keys[Math.floor(Math.random() * keys.length)];
-            if (inventory[pick] < 5) { // 各アイテムの上限ストック数を5個に制限
-                inventory[pick]++;
-                updateGUIItemButtons();
-            }
-        }
-
-        function updateGUIItemButtons() {
-            for (let k in inventory) {
-                let btn = document.getElementById('btn-item-' + k);
-                let cnt = document.getElementById('cnt-' + k);
-                if (cnt) cnt.innerText = inventory[k];
-                if (btn) {
-                    // 自ターン中でストックがあれば有効化
-                    if (inventory[k] > 0 && battleTurnState === 'my_turn') {
-                        btn.classList.remove('disabled');
-                    } else {
-                        btn.classList.add('disabled');
-                    }
-                }
-            }
-        }
-
-        // --- アイテム使用・選択ダイアログ＆画面暗転処理 ---
-        function pauseGameTimer() {
-            isTimerPaused = true;
-            document.getElementById('screen-blackout').style.display = 'flex';
-        }
-
-        function resumeGameTimer() {
-            isTimerPaused = false;
-            document.getElementById('screen-blackout').style.display = 'none';
-        }
-
-        function useItem(type) {
-            if (inventory[type] <= 0 || battleTurnState !== 'my_turn') return;
-
-            if (type === 'double') { inventory.double--; activeBuffs.multiplier = 2; updateGUIItemButtons(); }
-            else if (type === 'triple') { inventory.triple--; activeBuffs.multiplier = 3; updateGUIItemButtons(); }
-            else if (type === 'skip') { inventory.skip--; updateGUIItemButtons(); endMyTurn(); }
-            else if (type === 'pierce') { inventory.pierce--; activeBuffs.isPiercing = true; updateGUIItemButtons(); }
-            else if (type === 'defense') { inventory.defense--; activeBuffs.isDefending = true; updateGUIItemButtons(); }
-            else if (type === 'forceshoot') { inventory.forceshoot--; updateGUIItemButtons(); forceAutoShoot(); }
-            else if (type === 'color') { showColorSelectionDialog(); }
-            else if (type === 'redirect') { showTargetSelectionDialog(); }
-        }
-
-        function showColorSelectionDialog() {
-            pauseGameTimer();
-            let mc = document.getElementById('modal-container');
-            mc.style.display = 'block';
-            mc.innerHTML = `
-                <div class="modal-dialog">
-                    <div style="color:#00f3ff; font-weight:bold;">発射玉の色を選択</div>
-                    <div class="color-selector-box">
-                        ${BASE_COLORS.map(c => `<div class="color-dot" style="background:${c};" onclick="selectColor('${c}')"></div>`).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        function selectColor(color) {
-            if (bulletData) bulletData.color = color;
-            inventory.color--;
-            document.getElementById('modal-container').style.display = 'none';
-            resumeGameTimer();
-            updateGUIItemButtons();
-        }
-
-        function showTargetSelectionDialog() {
-            let opp = players.filter(p => p.id !== myPlayerId && !p.eliminated);
-            if (opp.length === 0) return;
-
-            pauseGameTimer();
-            let mc = document.getElementById('modal-container');
-            mc.style.display = 'block';
-            mc.innerHTML = `
-                <div class="modal-dialog">
-                    <div style="color:#00f3ff; font-weight:bold;">送り先プレイヤーを選択</div>
-                    <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
-                        ${opp.map(p => `<button class="target-btn" onclick="selectTarget(${p.id})">${p.name}</button>`).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        function selectTarget(targetId) {
-            activeBuffs.redirectTarget = targetId;
-            inventory.redirect--;
-            document.getElementById('modal-container').style.display = 'none';
-            resumeGameTimer();
-            updateGUIItemButtons();
-        }
-
-        // --- 描画メインループ ---
-        function gameLoop() {
-            ctx.fillStyle = '#0d111e';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            if (gameState === 'playing' || gameState === 'ended') {
-                // デッドライン
-                ctx.beginPath();
-                ctx.setLineDash([6, 6]);
-                ctx.moveTo(0, DEAD_LINE_Y);
-                ctx.lineTo(canvas.width, DEAD_LINE_Y);
-                ctx.strokeStyle = '#ff0055';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // グリッド上の玉
-                for (let r = 0; r < ROWS; r++) {
-                    if (!grid[r]) continue;
-                    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-                    let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
-                    for (let c = 0; c < colsInRow; c++) {
-                        let cell = grid[r][c];
-                        if (cell) {
-                            let cx = rowXOffset + c * DIAMETER;
-                            let cy = RADIUS + r * ROW_HEIGHT;
-                            ctx.beginPath();
-                            ctx.arc(cx, cy, RADIUS - 2, 0, Math.PI * 2);
-                            ctx.fillStyle = cell.color;
-                            ctx.fill();
-                            if (cell.isGimmick) {
-                                ctx.fillStyle = '#ffffff';
-                                ctx.font = 'bold 12px sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.fillText('?', cx, cy);
-                            }
-                        }
-                    }
-                }
-
-                // 落下アニメーションの玉を描画
-                updateFallingBubbles();
-                fallingBubbles.forEach(p => {
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, RADIUS - 2, 0, Math.PI * 2);
-                    ctx.fillStyle = p.color;
-                    ctx.fill();
-                });
-
-                // 引っ張り操作中の予測ガイド線（引っ張る強さに応じて長さ変化）
-                if (isDragging) {
-                    let dx = dragStartX - dragCurrentX;
-                    let dy = dragStartY - dragCurrentY;
-                    let dist = Math.hypot(dx, dy);
-                    let angle = Math.atan2(dx, dy);
-
-                    let guideLength = Math.min(dist * 1.5, 200); // 最大約4cm~5cm分
-                    let targetX = bulletX + Math.sin(angle) * guideLength;
-                    let targetY = bulletY - Math.cos(angle) * guideLength;
-
-                    ctx.beginPath();
-                    ctx.setLineDash([8, 6]);
-                    ctx.moveTo(bulletX, bulletY);
-                    ctx.lineTo(targetX, targetY);
-                    ctx.strokeStyle = '#00f3ff';
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-
-                updateBulletPhysics();
-
-                if (bulletData) {
-                    ctx.beginPath();
-                    ctx.arc(bulletX, bulletY, RADIUS - 2, 0, Math.PI * 2);
-                    ctx.fillStyle = bulletData.color;
-                    ctx.fill();
-                }
-
-                if (nextBubble) {
-                    ctx.beginPath();
-                    ctx.arc(25, canvas.height - 25, RADIUS * 0.7, 0, Math.PI * 2);
-                    ctx.fillStyle = nextBubble.color;
-                    ctx.fill();
-                }
-
-                updateFlyingOjama();
-                flyingOjamaBalls.forEach(ball => {
-                    ctx.beginPath();
-                    ctx.arc(ball.x, ball.y, RADIUS - 2, 0, Math.PI * 2);
-                    ctx.fillStyle = ball.targetColor;
-                    ctx.fill();
-                });
-
-                if (battleTurnState === 'my_turn') {
-                    ctx.fillStyle = '#00f3ff';
-                    ctx.font = 'bold 12px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`YOUR TURN (${turnTimer}s)`, canvas.width / 2, canvas.height - 10);
-
-                    if (turnTimer <= 5) {
-                        ctx.fillStyle = '#ff0055';
-                        ctx.font = '900 64px sans-serif';
-                        ctx.fillText(turnTimer, canvas.width / 2, canvas.height / 2);
-                    }
-                }
-            }
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        requestAnimationFrame(gameLoop);
-    </script>
+      }
+    }
+    clearedCount += cleared;
+    dropFloatingBubbles();
+  }
+  endTurnAndNext();
+}
+
+function dropFloatingBubbles() {
+  let connected = Array.from({length: ROWS}, (_, r) => Array((r % 2 === 0) ? COLS : COLS - 1).fill(false));
+  function dfs(r, c) {
+    if (r < 0 || r >= ROWS) return;
+    let cols = (r % 2 === 0) ? COLS : COLS - 1;
+    if (c < 0 || c >= cols || connected[r][c] || !grid[r][c]) return;
+    connected[r][c] = true;
+    let neighbors = (r % 2 === 0) ?
+      [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] :
+      [[r-1, c], [r-1, c+1], [r, c-1], [r, c+1], [r+1, c], [r+1, c+1]];
+    for (let [nr, nc] of neighbors) dfs(nr, nc);
+  }
+
+  let topCols = COLS;
+  for (let c = 0; c < topCols; c++) {
+    if (grid[0][c]) dfs(0, c);
+  }
+
+  let dropped = 0;
+  for (let r = 0; r < ROWS; r++) {
+    let cols = (r % 2 === 0) ? COLS : COLS - 1;
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c] && !connected[r][c]) {
+        grid[r][c] = null;
+        dropped++;
+      }
+    }
+  }
+  clearedCount += dropped;
+  document.getElementById('gui-cleared-count').innerText = clearedCount;
+}
+
+function checkMatchAndClear(startR, startC) {
+  let targetColor = grid[startR][startC].color;
+  if (targetColor === 'rainbow') return;
+  let matched = [];
+  let visited = Array.from({length: ROWS}, () => Array(COLS).fill(false));
+
+  function dfs(r, c) {
+    if (r < 0 || r >= ROWS) return;
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+    if (c < 0 || c >= colsInRow || visited[r][c] || !grid[r][c] || grid[r][c].color !== targetColor) return;
+    visited[r][c] = true;
+    matched.push({r, c});
+    let neighbors = (r % 2 === 0) ?
+      [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] :
+      [[r-1, c], [r-1, c+1], [r, c-1], [r, c+1], [r+1, c], [r+1, c+1]];
+    for (let [nr, nc] of neighbors) dfs(nr, nc);
+  }
+
+  dfs(startR, startC);
+  if (matched.length >= 3) {
+    matched.forEach(cell => grid[cell.r][cell.c] = null);
+    clearedCount += matched.length;
+    dropFloatingBubbles();
+  }
+}
+
+function endTurnAndNext() {
+  spawnBullet();
+  endMyTurn();
+}
+
+function drawBubble(x, y, color) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, RADIUS - 1, 0, Math.PI * 2);
+  if (color === 'rainbow') {
+    let grad = ctx.createRadialGradient(x - RADIUS/3, y - RADIUS/3, 1, x, y, RADIUS);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.2, '#ff0000');
+    grad.addColorStop(0.4, '#ffff00');
+    grad.addColorStop(0.6, '#00ff00');
+    grad.addColorStop(0.8, '#00ffff');
+    grad.addColorStop(1, '#ff00ff');
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = color;
+  }
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (bgPatternCanvas) {
+    ctx.drawImage(bgPatternCanvas, 0, 0);
+  }
+
+  // グリッド玉の描画
+  for (let r = 0; r < ROWS; r++) {
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+    let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
+    for (let c = 0; c < colsInRow; c++) {
+      if (grid[r] && grid[r][c]) {
+        let cx = rowXOffset + c * DIAMETER;
+        let cy = RADIUS + r * ROW_HEIGHT;
+        drawBubble(cx, cy, grid[r][c].color);
+      }
+    }
+  }
+
+  // 弾・発射台描画
+  if (bulletData) drawBubble(bulletX, bulletY, bulletData.color);
+  if (nextBubble) drawBubble(30, canvas.height - 30, nextBubble.color);
+
+  // 引っ張り用ガイドライン描画
+  if (isDragging) {
+    ctx.beginPath();
+    ctx.moveTo(bulletX, bulletY);
+    ctx.lineTo(dragCurrentX, dragCurrentY);
+    ctx.strokeStyle = '#00f3ff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+}
+
+function gameLoop() {
+  if (gameState === 'playing') {
+    updateBulletPhysics();
+    draw();
+    requestAnimationFrame(gameLoop);
+  }
+}
+</script>
 </body>
 </html>
