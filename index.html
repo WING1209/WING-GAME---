@@ -1,112 +1,91 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>wing GAME</title>
-<!-- PeerJS ライブラリ -->
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<style>
-* { box-sizing: border-box; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-body { margin: 0; padding: 0; background: #111; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; height: 100dvh; overflow: hidden; touch-action: none; }
-#game-container { position: relative; width: 100vw; height: 100dvh; max-width: 480px; display: flex; flex-direction: row; align-items: center; justify-content: center; }
-canvas { background: #1a1a1a; box-shadow: 0 0 15px rgba(0,0,0,0.8); display: block; width: 75%; height: 100%; object-fit: contain; z-index: 1; touch-action: none; }
-
-/* 右側GUI */
-#sidebar-gui { width: 25%; height: 100%; background: #222; border-left: 2px solid #444; display: flex; flex-direction: column; align-items: center; padding: 8px 4px; z-index: 10; overflow-y: auto; }
-.my-name-display { font-size: 16px; font-weight: bold; color: #ffcc00; text-align: center; border: 2px solid #ffcc00; padding: 4px; border-radius: 6px; width: 100%; margin-bottom: 8px; word-break: break-all; }
-.item-btn-large { width: 100%; height: 42px; font-size: 13px; font-weight: bold; margin-bottom: 6px; background: #ff9800; color: #fff; border: none; border-radius: 6px; cursor: pointer; touch-action: manipulation; }
-
-.overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 17, 17, 0.95); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px; z-index: 100; text-align: center; }
-.overlay-screen h2 { color: #ffcc00; font-size: 24px; margin-bottom: 16px; }
-.menu-btn { width: 200px; padding: 12px; margin: 8px 0; background: #2196F3; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; touch-action: manipulation; }
-.menu-btn.sub { background: #555; }
-.menu-btn.red { background: #f44336; }
-input, select { padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #555; background: #333; color: #fff; text-align: center; margin: 6px 0; width: 200px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>パズル対戦ゲーム</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
+    <div id="game-container">
+        <!-- ゲーム描画用キャンバス (360x640固定解像度) -->
+        <canvas id="gameCanvas" width="360" height="640"></canvas>
 
-<div id="game-container">
-    <canvas id="gameCanvas" width="360" height="640"></canvas>
-    
-    <!-- 右側GUI -->
-    <div id="sidebar-gui">
-        <div id="my-player-name" class="my-name-display">PLAYER</div>
-        <div style="font-size: 11px; color: #aaa; margin-bottom: 4px;">ITEM STOCK</div>
-        <button id="btn-use-oshitsuke" class="item-btn-large" onclick="useItemOshitsuke()">おしつけ</button>
-        <button id="btn-use-forceshoot" class="item-btn-large" onclick="useItemForceShoot()">発射</button>
-        <button id="btn-use-defense" class="item-btn-large" style="background:#4CAF50;" onclick="useItemDefense()">防御</button>
+        <!-- 1. タイトル画面 -->
+        <div id="screen-title" class="overlay-screen">
+            <h1 class="main-logo">パズル対戦</h1>
+            <button onclick="selectMainMenu('host')">部屋を作る (ホスト)</button>
+            <button onclick="selectMainMenu('guest')">部屋に入る (ゲスト)</button>
+        </div>
+
+        <!-- 2. ホスト設定画面 -->
+        <div id="screen-host-config" class="overlay-screen" style="display:none;">
+            <h2>対戦設定</h2>
+            <div class="menu-box">
+                <label>人数: 
+                    <select id="select-max-players">
+                        <option value="2">2人</option>
+                        <option value="3">3人</option>
+                        <option value="4">4人</option>
+                        <option value="5">5人</option>
+                    </select>
+                </label>
+                <label>勝利数: 
+                    <select id="select-target-wins">
+                        <option value="1">1本先取</option>
+                        <option value="2">2本先取</option>
+                        <option value="3">3本先取</option>
+                    </select>
+                </label>
+                <label>お邪魔倍率: 
+                    <select id="select-ojama-mult">
+                        <option value="1">1倍</option>
+                        <option value="2">2倍</option>
+                    </select>
+                </label>
+            </div>
+            <button onclick="confirmHostSettings()">部屋作成</button>
+        </div>
+
+        <!-- 3. ホスト部屋待機画面 -->
+        <div id="screen-host-wait" class="overlay-screen" style="display:none;">
+            <h2>部屋コード: <span id="display-room-code">----</span></h2>
+            <p id="host-wait-status">サーバー接続中...</p>
+        </div>
+
+        <!-- 4. ゲスト部屋参加画面 -->
+        <div id="screen-guest-join" class="overlay-screen" style="display:none;">
+            <h2>部屋コード入力</h2>
+            <input type="number" id="input-room-code" placeholder="4桁の数字">
+            <button onclick="joinRoom()">参加</button>
+            <p id="guest-status-msg"></p>
+        </div>
+
+        <!-- 5. プレイヤー名前入力画面 -->
+        <div id="screen-name-input" class="overlay-screen" style="display:none;">
+            <h2>名前入力</h2>
+            <input type="text" id="input-player-name" maxlength="6" placeholder="名前 (6文字まで)">
+            <button onclick="submitPlayerName()">完了</button>
+            <p id="name-wait-msg"></p>
+        </div>
+
+        <!-- 6. 順番決めルーレット画面 -->
+        <div id="screen-roulette" class="overlay-screen" style="display:none;">
+            <h2>順番決めルーレット</h2>
+            <div id="roulette-display" style="font-size: 56px; font-weight: bold; margin: 20px; color:#ffcc00;">1</div>
+            <p id="my-order-result" style="font-size: 18px; height: 24px;"></p>
+            <button id="btn-roulette-action" onclick="handleRouletteTap()">ストップ</button>
+        </div>
+
+        <!-- 7. ゲームプレイ用UI (アイテムボタン等) -->
+        <div id="game-ui" style="display:none; position:absolute; bottom:5px; right:5px; z-index:10;">
+            <button onclick="useItemOshitsuke()" style="padding:4px 8px; font-size:11px;">押し付け</button>
+            <button onclick="useItemForceShoot()" style="padding:4px 8px; font-size:11px;">強制発射</button>
+            <button onclick="useItemDefense()" style="padding:4px 8px; font-size:11px;">ガード</button>
+        </div>
     </div>
 
-    <!-- 初期メニュー -->
-    <div id="screen-title" class="overlay-screen" style="display: flex;">
-        <h1 style="color:#ffcc00; font-size:28px;">WING■■GAME</h1>
-        <button class="menu-btn" onclick="selectMainMenu('host')">ホスト</button>
-        <button class="menu-btn" onclick="selectMainMenu('guest')">ゲスト</button>
-        <button class="menu-btn red" onclick="selectMainMenu('exit')">終了</button>
-    </div>
-
-    <!-- ホスト設定画面 -->
-    <div id="screen-host-config" class="overlay-screen">
-        <h2>ホスト設定</h2>
-        <label>対戦人数 (2〜5人)</label>
-        <select id="select-max-players">
-            <option value="2">2人</option>
-            <option value="3">3人</option>
-            <option value="4">4人</option>
-            <option value="5">5人</option>
-        </select>
-        
-        <label style="margin-top:10px;">勝利条件</label>
-        <select id="select-target-wins">
-            <option value="1">先に1勝</option>
-            <option value="2">先に2勝</option>
-        </select>
-
-        <label style="margin-top:10px;">お邪魔玉倍率</label>
-        <select id="select-ojama-mult">
-            <option value="1">1倍</option>
-            <option value="2">2倍</option>
-            <option value="3">3倍</option>
-        </select>
-
-        <button class="menu-btn" style="margin-top:20px;" onclick="confirmHostSettings()">次へ</button>
-    </div>
-
-    <!-- ホストID表示 & 接続待ち -->
-    <div id="screen-host-wait" class="overlay-screen">
-        <h2>部屋IDナンバー</h2>
-        <div id="display-room-code" style="font-size:36px; color:#ffcc00; font-weight:bold; letter-spacing:4px; margin:15px 0;">----</div>
-        <p id="host-wait-status">サーバーに接続中...</p>
-    </div>
-
-    <!-- ゲストID入力画面 -->
-    <div id="screen-guest-join" class="overlay-screen">
-        <h2>IDナンバー入力</h2>
-        <input type="number" id="input-room-code" placeholder="4桁のID" maxlength="4">
-        <button class="menu-btn" onclick="joinRoom()">接続</button>
-        <p id="guest-status-msg" style="color:#ff4d4d; font-size:14px; margin-top:10px;"></p>
-    </div>
-
-    <!-- プレイヤー名前入力画面 -->
-    <div id="screen-name-input" class="overlay-screen">
-        <h2>プレイヤー名入力</h2>
-        <p style="font-size:12px; color:#aaa;">全角6文字以内</p>
-        <input type="text" id="input-player-name" maxlength="6" placeholder="名前を入力">
-        <button class="menu-btn" onclick="submitPlayerName()">決定</button>
-        <p id="name-wait-msg" style="color:#4da6ff; font-size:14px; margin-top:10px;"></p>
-    </div>
-
-    <!-- ルーレット・準備画面 -->
-    <div id="screen-roulette" class="overlay-screen">
-        <h2>順番決定ルーレット</h2>
-        <div id="roulette-display" style="font-size:28px; color:#ffcc00; margin:20px 0; font-weight:bold;">START!</div>
-        <button id="btn-roulette-action" class="menu-btn" onclick="handleRouletteTap()">タップしてストップ</button>
-        <div id="my-order-result" style="font-size:22px; color:#4dff4d; font-weight:bold; margin-top:15px;"></div>
-    </div>
-</div>
-
-<script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
