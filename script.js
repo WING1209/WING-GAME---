@@ -98,7 +98,6 @@ function confirmHostSettings() {
         players.push({ id: assignedId, name: '', order: 0, wins: 0, oshitsukeTarget: null, forceShoot: false, isShield: false });
 
         conn.on('open', () => {
-            // 全接続済プレイヤーに現在のプレイヤーリスト情報を送信
             conn.send({ 
                 type: 'init_guest', 
                 playerId: assignedId, 
@@ -109,7 +108,7 @@ function confirmHostSettings() {
             updateHostWaitStatus();
 
             if (players.length === maxPlayers) {
-                // 揃ったら全員へプレイヤーリストの更新と名前入力開始を指示
+                // 人数が揃ったら全員へプレイヤーリストの送信と画面遷移指示
                 broadcastHost({ type: 'start_name_input', players: players });
                 showScreen('screen-name-input');
             }
@@ -183,11 +182,12 @@ function broadcastHost(data) {
 // ==========================================
 function handleHostReceiveData(fromId, data) {
     if (data.type === 'submit_name') {
-        // IDに該当するプレイヤーの名前を正しくセット
         let p = players.find(item => item.id === fromId);
         if (p) {
             p.name = data.name;
         }
+        // 他のゲストにも最新のプレイヤー情報を同期
+        broadcastHost({ type: 'sync_players', players: players });
         checkAllNamesSubmitted();
     } else if (data.type === 'ready_start') {
         readyCount++;
@@ -209,6 +209,8 @@ function handleGuestReceiveData(data) {
     } else if (data.type === 'start_name_input') {
         if (data.players) players = data.players;
         showScreen('screen-name-input');
+    } else if (data.type === 'sync_players') {
+        if (data.players) players = data.players;
     } else if (data.type === 'start_roulette') {
         players = data.players;
         showScreen('screen-roulette');
@@ -228,7 +230,6 @@ function submitPlayerName() {
 
     document.getElementById('my-player-name').innerText = inputName;
     
-    // 自身のローカル配列の情報を即座に更新
     let myP = players.find(p => p.id === myPlayerId);
     if (myP) myP.name = inputName;
 
@@ -244,17 +245,18 @@ function submitPlayerName() {
 }
 
 function checkAllNamesSubmitted() {
-    // 設定人数分が揃っており、かつ全員の名前が埋まっているかチェック
     if (players.length < maxPlayers) return;
 
+    // 全員分の名前が空でなくセットされているか確認
     let allFilled = players.every(p => p.name && p.name.trim() !== '');
     if (allFilled) {
-        // 順番を決定してルーレットへ遷移
+        // シャッフルして順番決定
         let orders = Array.from({length: maxPlayers}, (_, i) => i + 1);
         orders.sort(() => Math.random() - 0.5);
 
         players.forEach((p, idx) => p.order = orders[idx]);
 
+        // 全ゲストに一斉送信
         broadcastHost({ type: 'start_roulette', players: players });
         showScreen('screen-roulette');
         startRouletteAnimation();
