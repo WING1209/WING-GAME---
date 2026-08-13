@@ -22,16 +22,13 @@ html, body {
   background-color: #05050a;
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  position: fixed;
 }
 #game-container {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  max-width: 100%;
-  max-height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   background: radial-gradient(circle at center, #101428 0%, #05050a 100%);
   display: flex;
   flex-direction: row;
@@ -41,6 +38,8 @@ html, body {
   position: relative;
   flex: 1;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   background-color: #0d111e;
 }
 #gameCanvas {
@@ -51,6 +50,7 @@ html, body {
 #side-gui {
   width: 110px;
   height: 100%;
+  min-height: 0;
   background: rgba(15, 23, 42, 0.95);
   border-left: 2px solid rgba(0, 243, 255, 0.3);
   display: flex;
@@ -194,7 +194,7 @@ input, select { padding: 6px 8px; font-size: 13px; border-radius: 6px; border: 1
   <div id="screen-title" class="overlay-screen">
     <div>
       <div class="sub-title" style="text-align:center;">REAL-TIME MULTI PUZZLE</div>
-      <div class="main-logo">WING☆PAZZLE</div>
+      <div class="main-logo">CYBER☆PAZZLE</div>
     </div>
     <button class="btn-action" onclick="selectMainMenu('host')">部屋を作る (HOST)</button>
     <button class="btn-action btn-secondary" onclick="selectMainMenu('guest')">部屋に入る (GUEST)</button>
@@ -247,7 +247,7 @@ input, select { padding: 6px 8px; font-size: 13px; border-radius: 6px; border: 1
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const PEER_PREFIX = 'cyber-puzzle-v2026-fix2-';
+const PEER_PREFIX = 'cyber-puzzle-v2026-fix3-';
 const ROWS = 15;
 const COLS = 8;
 let RADIUS = 16;
@@ -296,17 +296,11 @@ let flyingOjamaBalls = [];
 let DEAD_LINE_Y = 0;
 
 function resizeCanvas() {
-  let wrapper = document.getElementById('canvas-wrapper');
-  if (!wrapper) return;
+  let w = window.innerWidth - 110;
+  let h = window.innerHeight;
   
-  let rect = wrapper.getBoundingClientRect();
-  let w = rect.width || wrapper.clientWidth || (window.innerWidth - 110);
-  let h = rect.height || wrapper.clientHeight || window.innerHeight;
-  
-  if (w <= 0 || h <= 0) {
-    w = window.innerWidth - 110;
-    h = window.innerHeight;
-  }
+  if (w <= 0) w = 300;
+  if (h <= 0) h = 500;
 
   canvas.width = w;
   canvas.height = h;
@@ -480,7 +474,6 @@ function launchGameStartNotice() {
   let myP = players.find(p => p.id === myPlayerId);
   document.getElementById('gui-player-name').innerText = myP ? myP.name : 'PLAYER';
   
-  // レイアウト確定を確実に待つために setTimeout を使用
   setTimeout(() => {
     resizeCanvas();
     gameState = 'playing';
@@ -495,7 +488,7 @@ function launchGameStartNotice() {
 }
 
 // ==========================================
-// 引っ張り(スリングショット) & ガイド描画処理の修正
+// 引っ張り(スリングショット) & ガイド描画処理
 // ==========================================
 canvas.addEventListener('touchstart', (e) => {
   if (gameState !== 'playing' || isMoving || battleTurnState !== 'my_turn') return;
@@ -621,9 +614,6 @@ function spawnGimmickBubble() {
   }
 }
 
-// ==========================================
-// 15%の確率で虹色玉を実装するスポーン処理
-// ==========================================
 function spawnBullet() {
   let isRainbow = Math.random() < 0.15;
   let newBubbleColor = isRainbow ? 'rainbow' : BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)];
@@ -940,7 +930,7 @@ function useItem(type) {
 }
 
 // ==========================================
-// 描画・ガイド点線の描画処理
+// 描画処理
 // ==========================================
 function drawBubble(x, y, color, isGimmick) {
   ctx.beginPath();
