@@ -4,30 +4,29 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let gameMode = 'battle';
+const PEER_PREFIX = 'bomber-game-v2026-room-';
+
 let gameState = 'title';
 let battleRole = ''; // 'host' or 'guest'
 let roomCode = '';
-let myPlayerId = 0; // 0, 1, 2, ...
+let myPlayerId = 0;
 let maxPlayers = 2;
 let targetWins = 1;
 let ojamaMultiplier = 1;
 
 let peer = null;
-let hostConnMap = {}; // Host用: [peerId]: connection
-let guestConn = null; // Guest用
+let guestConn = null;
+let hostConnections = []; // ホスト側の全ゲストコネクション管理配列
 
-// プレイヤー管理情報
 let players = []; // { id, name, order, wins, oshitsukeTarget, forceShoot, isShield }
 let readyCount = 0;
 
-// ルーレット状態
-let rouletteState = 'idle'; // 'idle', 'running', 'stopped', 'ready_wait'
+let rouletteState = 'idle';
 let myOrderNum = 0;
 let rouletteInterval = null;
 
 // ==========================================
-// 2. 画面遷移制御
+// 2. 画面制御
 // ==========================================
 function showScreen(screenId) {
     document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
@@ -37,22 +36,37 @@ function showScreen(screenId) {
     }
 }
 
-// 最初の3択メニュー
 function selectMainMenu(choice) {
+    closeNetwork();
     if (choice === 'host') {
         battleRole = 'host';
         showScreen('screen-host-config');
     } else if (choice === 'guest') {
         battleRole = 'guest';
+        document.getElementById('guest-status-msg').innerText = '';
         showScreen('screen-guest-join');
     } else if (choice === 'exit') {
         alert("ゲームを終了します");
-        window.close();
+    }
+}
+
+function closeNetwork() {
+    if (guestConn) {
+        try { guestConn.close(); } catch(e){}
+        guestConn = null;
+    }
+    hostConnections.forEach(c => {
+        try { c.close(); } catch(e){}
+    });
+    hostConnections = [];
+    if (peer) {
+        try { peer.destroy(); } catch(e){}
+        peer = null;
     }
 }
 
 // ==========================================
-// 3. 通信 & ネットワーク処理 (PeerJS)
+// 3. 通信 (ホスト側 & ゲスト側)
 // ==========================================
 function confirmHostSettings() {
     maxPlayers = parseInt(document.getElementById('select-max-players').value);
@@ -61,30 +75,54 @@ function confirmHostSettings() {
 
     roomCode = Math.floor(1000 + Math.random() * 9000).toString();
     document.getElementById('display-room-code').innerText = roomCode;
+    document.getElementById('host-wait-status').innerText = "サーバーに接続中...";
     showScreen('screen-host-wait');
 
-    peer = new Peer('pb-game-multi-' + roomCode);
-    
+    // PeerJS 接続作成 (統一プレフィックスを使用)
+    peer = new Peer(PEER_PREFIX + roomCode);
+
     players = [{ id: 0, name: '', order: 0, wins: 0, oshitsukeTarget: null, forceShoot: false, isShield: false }];
     myPlayerId = 0;
 
+    peer.on('open', (id) => {
+        updateHostWaitStatus();
+    });
+
     peer.on('connection', (conn) => {
-        let newId = players.length;
-        if (newId >= maxPlayers) {
+        let assignedId = players.length;
+        if (assignedId >= maxPlayers) {
             conn.close();
             return;
         }
-        hostConnMap[conn.peer] = conn;
-        players.push({ id: newId, name: '', order: 0, wins: 0, oshitsukeTarget: null, forceShoot: false, isShield: false });
 
-        setupHostConnection(conn, newId);
-        updateHostWaitStatus();
+        hostConnections.push(conn);
+        players.push({ id: assignedId, name: '', order: 0, wins: 0, oshitsukeTarget: null, forceShoot: false, isShield: false });
 
-        if (players.length === maxPlayers) {
-            // 全員揃ったら全員に名前入力指示
-            broadcastHost({ type: 'start_name_input' });
-            showScreen('screen-name-input');
-        }
+        conn.on('open', () => {
+            conn.send({ 
+                type: 'init_guest', 
+                playerId: assignedId, 
+                maxPlayers: maxPlayers, 
+                ojamaMult: ojamaMultiplier 
+            });
+            updateHostWaitStatus();
+
+            if (players.length === maxPlayers) {
+                broadcastHost({ type: 'start_name_input' });
+                showScreen('screen-name-input');
+            }
+        });
+
+        conn.on('data', (data) => handleHostReceiveData(assignedId, data));
+
+        conn.on('close', () => {
+            hostConnections = hostConnections.filter(c => c !== conn);
+        });
+    });
+
+    peer.on('error', (err) => {
+        alert("ホスト接続エラー: 部屋コードを再生成します");
+        confirmHostSettings();
     });
 }
 
@@ -93,40 +131,53 @@ function updateHostWaitStatus() {
     if (el) el.innerText = `参加者を待っています... (${players.length}/${maxPlayers})`;
 }
 
-function setupHostConnection(conn, assignedId) {
-    conn.on('open', () => {
-        conn.send({ type: 'init_guest', playerId: assignedId, maxPlayers: maxPlayers, ojamaMult: ojamaMultiplier });
-    });
-    conn.on('data', (data) => handleHostReceiveData(assignedId, data));
-}
-
 function joinRoom() {
-    let code = document.getElementById('input-room-code').value;
+    let codeInput = document.getElementById('input-room-code');
+    let code = codeInput ? codeInput.value.trim() : '';
+    let statusMsg = document.getElementById('guest-status-msg');
+
     if (code.length !== 4) {
-        document.getElementById('guest-status-msg').innerText = "4桁の数字を入力してください";
+        statusMsg.innerText = "4桁の数字を入力してください";
         return;
     }
+
     roomCode = code;
+    statusMsg.innerText = "接続中...";
+
     peer = new Peer();
-    
+
     peer.on('open', () => {
-        guestConn = peer.connect('pb-game-multi-' + roomCode);
+        guestConn = peer.connect(PEER_PREFIX + roomCode);
+
+        guestConn.on('open', () => {
+            statusMsg.innerText = "ホストと接続成功！待機中...";
+        });
+
         guestConn.on('data', handleGuestReceiveData);
+
+        guestConn.on('error', (err) => {
+            statusMsg.innerText = "接続エラーが発生しました";
+        });
+
+        guestConn.on('close', () => {
+            alert("ホストとの通信が切断されました");
+            showScreen('screen-title');
+        });
     });
-    
-    peer.on('error', () => {
-        document.getElementById('guest-status-msg').innerText = "部屋が見つかりませんでした";
+
+    peer.on('error', (err) => {
+        statusMsg.innerText = "部屋が見つかりません (IDを確認してください)";
     });
 }
 
 function broadcastHost(data) {
-    Object.values(hostConnMap).forEach(c => {
+    hostConnections.forEach(c => {
         if (c && c.open) c.send(data);
     });
 }
 
 // ==========================================
-// 4. データ受信ハンドラ
+// 4. 通信データハンドラ
 // ==========================================
 function handleHostReceiveData(fromId, data) {
     if (data.type === 'submit_name') {
@@ -160,13 +211,11 @@ function handleGuestReceiveData(data) {
 }
 
 // ==========================================
-// 5. 名前入力 & ルーレット処理
+// 5. 名前入力 & ルーレット進行
 // ==========================================
 function submitPlayerName() {
     let inputName = document.getElementById('input-player-name').value.trim();
     if (!inputName) inputName = "P" + (myPlayerId + 1);
-    
-    // 全角6文字制限
     if (inputName.length > 6) inputName = inputName.substring(0, 6);
 
     document.getElementById('my-player-name').innerText = inputName;
@@ -182,9 +231,8 @@ function submitPlayerName() {
 }
 
 function checkAllNamesSubmitted() {
-    let allFilled = players.every(p => p.name !== '');
+    let allFilled = players.every(p => p.name && p.name !== '');
     if (allFilled) {
-        // 順番をランダムに決定 (Fisher-Yates)
         let orders = Array.from({length: maxPlayers}, (_, i) => i + 1);
         orders.sort(() => Math.random() - 0.5);
 
@@ -242,7 +290,6 @@ function launchGameStartNotice() {
     showScreen('');
     gameState = 'playing';
 
-    // 画面中央に大きく「ゲームスタート！」演出を表示
     let notice = document.createElement('div');
     notice.style.cssText = "position:fixed; top:40%; left:50%; transform:translate(-50%, -50%); font-size:36px; font-weight:900; color:#ffcc00; text-shadow:0 0 15px #000; z-index:1000; pointer-events:none;";
     notice.innerText = "ゲームスタート！";
@@ -252,26 +299,18 @@ function launchGameStartNotice() {
 }
 
 // ==========================================
-// 6. 新アイテム処理 (おしつけ、発射、防御)
+// 6. アイテム発動処理 (おしつけ / 発射 / 防御)
 // ==========================================
-
-// アイテム1：おしつけ
 function useItemOshitsuke() {
-    let targetId = promptPlayerSelect("おしつける相手を選択してください:");
-    if (targetId !== null) {
-        sendItemAction(1, targetId);
-    }
+    let targetId = promptPlayerSelect("おしつける相手の番号を入力してください:");
+    if (targetId !== null) sendItemAction(1, targetId);
 }
 
-// アイテム2：発射
 function useItemForceShoot() {
-    let targetId = promptPlayerSelect("強制発射させる相手を選択してください:");
-    if (targetId !== null) {
-        sendItemAction(2, targetId);
-    }
+    let targetId = promptPlayerSelect("強制発射させる相手の番号を入力してください:");
+    if (targetId !== null) sendItemAction(2, targetId);
 }
 
-// アイテム3：防御
 function useItemDefense() {
     sendItemAction(3, myPlayerId);
 }
@@ -279,7 +318,7 @@ function useItemDefense() {
 function promptPlayerSelect(msg) {
     let options = players
         .filter(p => p.id !== myPlayerId)
-        .map(p => `${p.id}: ${p.name}`)
+        .map(p => `[${p.id}] ${p.name}`)
         .join("\n");
     let res = prompt(`${msg}\n${options}`);
     let id = parseInt(res);
@@ -295,22 +334,19 @@ function sendItemAction(itemType, targetId) {
 }
 
 function processItemEffect(fromId, itemType, targetId) {
-    if (itemType === 1) { // おしつけ
+    if (itemType === 1) {
         players[fromId].oshitsukeTarget = targetId;
-    } else if (itemType === 2) { // 発射
+    } else if (itemType === 2) {
         players[targetId].forceShoot = true;
-    } else if (itemType === 3) { // 防御
+    } else if (itemType === 3) {
         players[fromId].isShield = true;
     }
     broadcastHost({ type: 'sync_player_states', players: players });
 }
 
-// 描画ループ (ダミー実装：キャンバス描画のフレームワーク)
+// 描画メインループ
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (gameState === 'playing') {
-        // ゲーム画面の背景および玉の描画処理などをここに記述
-    }
     requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);
