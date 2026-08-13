@@ -13,9 +13,7 @@ const RADIUS = 19;
 const DIAMETER = RADIUS * 2;
 const ROW_HEIGHT = RADIUS * Math.sqrt(3);
 const BASE_COLORS = ['#ff4d4d', '#4da6ff', '#4dff4d', '#ffff4d', '#ff4dda'];
-const UNBREAKABLE_COLOR = '#fff';
 const SPECIAL_RAINBOW = 'SPECIAL_RAINBOW';
-const SPECIAL_BOMB = 'SPECIAL_BOMB';
 
 // ゲーム・対戦状態
 let gameState = 'title';
@@ -38,10 +36,9 @@ let myOrderNum = 0;
 let rouletteInterval = null;
 
 // ターン・ゲーム盤面状態
-let battleTurnState = 'waiting'; // 'my_turn', 'opponent_turn', etc.
+let battleTurnState = 'waiting'; // 'my_turn', 'opponent_turn'
 let currentTurnPlayerId = 0;
 let grid = [];
-let myClearedBubbleCount = 0;
 
 // 発射台・物理パラメータ
 let shooterX = canvas.width / 2;
@@ -334,15 +331,16 @@ function handleRouletteTap() {
 }
 
 function launchGameStartNotice() {
-    showScreen('');
+    showScreen(''); // オーバーレイ画面を非表示化
     gameState = 'playing';
 
-    // ゲーム盤面および弾の初期化
+    // 【重要修正】ここで確実にゲーム用グリッドと弾を初期構築する
     initGridForBattle();
+    bulletData = null; // リセット
     spawnBullet();
 
     // 順番が1番のプレイヤーのターンからスタート
-    let firstPlayer = players.find(p => p.order === 1);
+    let firstPlayer = players.find(p => p && p.order === 1);
     currentTurnPlayerId = firstPlayer ? firstPlayer.id : 0;
     
     if (myPlayerId === currentTurnPlayerId) {
@@ -379,8 +377,8 @@ function getRandomShooterBubble() {
 
 function initGridForBattle() {
     grid = [];
-    myClearedBubbleCount = 0;
 
+    // グリッド枠の事前作成
     for (let r = 0; r < ROWS; r++) {
         let row = [];
         let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
@@ -388,13 +386,11 @@ function initGridForBattle() {
         grid.push(row);
     }
 
-    // 上部4行に初期の玉を生成
-    for (let r = 0; r < 4; r++) {
+    // 上部5行に確実に初期の玉を詰めて配置（玉が空にならない保証）
+    for (let r = 0; r < 5; r++) {
         let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
         for (let c = 0; c < colsInRow; c++) {
-            if (Math.random() < 0.8) {
-                grid[r][c] = getRandomGridCell();
-            }
+            grid[r][c] = getRandomGridCell();
         }
     }
 }
@@ -407,6 +403,8 @@ function spawnBullet() {
     }
     nextBubble = getRandomShooterBubble();
 
+    shooterX = canvas.width / 2;
+    shooterY = canvas.height - 70;
     bulletX = shooterX;
     bulletY = shooterY;
     bulletVX = 0;
@@ -480,7 +478,7 @@ function useItemDefense() {
 
 function promptPlayerSelect(msg) {
     let options = players
-        .filter(p => p.id !== myPlayerId)
+        .filter(p => p && p.id !== myPlayerId)
         .map(p => `[${p.id}] ${p.name}`)
         .join("\n");
     let res = prompt(`${msg}\n${options}`);
@@ -506,16 +504,19 @@ function processItemEffect(fromId, itemType, targetId) {
     else if (itemType === 2 && targetP) targetP.forceShoot = true;
     else if (itemType === 3 && p) p.isShield = true;
 
-    broadcastHost({ type: 'sync_player_states', players: players });
+    broadcastHost({ type: 'sync_players', players: players });
 }
 
 // 描画メインループ
 function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 背景塗りつぶし
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (gameState === 'playing') {
-        // 1. グリッド（配置されている玉）の描画
+        // 1. 上部のフィールド玉を描画
         for (let r = 0; r < ROWS; r++) {
+            if (!grid[r]) continue;
             let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
             let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
 
@@ -527,13 +528,14 @@ function gameLoop() {
 
                     ctx.beginPath();
                     ctx.arc(cx, cy, RADIUS - 1, 0, Math.PI * 2);
-                    ctx.fillStyle = (cell.color === SPECIAL_RAINBOW) ? '#fff' : cell.color;
+                    ctx.fillStyle = (cell.color === SPECIAL_RAINBOW) ? '#ffffff' : cell.color;
                     ctx.fill();
-                    ctx.strokeStyle = '#000';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
                     ctx.stroke();
 
                     if (cell.isMystery) {
-                        ctx.fillStyle = '#000';
+                        ctx.fillStyle = '#000000';
                         ctx.font = 'bold 16px sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
@@ -544,16 +546,16 @@ function gameLoop() {
         }
 
         // 2. 移動中の玉の更新と描画
-        if (isMoving) {
+        if (isMoving && bulletData) {
             bulletX += bulletVX;
             bulletY += bulletVY;
 
-            // 壁でのバウンド
+            // 左右の壁で跳ね返り
             if (bulletX - RADIUS < 0 || bulletX + RADIUS > canvas.width) {
                 bulletVX = -bulletVX;
             }
 
-            // 天井到達または上限で停止
+            // 天井に当たったら停止して再装着
             if (bulletY - RADIUS < 0) {
                 isMoving = false;
                 spawnBullet();
@@ -564,30 +566,33 @@ function gameLoop() {
         if (bulletData) {
             ctx.beginPath();
             ctx.arc(bulletX, bulletY, RADIUS - 1, 0, Math.PI * 2);
-            ctx.fillStyle = (bulletData.color === SPECIAL_RAINBOW) ? '#fff' : bulletData.color;
+            ctx.fillStyle = (bulletData.color === SPECIAL_RAINBOW) ? '#ffffff' : bulletData.color;
             ctx.fill();
-            ctx.strokeStyle = '#000';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
             ctx.stroke();
         }
 
-        // 4. 控えの玉を描画
+        // 4. 次の控え玉（左下）を描画
         if (nextBubble) {
             ctx.beginPath();
-            ctx.arc(30, canvas.height - 30, RADIUS * 0.7, 0, Math.PI * 2);
-            ctx.fillStyle = (nextBubble.color === SPECIAL_RAINBOW) ? '#fff' : nextBubble.color;
+            ctx.arc(35, canvas.height - 35, RADIUS * 0.75, 0, Math.PI * 2);
+            ctx.fillStyle = (nextBubble.color === SPECIAL_RAINBOW) ? '#ffffff' : nextBubble.color;
             ctx.fill();
-            ctx.strokeStyle = '#888';
+            ctx.strokeStyle = '#888888';
+            ctx.lineWidth = 1.5;
             ctx.stroke();
         }
 
-        // 手番表示テキスト
+        // 手番案内テキスト表示
         ctx.fillStyle = (battleTurnState === 'my_turn') ? '#4dff4d' : '#ff4d4d';
         ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText((battleTurnState === 'my_turn') ? "YOUR TURN" : "WAITING...", canvas.width / 2, canvas.height - 15);
+        ctx.fillText((battleTurnState === 'my_turn') ? "YOUR TURN (スワイプで発射)" : "WAITING...", canvas.width / 2, canvas.height - 15);
     }
 
     requestAnimationFrame(gameLoop);
 }
 
+// 起動時にループスタート
 requestAnimationFrame(gameLoop);
