@@ -32,7 +32,7 @@ html, body {
   height: 100vh;
   max-width: 100%;
   max-height: 100%;
-  background: #05050a;
+  background: radial-gradient(circle at center, #101428 0%, #05050a 100%);
   display: flex;
   flex-direction: row;
   overflow: hidden;
@@ -129,12 +129,7 @@ html, body {
   gap: 16px;
   z-index: 100;
 }
-.sub-title {
-  font-size: 11px;
-  letter-spacing: 3px;
-  color: #00f3ff;
-  font-weight: 700;
-}
+.sub-title { font-size: 11px; letter-spacing: 3px; color: #00f3ff; font-weight: 700; }
 .main-logo {
   font-size: 28px;
   font-weight: 900;
@@ -142,13 +137,6 @@ html, body {
   background: linear-gradient(135deg, #00f3ff, #ff0055);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-}
-.version-tag {
-  font-size: 12px;
-  color: #00f3ff;
-  margin-top: 4px;
-  text-align: center;
-  font-weight: bold;
 }
 .menu-box {
   background: rgba(255, 255, 255, 0.05);
@@ -160,22 +148,8 @@ html, body {
   gap: 10px;
   width: 90%;
 }
-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: #d0d5e0;
-}
-input, select {
-  padding: 6px 8px;
-  font-size: 13px;
-  border-radius: 6px;
-  border: 1px solid rgba(0, 243, 255, 0.3);
-  background-color: rgba(15, 20, 35, 0.8);
-  color: #00f3ff;
-  text-align: center;
-}
+label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #d0d5e0; }
+input, select { padding: 6px 8px; font-size: 13px; border-radius: 6px; border: 1px solid rgba(0, 243, 255, 0.3); background-color: rgba(15, 20, 35, 0.8); color: #00f3ff; text-align: center; }
 .btn-action {
   width: 90%;
   padding: 12px;
@@ -187,24 +161,17 @@ input, select {
   border-radius: 10px;
   cursor: pointer;
 }
-.btn-secondary {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #aaa;
-}
-.status-badge {
-  font-size: 11px;
-  color: #ff0055;
-  font-weight: bold;
-}
+.btn-secondary { background: transparent; border: 1px solid rgba(255, 255, 255, 0.2); color: #aaa; }
+.status-badge { font-size: 11px; color: #ff0055; font-weight: bold; }
 </style>
 </head>
 <body>
 <div id="game-container">
+  <!-- 左側:メインゲーム画面 -->
   <div id="canvas-wrapper">
     <canvas id="gameCanvas"></canvas>
   </div>
-
+  <!-- 右側:GUI パネル -->
   <div id="side-gui" style="display:none;">
     <div class="player-info-card">
       <div class="sub-title">PLAYER</div>
@@ -223,18 +190,15 @@ input, select {
       <button id="btn-item-defense" class="btn-item-card" onclick="useItem('defense')">防御 <span id="cnt-defense" class="item-count">0</span></button>
     </div>
   </div>
-
-  <!-- タイトル画面 -->
+  <!-- タイトル&設定画面等 -->
   <div id="screen-title" class="overlay-screen">
     <div>
       <div class="sub-title" style="text-align:center;">REAL-TIME MULTI PUZZLE</div>
       <div class="main-logo">CYBER SPHERE</div>
-      <div class="version-tag">Ver1.01</div>
     </div>
     <button class="btn-action" onclick="selectMainMenu('host')">部屋を作る (HOST)</button>
     <button class="btn-action btn-secondary" onclick="selectMainMenu('guest')">部屋に入る (GUEST)</button>
   </div>
-
   <div id="screen-host-config" class="overlay-screen" style="display:none;">
     <h2 style="color:#00f3ff; font-size: 18px;">MATCH CONFIG</h2>
     <div class="menu-box">
@@ -254,33 +218,30 @@ input, select {
     </div>
     <button class="btn-action" onclick="confirmHostSettings()">ルーム作成</button>
   </div>
-
   <div id="screen-host-wait" class="overlay-screen" style="display:none;">
     <div class="sub-title">ROOM CODE</div>
     <div id="display-room-code" style="font-size: 40px; font-weight: 900; color: #00f3ff;">----</div>
     <div id="host-wait-status" class="status-badge">CONNECTING...</div>
   </div>
-
   <div id="screen-guest-join" class="overlay-screen" style="display:none;">
     <h2 style="color:#00f3ff; font-size:18px;">ENTER CODE</h2>
     <input type="number" id="input-room-code" placeholder="4桁コード" style="font-size: 20px; width: 70%;">
     <button class="btn-action" onclick="joinRoom()">接続する</button>
     <p id="guest-status-msg" class="status-badge"></p>
   </div>
-
   <div id="screen-name-input" class="overlay-screen" style="display:none;">
     <h2 style="color:#00f3ff; font-size: 18px;">PLAYER NAME</h2>
     <input type="text" id="input-player-name" maxlength="6" placeholder="名前(6文字以内)" style="font-size: 16px; width: 70%;">
     <button class="btn-action" onclick="submitPlayerName()">完了</button>
     <p id="name-wait-msg" class="status-badge"></p>
   </div>
-
   <div id="screen-roulette" class="overlay-screen" style="display:none;">
     <div class="sub-title">TURN ORDER</div>
     <div id="roulette-display" style="font-size: 60px; font-weight: 900; color:#ff0055;">1</div>
     <p id="my-order-result" style="font-size: 14px; color:#00f3ff;"></p>
     <button id="btn-roulette-action" class="btn-action" onclick="handleRouletteTap()">STOP</button>
   </div>
+  <div id="modal-container" style="display: none;"></div>
 </div>
 
 <script>
@@ -292,8 +253,8 @@ const COLS = 8;
 let RADIUS = 16;
 let DIAMETER = RADIUS * 2;
 let ROW_HEIGHT = RADIUS * Math.sqrt(3);
-
 const BASE_COLORS = ['#ff0055', '#00f3ff', '#00ff66', '#ffe600', '#b000ff'];
+
 let gameState = 'title';
 let battleRole = '';
 let roomCode = '';
@@ -311,60 +272,28 @@ let battleTurnState = 'waiting';
 let currentTurnPlayerId = 0;
 let grid = [];
 let clearedCount = 0;
+let isEliminated = false;
+let isCheckingVictory = true;
 let turnTimer = 10;
 let turnTimerInterval = null;
-let bgPatternCanvas = null;
+let inventory = { double: 0, triple: 0, skip: 0, pierce: 0, color: 0, redirect: 0, forceshoot: 0, defense: 0 };
+let activeBuffs = { multiplier: 1, isPiercing: false, redirectTarget: null, redirectTurns: 0, isDefending: false, forceShootDisabled: false };
 
-// 発射台・物理変数
 let shooterX = 0, shooterY = 0;
 let bulletX = 0, bulletY = 0;
 let bulletVX = 0, bulletVY = 0;
 let bulletData = null, nextBubble = null;
 let isMoving = false;
+let wallReflections = 0;
 const MAX_SPEED = 18;
 
-// 引っ張り操作用
+// スリングショット用変数
 let isDragging = false;
 let dragStartX = 0, dragStartY = 0;
 let dragCurrentX = 0, dragCurrentY = 0;
 
-function getRandomColor() {
-  if (Math.random() < 0.20) return 'rainbow';
-  return BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)];
-}
-
-function generateRandomBackground() {
-  bgPatternCanvas = document.createElement('canvas');
-  bgPatternCanvas.width = canvas.width;
-  bgPatternCanvas.height = canvas.height;
-  const bgCtx = bgPatternCanvas.getContext('2d');
-  
-  const gradients = [
-    ['#050510', '#1a0b2e', '#050510'],
-    ['#051015', '#0b2b3a', '#020b14'],
-    ['#150510', '#3a0b25', '#10020b']
-  ];
-  const chosenG = gradients[Math.floor(Math.random() * gradients.length)];
-  const grad = bgCtx.createLinearGradient(0, 0, 0, canvas.height);
-  grad.addColorStop(0, chosenG[0]);
-  grad.addColorStop(0.5, chosenG[1]);
-  grad.addColorStop(1, chosenG[2]);
-  bgCtx.fillStyle = grad;
-  bgCtx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // スターダストノイズ描画
-  bgCtx.fillStyle = '#ffffff';
-  for (let i = 0; i < 40; i++) {
-    const x = Math.random() * canvas.width;
-    const y = Math.random() * canvas.height;
-    const r = Math.random() * 1.5;
-    bgCtx.globalAlpha = Math.random() * 0.7 + 0.3;
-    bgCtx.beginPath();
-    bgCtx.arc(x, y, r, 0, Math.PI * 2);
-    bgCtx.fill();
-  }
-  bgCtx.globalAlpha = 1.0;
-}
+let flyingOjamaBalls = [];
+let DEAD_LINE_Y = 0;
 
 function resizeCanvas() {
   let wrapper = document.getElementById('canvas-wrapper');
@@ -375,18 +304,19 @@ function resizeCanvas() {
   ROW_HEIGHT = RADIUS * Math.sqrt(3);
   shooterX = canvas.width / 2;
   shooterY = canvas.height - 50;
+  DEAD_LINE_Y = shooterY - (DIAMETER * 2);
   if (!isMoving) {
     bulletX = shooterX;
     bulletY = shooterY;
   }
-  generateRandomBackground();
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 function showScreen(id) {
   document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
-  if (id && document.getElementById(id)) document.getElementById(id).style.display = 'flex';
+  if (id && document.getElementById(id))
+    document.getElementById(id).style.display = 'flex';
 }
 
 function selectMainMenu(choice) {
@@ -407,9 +337,11 @@ function confirmHostSettings() {
   roomCode = Math.floor(1000 + Math.random() * 9000).toString();
   document.getElementById('display-room-code').innerText = roomCode;
   showScreen('screen-host-wait');
+  
   peer = new Peer(PEER_PREFIX + roomCode);
   players = [{ id: 0, name: '', order: 0, wins: 0, eliminated: false }];
   myPlayerId = 0;
+  
   peer.on('open', () => document.getElementById('host-wait-status').innerText = `WAITING... (1/${maxPlayers})`);
   peer.on('connection', (conn) => {
     let assignedId = players.length;
@@ -454,6 +386,12 @@ function handleHostReceiveData(fromId, data) {
       broadcastHost({ type: 'game_start_signal', players });
       launchGameStartNotice();
     }
+  } else if (data.type === 'send_ojama') {
+    handleOjamaRouting(data.targetId, data.count);
+  } else if (data.type === 'player_eliminated') {
+    let p = players.find(i => i.id === fromId);
+    if (p) p.eliminated = true;
+    checkVictoryConditionHost();
   } else if (data.type === 'end_turn') {
     advanceTurnHost();
   }
@@ -464,18 +402,13 @@ function handleGuestReceiveData(data) {
     myPlayerId = data.playerId;
     maxPlayers = data.maxPlayers;
     if (data.players) players = data.players;
-  } else if (data.type === 'start_name_input') {
-    showScreen('screen-name-input');
-  } else if (data.type === 'start_roulette') {
-    players = data.players;
-    showScreen('screen-roulette');
-    startRouletteAnimation();
-  } else if (data.type === 'game_start_signal') {
-    launchGameStartNotice();
-  } else if (data.type === 'sync_turn') {
-    currentTurnPlayerId = data.currentTurnPlayerId;
-    onTurnChanged();
   }
+  else if (data.type === 'start_name_input') { showScreen('screen-name-input'); }
+  else if (data.type === 'start_roulette') { players = data.players; showScreen('screen-roulette'); startRouletteAnimation(); }
+  else if (data.type === 'game_start_signal') { launchGameStartNotice(); }
+  else if (data.type === 'receive_ojama') { if (data.targetId === myPlayerId) triggerOjamaFlyIn(data.count); }
+  else if (data.type === 'sync_turn') { currentTurnPlayerId = data.currentTurnPlayerId; onTurnChanged(); }
+  else if (data.type === 'game_over_win') { showGameOverBanner(data.winnerName + " WIN!"); }
 }
 
 function submitPlayerName() {
@@ -515,7 +448,7 @@ function handleRouletteTap() {
     let myP = players.find(p => p.id === myPlayerId);
     let order = myP ? myP.order : 1;
     document.getElementById('roulette-display').innerText = order;
-    document.getElementById('my-order-result').innerText = `YOU ARE NO. ${order}`;
+    document.getElementById('my-order-result').innerText = `YOU ARE NO.${order}`;
     btn.innerText = "READY";
   } else if (rouletteState === 'stopped') {
     rouletteState = 'ready_wait';
@@ -535,20 +468,20 @@ function launchGameStartNotice() {
   document.getElementById('side-gui').style.display = 'flex';
   let myP = players.find(p => p.id === myPlayerId);
   document.getElementById('gui-player-name').innerText = myP ? myP.name : 'PLAYER';
-  
-  generateRandomBackground();
+  resizeCanvas();
   gameState = 'playing';
   initGridForBattle();
   bulletData = null;
   spawnBullet();
-  
+  updateGUIItemButtons();
   let firstPlayer = players.find(p => p && p.order === 1);
   currentTurnPlayerId = firstPlayer ? firstPlayer.id : 0;
   onTurnChanged();
-  requestAnimationFrame(gameLoop);
 }
 
-// タッチ（スリングショット）操作
+// ==========================================
+// 引っ張り(スリングショット) & ガイド描画処理の修正
+// ==========================================
 canvas.addEventListener('touchstart', (e) => {
   if (gameState !== 'playing' || isMoving || battleTurnState !== 'my_turn') return;
   e.preventDefault();
@@ -556,6 +489,7 @@ canvas.addEventListener('touchstart', (e) => {
   let rect = canvas.getBoundingClientRect();
   let tx = touch.clientX - rect.left;
   let ty = touch.clientY - rect.top;
+
   if (Math.hypot(tx - bulletX, ty - bulletY) < RADIUS * 3) {
     isDragging = true;
     dragStartX = bulletX;
@@ -578,23 +512,29 @@ canvas.addEventListener('touchend', (e) => {
   if (!isDragging) return;
   e.preventDefault();
   isDragging = false;
+
   let dx = dragStartX - dragCurrentX;
   let dy = dragStartY - dragCurrentY;
-  if (dy < -10) { // 上向き引っ張り時
+  let dist = Math.hypot(dx, dy);
+
+  if (dist > 10) {
     let angle = Math.atan2(dx, dy);
-    shootBulletAngle(angle);
+    shootBulletAngle(angle, dist);
   }
 }, { passive: false });
 
-function shootBulletAngle(angle) {
-  bulletVX = Math.sin(angle) * MAX_SPEED;
-  bulletVY = Math.cos(angle) * MAX_SPEED;
+function shootBulletAngle(angle, pullDist) {
+  // 引っ張り距離に応じたスピード調整（最大スピード制限）
+  let speedFactor = Math.min(pullDist / 60, 1.0);
+  let finalSpeed = Math.max(MAX_SPEED * speedFactor, 6);
+  bulletVX = Math.sin(angle) * finalSpeed;
+  bulletVY = Math.cos(angle) * finalSpeed;
   isMoving = true;
 }
 
 function forceAutoShoot() {
   if (isMoving) return;
-  shootBulletAngle((Math.random() * 0.8) - 0.4);
+  shootBulletAngle((Math.random() * 1.0) - 0.5, 50);
 }
 
 function onTurnChanged() {
@@ -608,21 +548,30 @@ function onTurnChanged() {
       forceAutoShoot();
     }
   }, 1000);
+  if (battleTurnState === 'my_turn' && !isMoving) updateGUIItemButtons();
 }
 
 function endMyTurn() {
   clearInterval(turnTimerInterval);
   battleTurnState = 'waiting';
+  activeBuffs.multiplier = 1;
+  activeBuffs.isPiercing = false;
+  activeBuffs.isDefending = false;
+  spawnGimmickBubble();
   if (battleRole === 'host') advanceTurnHost();
   else sendToHost({ type: 'end_turn' });
 }
 
 function advanceTurnHost() {
   let active = players.filter(p => !p.eliminated);
-  if (active.length <= 1) return;
+  if (active.length <= 1) { checkVictoryConditionHost(); return; }
   let currentP = players.find(p => p.id === currentTurnPlayerId);
   let nextOrder = (currentP ? currentP.order : 1) % maxPlayers + 1;
   let nextP = players.find(p => p.order === nextOrder);
+  while (nextP && nextP.eliminated) {
+    nextOrder = (nextOrder % maxPlayers) + 1;
+    nextP = players.find(p => p.order === nextOrder);
+  }
   currentTurnPlayerId = nextP ? nextP.id : 0;
   broadcastHost({ type: 'sync_turn', currentTurnPlayerId });
   onTurnChanged();
@@ -631,27 +580,50 @@ function advanceTurnHost() {
 function initGridForBattle() {
   grid = [];
   for (let r = 0; r < ROWS; r++) {
-    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
     let row = [];
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
     for (let c = 0; c < colsInRow; c++) row.push(null);
     grid.push(row);
   }
   for (let r = 0; r < 5; r++) {
     let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
     for (let c = 0; c < colsInRow; c++) {
-      grid[r][c] = { color: getRandomColor() };
+      grid[r][c] = { color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)], isGimmick: false };
     }
   }
 }
 
+function spawnGimmickBubble() {
+  if (Math.random() < 0.20) {
+    let emptyCells = [];
+    for (let r = 0; r < 6; r++) {
+      let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+      for (let c = 0; c < colsInRow; c++) if (grid[r] && grid[r][c]) emptyCells.push({r, c});
+    }
+    if (emptyCells.length > 0) {
+      let target = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+      grid[target.r][target.c].isGimmick = true;
+    }
+  }
+}
+
+// ==========================================
+// 15%の確率で虹色玉を実装するスポーン処理
+// ==========================================
 function spawnBullet() {
-  bulletData = nextBubble ? nextBubble : { color: getRandomColor() };
-  nextBubble = { color: getRandomColor() };
+  let isRainbow = Math.random() < 0.15;
+  let newBubbleColor = isRainbow ? 'rainbow' : BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)];
+
+  bulletData = bulletData ? nextBubble : { color: newBubbleColor, isGimmick: false };
+  
+  let nextIsRainbow = Math.random() < 0.15;
+  nextBubble = { color: nextIsRainbow ? 'rainbow' : BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)], isGimmick: false };
+
   bulletX = shooterX;
   bulletY = shooterY;
-  bulletVX = 0;
-  bulletVY = 0;
+  bulletVX = 0; bulletVY = 0;
   isMoving = false;
+  wallReflections = 0;
 }
 
 function updateBulletPhysics() {
@@ -659,14 +631,11 @@ function updateBulletPhysics() {
   bulletX += bulletVX;
   bulletY += bulletVY;
 
-  if (bulletX - RADIUS < 0) { bulletX = RADIUS; bulletVX = -bulletVX; }
-  else if (bulletX + RADIUS > canvas.width) { bulletX = canvas.width - RADIUS; bulletVX = -bulletVX; }
+  if (bulletX - RADIUS < 0) { bulletX = RADIUS; bulletVX = -bulletVX; wallReflections++; }
+  else if (bulletX + RADIUS > canvas.width) { bulletX = canvas.width - RADIUS; bulletVX = -bulletVX; wallReflections++; }
 
   let hit = false;
-  let firstTouchedColor = null;
-
   if (bulletY <= RADIUS) hit = true;
-
   if (!hit) {
     for (let r = 0; r < ROWS; r++) {
       let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
@@ -677,7 +646,10 @@ function updateBulletPhysics() {
           let cy = RADIUS + r * ROW_HEIGHT;
           if (Math.hypot(bulletX - cx, bulletY - cy) < DIAMETER) {
             hit = true;
-            firstTouchedColor = grid[r][c].color;
+            // 虹色玉の特殊処理：最初に触れた色の玉をすべて消去して落下させる
+            if (bulletData.color === 'rainbow') {
+              triggerRainbowClear(r, c);
+            }
             break;
           }
         }
@@ -685,13 +657,90 @@ function updateBulletPhysics() {
       if (hit) break;
     }
   }
+  if (hit) { isMoving = false; if (bulletData.color !== 'rainbow') snapBulletToGrid(); }
+}
 
-  if (hit) {
-    isMoving = false;
-    if (bulletData.color === 'rainbow') {
-      handleRainbowHit(firstTouchedColor);
-    } else {
-      snapBulletToGrid();
+// 虹色玉が最初にふれた色の玉および連結している玉を落とす処理
+function triggerRainbowClear(hitR, hitC) {
+  let targetColor = grid[hitR][hitC] ? grid[hitR][hitC].color : null;
+  if (!targetColor) {
+    snapBulletToGrid();
+    return;
+  }
+
+  let cleared = 0;
+  for (let r = 0; r < ROWS; r++) {
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+    for (let c = 0; c < colsInRow; c++) {
+      if (grid[r][c] && grid[r][c].color === targetColor) {
+        grid[r][c] = null;
+        cleared++;
+      }
+    }
+  }
+
+  clearedCount += cleared;
+  document.getElementById('gui-cleared-count').innerText = clearedCount;
+  
+  // 浮いている（ぶら下がっていない）玉を落下させる処理を実行
+  dropFloatingBubbles();
+
+  if (clearedCount >= 500) { triggerVictory(); return; }
+  endMyTurn();
+  spawnBullet();
+}
+
+// 天井から繋がっていないぶら下がり玉を落下させる関数
+function dropFloatingBubbles() {
+  let visited = Array.from({length: ROWS}, () => Array(COLS).fill(false));
+  
+  function getNeighbors(r, c) {
+    let neighbors = [];
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+    let offsets = (r % 2 === 0) ? 
+      [[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]] : 
+      [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+    
+    for (let [dr, dc] of offsets) {
+      let nr = r + dr;
+      let nc = c + dc;
+      if (nr >= 0 && nr < ROWS) {
+        let nCols = (nr % 2 === 0) ? COLS : COLS - 1;
+        if (nc >= 0 && nc < nCols) {
+          neighbors.push({r: nr, c: nc});
+        }
+      }
+    }
+    return neighbors;
+  }
+
+  // 1行目に接続されている玉を起点に到達可能判定 (BFS)
+  let queue = [];
+  let colsTop = (0 % 2 === 0) ? COLS : COLS - 1;
+  for (let c = 0; c < colsTop; c++) {
+    if (grid[0][c]) {
+      visited[0][c] = true;
+      queue.push({r: 0, c});
+    }
+  }
+
+  while (queue.length > 0) {
+    let curr = queue.shift();
+    for (let n of getNeighbors(curr.r, curr.c)) {
+      if (grid[n.r][n.c] && !visited[n.r][n.c]) {
+        visited[n.r][n.c] = true;
+        queue.push(n);
+      }
+    }
+  }
+
+  // 到達していない（ぶら下がっている）玉を消去する
+  for (let r = 0; r < ROWS; r++) {
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+    for (let c = 0; c < colsInRow; c++) {
+      if (grid[r][c] && !visited[r][c]) {
+        grid[r][c] = null;
+      }
     }
   }
 }
@@ -710,156 +759,291 @@ function snapBulletToGrid() {
       }
     }
   }
-  grid[bestR][bestC] = { color: bulletData.color };
+  grid[bestR][bestC] = { color: bulletData.color, isGimmick: bulletData.isGimmick };
   checkMatchAndClear(bestR, bestC);
-  endTurnAndNext();
-}
-
-function handleRainbowHit(targetColor) {
-  if (targetColor) {
-    let cleared = 0;
-    for (let r = 0; r < ROWS; r++) {
-      let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-      for (let c = 0; c < colsInRow; c++) {
-        if (grid[r][c] && grid[r][c].color === targetColor) {
-          grid[r][c] = null;
-          cleared++;
-        }
-      }
-    }
-    clearedCount += cleared;
-    dropFloatingBubbles();
-  }
-  endTurnAndNext();
-}
-
-function dropFloatingBubbles() {
-  let connected = Array.from({length: ROWS}, (_, r) => Array((r % 2 === 0) ? COLS : COLS - 1).fill(false));
-  function dfs(r, c) {
-    if (r < 0 || r >= ROWS) return;
-    let cols = (r % 2 === 0) ? COLS : COLS - 1;
-    if (c < 0 || c >= cols || connected[r][c] || !grid[r][c]) return;
-    connected[r][c] = true;
-    let neighbors = (r % 2 === 0) ?
-      [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] :
-      [[r-1, c], [r-1, c+1], [r, c-1], [r, c+1], [r+1, c], [r+1, c+1]];
-    for (let [nr, nc] of neighbors) dfs(nr, nc);
-  }
-
-  let topCols = COLS;
-  for (let c = 0; c < topCols; c++) {
-    if (grid[0][c]) dfs(0, c);
-  }
-
-  let dropped = 0;
-  for (let r = 0; r < ROWS; r++) {
-    let cols = (r % 2 === 0) ? COLS : COLS - 1;
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] && !connected[r][c]) {
-        grid[r][c] = null;
-        dropped++;
-      }
-    }
-  }
-  clearedCount += dropped;
-  document.getElementById('gui-cleared-count').innerText = clearedCount;
 }
 
 function checkMatchAndClear(startR, startC) {
   let targetColor = grid[startR][startC].color;
-  if (targetColor === 'rainbow') return;
   let matched = [];
   let visited = Array.from({length: ROWS}, () => Array(COLS).fill(false));
 
   function dfs(r, c) {
     if (r < 0 || r >= ROWS) return;
     let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-    if (c < 0 || c >= colsInRow || visited[r][c] || !grid[r][c] || grid[r][c].color !== targetColor) return;
+    if (c < 0 || c >= colsInRow) return;
+    if (visited[r][c] || !grid[r][c] || grid[r][c].color !== targetColor) return;
     visited[r][c] = true;
-    matched.push({r, c});
-    let neighbors = (r % 2 === 0) ?
-      [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] :
+    matched.push({r, c, isGimmick: grid[r][c].isGimmick});
+
+    let neighbors = (r % 2 === 0) ? 
+      [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] : 
       [[r-1, c], [r-1, c+1], [r, c-1], [r, c+1], [r+1, c], [r+1, c+1]];
     for (let [nr, nc] of neighbors) dfs(nr, nc);
   }
 
   dfs(startR, startC);
+
   if (matched.length >= 3) {
-    matched.forEach(cell => grid[cell.r][cell.c] = null);
+    matched.forEach(cell => {
+      grid[cell.r][cell.c] = null;
+      if (cell.isGimmick) grantRandomItem();
+    });
     clearedCount += matched.length;
+    document.getElementById('gui-cleared-count').innerText = clearedCount;
     dropFloatingBubbles();
+    sendOjamaToOpponent(matched.length * (ojamaMultiplier * activeBuffs.multiplier));
   }
-}
 
-function endTurnAndNext() {
-  spawnBullet();
+  if (clearedCount >= 500) { triggerVictory(); return; }
+  checkDeadLineLoss();
   endMyTurn();
+  spawnBullet();
 }
 
-function drawBubble(x, y, color) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x, y, RADIUS - 1, 0, Math.PI * 2);
-  if (color === 'rainbow') {
-    let grad = ctx.createRadialGradient(x - RADIUS/3, y - RADIUS/3, 1, x, y, RADIUS);
-    grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.2, '#ff0000');
-    grad.addColorStop(0.4, '#ffff00');
-    grad.addColorStop(0.6, '#00ff00');
-    grad.addColorStop(0.8, '#00ffff');
-    grad.addColorStop(1, '#ff00ff');
-    ctx.fillStyle = grad;
+function sendOjamaToOpponent(count) {
+  let targetId = activeBuffs.redirectTarget;
+  if (targetId === null) {
+    let opp = players.filter(p => p.id !== myPlayerId && !p.eliminated);
+    if (opp.length > 0) targetId = opp[Math.floor(Math.random() * opp.length)].id;
+  }
+  if (targetId !== null) {
+    if (battleRole === 'host') handleOjamaRouting(targetId, count);
+    else sendToHost({ type: 'send_ojama', targetId, count });
+  }
+}
+
+function handleOjamaRouting(targetId, count) {
+  if (targetId === myPlayerId) triggerOjamaFlyIn(count);
+  else broadcastHost({ type: 'receive_ojama', targetId, count });
+}
+
+function triggerOjamaFlyIn(count) {
+  if (count <= 0) return;
+  isCheckingVictory = false;
+  for (let i = 0; i < count; i++) {
+    flyingOjamaBalls.push({
+      x: Math.random() * (canvas.width - 40) + 20,
+      y: canvas.height + 30,
+      targetColor: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)],
+      speed: 12 + Math.random() * 6
+    });
+  }
+}
+
+function updateFlyingOjama() {
+  for (let i = flyingOjamaBalls.length - 1; i >= 0; i--) {
+    let ball = flyingOjamaBalls[i];
+    ball.y -= ball.speed;
+    if (ball.y < 100) {
+      landOjamaInGrid(ball.targetColor);
+      flyingOjamaBalls.splice(i, 1);
+    }
+  }
+}
+
+function landOjamaInGrid(color) {
+  for (let r = ROWS - 1; r >= 0; r--) {
+    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+    for (let c = 0; c < colsInRow; c++) {
+      if (!grid[r][c]) {
+        grid[r][c] = { color: color, isGimmick: false };
+        return;
+      }
+    }
+  }
+}
+
+function checkDeadLineLoss() {
+  for (let c = 0; c < COLS; c++) {
+    if (grid[12] && grid[12][c]) {
+      triggerElimination();
+      break;
+    }
+  }
+}
+
+function triggerElimination() {
+  isEliminated = true;
+  if (battleRole === 'host') {
+    let p = players.find(i => i.id === myPlayerId);
+    if (p) p.eliminated = true;
+    checkVictoryConditionHost();
   } else {
-    ctx.fillStyle = color;
+    sendToHost({ type: 'player_eliminated' });
   }
-  ctx.fill();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = '#ffffff';
-  ctx.stroke();
-  ctx.restore();
+  showGameOverBanner("YOU LOSE...");
 }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (bgPatternCanvas) {
-    ctx.drawImage(bgPatternCanvas, 0, 0);
+function checkVictoryConditionHost() {
+  let active = players.filter(p => !p.eliminated);
+  if (active.length === 1) {
+    let winner = active[0];
+    broadcastHost({ type: 'game_over_win', winnerName: winner.name });
+    showGameOverBanner(winner.name + " WIN!");
+  }
+}
+
+function showGameOverBanner(msg) {
+  gameState = 'gameover';
+  clearInterval(turnTimerInterval);
+  let div = document.createElement('div');
+  div.className = 'overlay-screen';
+  div.innerHTML = `<div class="main-logo" style="font-size:36px;">${msg}</div><button class="btn-action" onclick="location.reload()">タイトルに戻る</button>`;
+  document.getElementById('game-container').appendChild(div);
+}
+
+function grantRandomItem() {
+  let keys = Object.keys(inventory);
+  let k = keys[Math.floor(Math.random() * keys.length)];
+  inventory[k]++;
+  updateGUIItemButtons();
+}
+
+function updateGUIItemButtons() {
+  for (let k in inventory) {
+    let cntEl = document.getElementById('cnt-' + k);
+    let btnEl = document.getElementById('btn-item-' + k);
+    if (cntEl) cntEl.innerText = inventory[k];
+    if (btnEl) {
+      if (inventory[k] <= 0) btnEl.classList.add('disabled');
+      else btnEl.classList.remove('disabled');
+    }
+  }
+}
+
+function useItem(type) {
+  if (battleTurnState !== 'my_turn' || inventory[type] <= 0) return;
+  inventory[type]--;
+  updateGUIItemButtons();
+  if (type === 'double') activeBuffs.multiplier = 2;
+  if (type === 'triple') activeBuffs.multiplier = 3;
+  if (type === 'skip') { endMyTurn(); }
+  if (type === 'pierce') activeBuffs.isPiercing = true;
+  if (type === 'color') {
+    let keys = BASE_COLORS;
+    bulletData.color = keys[Math.floor(Math.random() * keys.length)];
+  }
+  if (type === 'redirect') {
+    let opp = players.filter(p => p.id !== myPlayerId && !p.eliminated);
+    if (opp.length > 0) activeBuffs.redirectTarget = opp[Math.floor(Math.random() * opp.length)].id;
+  }
+  if (type === 'forceshoot') { forceAutoShoot(); }
+  if (type === 'defense') activeBuffs.isDefending = true;
+}
+
+// ==========================================
+// 描画・ガイド点線の描画処理
+// ==========================================
+function drawBubble(x, y, color, isGimmick) {
+  ctx.beginPath();
+  ctx.arc(x, y, RADIUS, 0, Math.PI * 2);
+  
+  if (color === 'rainbow') {
+    let grad = ctx.createRadialGradient(x - RADIUS/3, y - RADIUS/3, RADIUS/10, x, y, RADIUS);
+    grad.addColorStop(0, '#ff0055');
+    grad.addColorStop(0.2, '#ffe600');
+    grad.addColorStop(0.4, '#00ff66');
+    grad.addColorStop(0.6, '#00f3ff');
+    grad.addColorStop(0.8, '#b000ff');
+    grad.addColorStop(1, '#ffffff');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = color || '#555';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
   }
 
-  // グリッド玉の描画
+  if (isGimmick) {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('★', x, y);
+  }
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 盤面上の玉描画
   for (let r = 0; r < ROWS; r++) {
     let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
     let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
     for (let c = 0; c < colsInRow; c++) {
-      if (grid[r] && grid[r][c]) {
+      let b = grid[r][c];
+      if (b) {
         let cx = rowXOffset + c * DIAMETER;
         let cy = RADIUS + r * ROW_HEIGHT;
-        drawBubble(cx, cy, grid[r][c].color);
+        drawBubble(cx, cy, b.color, b.isGimmick);
       }
     }
   }
 
-  // 弾・発射台描画
-  if (bulletData) drawBubble(bulletX, bulletY, bulletData.color);
-  if (nextBubble) drawBubble(30, canvas.height - 30, nextBubble.color);
+  // デッドライン描画
+  ctx.strokeStyle = 'rgba(255, 0, 85, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, DEAD_LINE_Y);
+  ctx.lineTo(canvas.width, DEAD_LINE_Y);
+  ctx.stroke();
+  ctx.setLineDash([]);
 
-  // 引っ張り用ガイドライン描画
-  if (isDragging) {
-    ctx.beginPath();
-    ctx.moveTo(bulletX, bulletY);
-    ctx.lineTo(dragCurrentX, dragCurrentY);
-    ctx.strokeStyle = '#00f3ff';
-    ctx.lineWidth = 3;
-    ctx.stroke();
+  // ガイド（点線）および発射台・発射用玉の描画
+  if (gameState === 'playing') {
+    if (isDragging) {
+      let dx = dragStartX - dragCurrentX;
+      let dy = dragStartY - dragCurrentY;
+      let dist = Math.hypot(dx, dy);
+      if (dist > 5) {
+        let angle = Math.atan2(dx, dy);
+        
+        // 通常の点線ガイド（約3センチ ≒ 約110px、最大+1センチ ≒ 約40px追加）
+        let baseGuideLength = 110;
+        let maxExtraLength = 40;
+        let guideFactor = Math.min(dist / 80, 1.0);
+        let totalGuideLength = baseGuideLength + (maxExtraLength * guideFactor);
+
+        ctx.strokeStyle = 'rgba(0, 243, 255, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(shooterX, shooterY);
+        ctx.lineTo(shooterX + Math.sin(angle) * totalGuideLength, shooterY + Math.cos(angle) * totalGuideLength);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // 発射位置の玉
+    if (bulletData) {
+      drawBubble(bulletX, bulletY, bulletData.color, bulletData.isGimmick);
+    }
+  }
+
+  // 飛来中のお邪魔玉描画
+  for (let ball of flyingOjamaBalls) {
+    drawBubble(ball.x, ball.y, ball.targetColor, false);
   }
 }
 
 function gameLoop() {
   if (gameState === 'playing') {
     updateBulletPhysics();
-    draw();
-    requestAnimationFrame(gameLoop);
+    updateFlyingOjama();
   }
+  render();
+  requestAnimationFrame(gameLoop);
 }
+
+requestAnimationFrame(gameLoop);
 </script>
 </body>
 </html>
