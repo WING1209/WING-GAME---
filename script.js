@@ -1,416 +1,316 @@
 // ==========================================
-// 1. 初期化とグローバル変数
+// 1. 初期設定・グローバル変数
 // ==========================================
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-const ROWS = 15;
-const COLS = 8;
-const RADIUS = 19;
-const BASE_COLORS = ['#ff4d4d', '#4da6ff', '#4dff4d', '#ffff4d', '#ff4dda'];
-
-// 通信管理 (PeerJS)
-let peer = null;
-let connections = []; // ホストが保持する通信リスト
-let hostConn = null;  // ゲストが保持するホスト接続
-const PEER_PREFIX = 'wing-game-v2026-room-';
-
-// ステート管理
+let gameMode = 'battle';
 let gameState = 'title';
-let isHost = false;
+let battleRole = ''; // 'host' or 'guest'
+let roomCode = '';
+let myPlayerId = 0; // 0, 1, 2, ...
 let maxPlayers = 2;
-let roomID = '';
-let myPlayerId = '';
-let myName = 'プレイヤー';
-let winCondition = 1;
-let ojamaRate = 1;
+let targetWins = 1;
+let ojamaMultiplier = 1;
 
-// プレイヤー管理 [{ id, name, order, isReady }]
-let playersList = [];
-let currentTurnIndex = 0;
+let peer = null;
+let hostConnMap = {}; // Host用: [peerId]: connection
+let guestConn = null; // Guest用
 
-// バトルデータ
-let grid = [];
-let myOjamaStock = 0;
-let activeOshitsukeTarget = null;
-let oshitsukeTurnsLeft = 0;
-let isBougyoActive = false;
-let isForcedLaunch = false;
+// プレイヤー管理情報
+let players = []; // { id, name, order, wins, oshitsukeTarget, forceShoot, isShield }
+let readyCount = 0;
 
-// 発射関連
-let isMoving = false;
-
-// SE定義
-const se = {
-  shoot: new Audio('audio/se/se_ball_shoot.wav'),
-  explode: new Audio('audio/se/se_bomb_explode.wav')
-};
-function playSE(sound) {
-  try { sound.currentTime = 0; sound.play().catch(() => {}); } catch (e) {}
-}
+// ルーレット状態
+let rouletteState = 'idle'; // 'idle', 'running', 'stopped', 'ready_wait'
+let myOrderNum = 0;
+let rouletteInterval = null;
 
 // ==========================================
-// 2. 画面切り替え & ロビー処理
+// 2. 画面遷移制御
 // ==========================================
 function showScreen(screenId) {
-  document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
-  if (screenId) {
-    const el = document.getElementById(screenId);
-    if (el) el.style.display = 'flex';
-  }
-}
-
-function selectMainMenu(choice) {
-  if (choice === 'host') {
-    isHost = true;
-    showScreen('screen-host-players');
-  } else if (choice === 'guest') {
-    isHost = false;
-    showScreen('screen-guest-join');
-  } else if (choice === 'exit') {
-    alert('ゲームを終了します');
-    location.reload();
-  }
-}
-
-function confirmPlayerCount() {
-  maxPlayers = parseInt(document.getElementById('select-player-count').value, 10);
-  roomID = Math.floor(1000 + Math.random() * 9000).toString();
-  document.getElementById('display-room-id').innerText = roomID;
-  showScreen('screen-host-rules');
-}
-
-function startHostWaiting() {
-  winCondition = parseInt(document.getElementById('select-win-condition').value, 10);
-  ojamaRate = parseInt(document.getElementById('select-ojama-rate').value, 10);
-
-  myPlayerId = 'host_' + Math.random().toString(36).substr(2, 5);
-  peer = new Peer(PEER_PREFIX + roomID);
-
-  peer.on('open', () => {
-    showScreen('screen-lobby');
-    updateLobbyStatus();
-  });
-
-  peer.on('connection', (conn) => {
-    if (connections.length + 1 >= maxPlayers) {
-      conn.close();
-      return;
+    document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
+    if (screenId) {
+        let el = document.getElementById(screenId);
+        if (el) el.style.display = 'flex';
     }
-    connections.push(conn);
-    setupConnListeners(conn);
-  });
 }
 
-function joinRoomByCode() {
-  const code = document.getElementById('input-room-id').value.trim();
-  if (code.length !== 4) {
-    document.getElementById('guest-status-msg').innerText = '4桁のIDを入力してください';
-    return;
-  }
-  roomID = code;
-  myPlayerId = 'guest_' + Math.random().toString(36).substr(2, 5);
-  peer = new Peer();
-
-  peer.on('open', () => {
-    hostConn = peer.connect(PEER_PREFIX + roomID);
-    setupConnListeners(hostConn);
-  });
-
-  peer.on('error', () => {
-    document.getElementById('guest-status-msg').innerText = '接続に失敗しました';
-  });
-}
-
-function setupConnListeners(conn) {
-  conn.on('open', () => {
-    if (!isHost) showScreen('screen-lobby');
-  });
-
-  conn.on('data', (data) => {
-    handleNetworkData(data);
-  });
-}
-
-function sendData(data) {
-  if (isHost) {
-    connections.forEach(c => c.send(data));
-    handleNetworkData(data);
-  } else if (hostConn && hostConn.open) {
-    hostConn.send(data);
-  }
+// 最初の3択メニュー
+function selectMainMenu(choice) {
+    if (choice === 'host') {
+        battleRole = 'host';
+        showScreen('screen-host-config');
+    } else if (choice === 'guest') {
+        battleRole = 'guest';
+        showScreen('screen-guest-join');
+    } else if (choice === 'exit') {
+        alert("ゲームを終了します");
+        window.close();
+    }
 }
 
 // ==========================================
-// 3. 名前設定＆ルーレット同期
+// 3. 通信 & ネットワーク処理 (PeerJS)
+// ==========================================
+function confirmHostSettings() {
+    maxPlayers = parseInt(document.getElementById('select-max-players').value);
+    targetWins = parseInt(document.getElementById('select-target-wins').value);
+    ojamaMultiplier = parseInt(document.getElementById('select-ojama-mult').value);
+
+    roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    document.getElementById('display-room-code').innerText = roomCode;
+    showScreen('screen-host-wait');
+
+    peer = new Peer('pb-game-multi-' + roomCode);
+    
+    players = [{ id: 0, name: '', order: 0, wins: 0, oshitsukeTarget: null, forceShoot: false, isShield: false }];
+    myPlayerId = 0;
+
+    peer.on('connection', (conn) => {
+        let newId = players.length;
+        if (newId >= maxPlayers) {
+            conn.close();
+            return;
+        }
+        hostConnMap[conn.peer] = conn;
+        players.push({ id: newId, name: '', order: 0, wins: 0, oshitsukeTarget: null, forceShoot: false, isShield: false });
+
+        setupHostConnection(conn, newId);
+        updateHostWaitStatus();
+
+        if (players.length === maxPlayers) {
+            // 全員揃ったら全員に名前入力指示
+            broadcastHost({ type: 'start_name_input' });
+            showScreen('screen-name-input');
+        }
+    });
+}
+
+function updateHostWaitStatus() {
+    let el = document.getElementById('host-wait-status');
+    if (el) el.innerText = `参加者を待っています... (${players.length}/${maxPlayers})`;
+}
+
+function setupHostConnection(conn, assignedId) {
+    conn.on('open', () => {
+        conn.send({ type: 'init_guest', playerId: assignedId, maxPlayers: maxPlayers, ojamaMult: ojamaMultiplier });
+    });
+    conn.on('data', (data) => handleHostReceiveData(assignedId, data));
+}
+
+function joinRoom() {
+    let code = document.getElementById('input-room-code').value;
+    if (code.length !== 4) {
+        document.getElementById('guest-status-msg').innerText = "4桁の数字を入力してください";
+        return;
+    }
+    roomCode = code;
+    peer = new Peer();
+    
+    peer.on('open', () => {
+        guestConn = peer.connect('pb-game-multi-' + roomCode);
+        guestConn.on('data', handleGuestReceiveData);
+    });
+    
+    peer.on('error', () => {
+        document.getElementById('guest-status-msg').innerText = "部屋が見つかりませんでした";
+    });
+}
+
+function broadcastHost(data) {
+    Object.values(hostConnMap).forEach(c => {
+        if (c && c.open) c.send(data);
+    });
+}
+
+// ==========================================
+// 4. データ受信ハンドラ
+// ==========================================
+function handleHostReceiveData(fromId, data) {
+    if (data.type === 'submit_name') {
+        players[fromId].name = data.name;
+        checkAllNamesSubmitted();
+    } else if (data.type === 'ready_start') {
+        readyCount++;
+        if (readyCount === maxPlayers) {
+            broadcastHost({ type: 'game_start_signal' });
+            launchGameStartNotice();
+        }
+    } else if (data.type === 'action_use_item') {
+        processItemEffect(fromId, data.itemType, data.targetId);
+    }
+}
+
+function handleGuestReceiveData(data) {
+    if (data.type === 'init_guest') {
+        myPlayerId = data.playerId;
+        maxPlayers = data.maxPlayers;
+        ojamaMultiplier = data.ojamaMult;
+    } else if (data.type === 'start_name_input') {
+        showScreen('screen-name-input');
+    } else if (data.type === 'start_roulette') {
+        players = data.players;
+        showScreen('screen-roulette');
+        startRouletteAnimation();
+    } else if (data.type === 'game_start_signal') {
+        launchGameStartNotice();
+    }
+}
+
+// ==========================================
+// 5. 名前入力 & ルーレット処理
 // ==========================================
 function submitPlayerName() {
-  const inputEl = document.getElementById('input-player-name');
-  const nameVal = inputEl.value.trim();
-  if (!nameVal) return;
-  myName = nameVal.substring(0, 6);
+    let inputName = document.getElementById('input-player-name').value.trim();
+    if (!inputName) inputName = "P" + (myPlayerId + 1);
+    
+    // 全角6文字制限
+    if (inputName.length > 6) inputName = inputName.substring(0, 6);
 
-  document.getElementById('btn-submit-name').disabled = true;
-  inputEl.disabled = true;
+    document.getElementById('my-player-name').innerText = inputName;
+    players[myPlayerId].name = inputName;
 
-  sendData({ type: 'submit_name', id: myPlayerId, name: myName });
-}
+    document.getElementById('name-wait-msg').innerText = "他のプレイヤーの入力を待っています...";
 
-function updateLobbyStatus() {
-  document.getElementById('lobby-status').innerText = 
-    `現在の参加者: ${playersList.length} / ${maxPlayers} 人`;
-}
-
-function handleNetworkData(data) {
-  switch (data.type) {
-    case 'submit_name':
-      if (isHost) {
-        if (!playersList.some(p => p.id === data.id)) {
-          playersList.push({ id: data.id, name: data.name, isReady: false });
-        }
-        sendData({ type: 'lobby_sync', players: playersList });
-
-        // 全員の名前が揃った場合ルーレットへ
-        if (playersList.length === maxPlayers) {
-          setTimeout(initRoulettePhase, 800);
-        }
-      }
-      break;
-
-    case 'lobby_sync':
-      playersList = data.players;
-      updateLobbyStatus();
-      break;
-
-    case 'start_roulette':
-      playersList = data.players;
-      runRouletteUI();
-      break;
-
-    case 'player_ready_sync':
-      playersList = data.players;
-      if (isHost && playersList.every(p => p.isReady)) {
-        sendData({ type: 'game_start_signal' });
-      }
-      break;
-
-    case 'game_start_signal':
-      showScreen('');
-      triggerBigAnnounce('ゲームスタート！', () => {
-        initGameRound();
-      });
-      break;
-
-    case 'action_turn_end':
-      processTurnEnd(data);
-      break;
-  }
-}
-
-// ==========================================
-// 4. ルーレット＆スタート演出
-// ==========================================
-let modalStep = 0;
-let myOrderNum = 0;
-
-function initRoulettePhase() {
-  // 打順の割り当て (1〜Max, 重複なし)
-  let orders = Array.from({ length: maxPlayers }, (_, i) => i + 1);
-  orders.sort(() => Math.random() - 0.5);
-
-  playersList.forEach((p, idx) => {
-    p.order = orders[idx];
-  });
-
-  // 打順順にソート
-  playersList.sort((a, b) => a.order - b.order);
-
-  sendData({ type: 'start_roulette', players: playersList });
-}
-
-function runRouletteUI() {
-  const myP = playersList.find(p => p.id === myPlayerId);
-  myOrderNum = myP ? myP.order : 1;
-
-  const modal = document.getElementById('center-modal');
-  const title = document.getElementById('modal-title');
-  const body = document.getElementById('modal-body');
-  const btn = document.getElementById('modal-btn');
-
-  modal.style.display = 'block';
-  title.innerText = '順位決定';
-  body.innerText = 'ルーレットスタート！';
-  btn.innerText = '停止';
-  modalStep = 1;
-}
-
-function handleModalClick() {
-  const body = document.getElementById('modal-body');
-  const btn = document.getElementById('modal-btn');
-
-  if (modalStep === 1) {
-    body.innerText = `あなたは ${myOrderNum} 番です`;
-    btn.innerText = '準備完了';
-    modalStep = 2;
-  } else if (modalStep === 2) {
-    document.getElementById('center-modal').style.display = 'none';
-
-    // 自分の準備OKを通知
-    const myP = playersList.find(p => p.id === myPlayerId);
-    if (myP) myP.isReady = true;
-
-    sendData({ type: 'player_ready_sync', players: playersList });
-  }
-}
-
-function triggerBigAnnounce(text, callback) {
-  const el = document.getElementById('big-announce');
-  el.innerText = text;
-  el.style.display = 'block';
-  setTimeout(() => {
-    el.style.display = 'none';
-    if (callback) callback();
-  }, 1500);
-}
-
-// ==========================================
-// 5. ゲーム開始＆GUI・新アイテム処理
-// ==========================================
-function initGameRound() {
-  gameState = 'playing';
-  currentTurnIndex = 0;
-  initGrid();
-
-  document.getElementById('right-gui-panel').style.display = 'flex';
-  document.getElementById('gui-my-name').innerText = myName;
-
-  updateTurnState();
-}
-
-function initGrid() {
-  grid = [];
-  for (let r = 0; r < ROWS; r++) {
-    let row = [];
-    let cols = (r % 2 === 0) ? COLS : COLS - 1;
-    for (let c = 0; c < cols; c++) {
-      row.push(r < 3 ? { color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)] } : null);
+    if (battleRole === 'host') {
+        checkAllNamesSubmitted();
+    } else {
+        guestConn.send({ type: 'submit_name', name: inputName });
     }
-    grid.push(row);
-  }
 }
 
-function updateTurnState() {
-  const activePlayer = playersList[currentTurnIndex];
-  if (activePlayer.id === myPlayerId && isForcedLaunch) {
-    isForcedLaunch = false;
-    setTimeout(forcedLaunch, 600);
-  }
+function checkAllNamesSubmitted() {
+    let allFilled = players.every(p => p.name !== '');
+    if (allFilled) {
+        // 順番をランダムに決定 (Fisher-Yates)
+        let orders = Array.from({length: maxPlayers}, (_, i) => i + 1);
+        orders.sort(() => Math.random() - 0.5);
+
+        players.forEach((p, idx) => p.order = orders[idx]);
+
+        broadcastHost({ type: 'start_roulette', players: players });
+        showScreen('screen-roulette');
+        startRouletteAnimation();
+    }
 }
 
-function forcedLaunch() {
-  if (isMoving) return;
-  isMoving = true;
-  playSE(se.shoot);
-  // 発射後のターンエンド同期
-  setTimeout(() => {
-    isMoving = false;
-    sendData({ type: 'action_turn_end', senderId: myPlayerId, clearedCount: 0 });
-  }, 1000);
+function startRouletteAnimation() {
+    rouletteState = 'running';
+    let disp = document.getElementById('roulette-display');
+    let btn = document.getElementById('btn-roulette-action');
+    btn.innerText = "タップしてストップ";
+
+    let count = 1;
+    rouletteInterval = setInterval(() => {
+        disp.innerText = count;
+        count = (count % maxPlayers) + 1;
+    }, 80);
 }
 
-// GUIアイテムボタン
+function handleRouletteTap() {
+    let btn = document.getElementById('btn-roulette-action');
+    
+    if (rouletteState === 'running') {
+        clearInterval(rouletteInterval);
+        rouletteState = 'stopped';
+
+        myOrderNum = players[myPlayerId].order;
+        document.getElementById('roulette-display').innerText = "停止！";
+        document.getElementById('my-order-result').innerText = `あなたは ${myOrderNum} 番です`;
+
+        btn.innerText = "ゲーム開始準備";
+    } else if (rouletteState === 'stopped') {
+        rouletteState = 'ready_wait';
+        btn.innerText = "準備完了！(待機中)";
+        btn.style.background = "#555";
+
+        if (battleRole === 'host') {
+            readyCount++;
+            if (readyCount === maxPlayers) {
+                broadcastHost({ type: 'game_start_signal' });
+                launchGameStartNotice();
+            }
+        } else {
+            guestConn.send({ type: 'ready_start' });
+        }
+    }
+}
+
+function launchGameStartNotice() {
+    showScreen('');
+    gameState = 'playing';
+
+    // 画面中央に大きく「ゲームスタート！」演出を表示
+    let notice = document.createElement('div');
+    notice.style.cssText = "position:fixed; top:40%; left:50%; transform:translate(-50%, -50%); font-size:36px; font-weight:900; color:#ffcc00; text-shadow:0 0 15px #000; z-index:1000; pointer-events:none;";
+    notice.innerText = "ゲームスタート！";
+    document.body.appendChild(notice);
+
+    setTimeout(() => notice.remove(), 2000);
+}
+
+// ==========================================
+// 6. 新アイテム処理 (おしつけ、発射、防御)
+// ==========================================
+
+// アイテム1：おしつけ
 function useItemOshitsuke() {
-  if (playersList[currentTurnIndex].id !== myPlayerId) return;
-  const target = selectTargetPlayer('おしつけ対象を選択してください:');
-  if (!target) return;
-
-  activeOshitsukeTarget = target.id;
-  oshitsukeTurnsLeft = playersList.length * 2;
-  alert(`${target.name} へおしつけを設定しました（2ターン）`);
-}
-
-function useItemHassha() {
-  if (playersList[currentTurnIndex].id !== myPlayerId) return;
-  const target = selectTargetPlayer('強制発射対象を選択してください:');
-  if (!target) return;
-
-  target.isForced = true;
-  alert(`${target.name} に強制発射をセットしました`);
-}
-
-function useItemBougyo() {
-  if (playersList[currentTurnIndex].id !== myPlayerId) return;
-  isBougyoActive = true;
-  alert('1ターンの間、飛んでくるお邪魔玉を半減します！');
-}
-
-function selectTargetPlayer(msg) {
-  const list = playersList.filter(p => p.id !== myPlayerId);
-  let text = msg + '\n';
-  list.forEach((p, i) => { text += `${i + 1}: ${p.name}\n`; });
-  const input = prompt(text);
-  const num = parseInt(input, 10);
-  if (isNaN(num) || num < 1 || num > list.length) return null;
-  return list[num - 1];
-}
-
-function processTurnEnd(data) {
-  let clearedCount = data.clearedCount || 0;
-  let ojamaAmount = clearedCount * ojamaRate;
-
-  if (ojamaAmount > 0) {
-    let targetId = data.senderId;
-    if (oshitsukeTurnsLeft > 0 && activeOshitsukeTarget) {
-      targetId = activeOshitsukeTarget;
+    let targetId = promptPlayerSelect("おしつける相手を選択してください:");
+    if (targetId !== null) {
+        sendItemAction(1, targetId);
     }
-
-    if (targetId === myPlayerId) {
-      if (isBougyoActive) {
-        ojamaAmount = Math.floor(ojamaAmount / 2);
-      }
-      myOjamaStock += ojamaAmount;
-    }
-  }
-
-  if (oshitsukeTurnsLeft > 0) oshitsukeTurnsLeft--;
-  isBougyoActive = false;
-
-  currentTurnIndex = (currentTurnIndex + 1) % playersList.length;
-  updateTurnState();
 }
 
-// ==========================================
-// 6. 描画ループ
-// ==========================================
-function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // 盤面描画
-  for (let r = 0; r < ROWS; r++) {
-    let cols = (r % 2 === 0) ? COLS : COLS - 1;
-    let xOffset = (r % 2 === 0) ? 25 : 50;
-    for (let c = 0; c < cols; c++) {
-      let cell = grid[r] ? grid[r][c] : null;
-      if (cell) {
-        ctx.beginPath();
-        ctx.arc(xOffset + c * 48, 40 + r * 38, RADIUS, 0, Math.PI * 2);
-        ctx.fillStyle = cell.color;
-        ctx.fill();
-        ctx.closePath();
-      }
+// アイテム2：発射
+function useItemForceShoot() {
+    let targetId = promptPlayerSelect("強制発射させる相手を選択してください:");
+    if (targetId !== null) {
+        sendItemAction(2, targetId);
     }
-  }
-
-  // ターンインジケータ
-  if (gameState === 'playing' && playersList.length > 0) {
-    const curP = playersList[currentTurnIndex];
-    ctx.fillStyle = '#ffcc00';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(`TURN: ${curP ? curP.name : ''}`, 15, 25);
-  }
-
-  requestAnimationFrame(render);
 }
 
-// 起動
-render();
+// アイテム3：防御
+function useItemDefense() {
+    sendItemAction(3, myPlayerId);
+}
+
+function promptPlayerSelect(msg) {
+    let options = players
+        .filter(p => p.id !== myPlayerId)
+        .map(p => `${p.id}: ${p.name}`)
+        .join("\n");
+    let res = prompt(`${msg}\n${options}`);
+    let id = parseInt(res);
+    return isNaN(id) ? null : id;
+}
+
+function sendItemAction(itemType, targetId) {
+    if (battleRole === 'host') {
+        processItemEffect(myPlayerId, itemType, targetId);
+    } else {
+        guestConn.send({ type: 'action_use_item', itemType: itemType, targetId: targetId });
+    }
+}
+
+function processItemEffect(fromId, itemType, targetId) {
+    if (itemType === 1) { // おしつけ
+        players[fromId].oshitsukeTarget = targetId;
+    } else if (itemType === 2) { // 発射
+        players[targetId].forceShoot = true;
+    } else if (itemType === 3) { // 防御
+        players[fromId].isShield = true;
+    }
+    broadcastHost({ type: 'sync_player_states', players: players });
+}
+
+// 描画ループ (ダミー実装：キャンバス描画のフレームワーク)
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (gameState === 'playing') {
+        // ゲーム画面の背景および玉の描画処理などをここに記述
+    }
+    requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
