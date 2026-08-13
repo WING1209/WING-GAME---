@@ -2,9 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- スマホ専用：全機種画面フィット設定 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CYBER PUZZLE BATTLE</title>
+    <title>CYBER SPHERE BATTLE</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * {
@@ -28,7 +27,6 @@
             align-items: center;
         }
 
-        /* どのスマホ機種でも画面ぴったりにフィットするレスポンシブコンテナ */
         #game-container {
             position: relative;
             width: 100vw;
@@ -41,7 +39,7 @@
             overflow: hidden;
         }
 
-        /* 左側：ゲーム描画エリア（画面幅に合わせて伸縮） */
+        /* 左側：ゲーム描画エリア */
         #canvas-wrapper {
             position: relative;
             flex: 1;
@@ -55,16 +53,31 @@
             display: block;
         }
 
-        /* 右側：GUIパネル（玉4~5個分程度の固定幅） */
+        /* ポップアップ選択中の暗転マスク */
+        #screen-blackout {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.95);
+            z-index: 250;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: #00f3ff;
+            font-weight: bold;
+            font-size: 18px;
+            letter-spacing: 2px;
+        }
+
+        /* 右側：GUIパネル（ボタンサイズを大きく調整） */
         #side-gui {
-            width: 110px;
+            width: 130px;
             height: 100%;
             background: rgba(15, 23, 42, 0.95);
             border-left: 2px solid rgba(0, 243, 255, 0.3);
             display: flex;
             flex-direction: column;
-            padding: 8px 4px;
-            gap: 6px;
+            padding: 8px 6px;
+            gap: 8px;
             z-index: 20;
             overflow-y: auto;
         }
@@ -73,7 +86,7 @@
             background: rgba(0, 243, 255, 0.1);
             border: 1px solid #00f3ff;
             border-radius: 6px;
-            padding: 4px;
+            padding: 6px;
             text-align: center;
         }
 
@@ -86,14 +99,14 @@
         }
 
         .score-display {
-            font-size: 10px;
+            font-size: 11px;
             color: #ffe600;
             margin-top: 2px;
             font-weight: bold;
         }
 
         .item-section-title {
-            font-size: 9px;
+            font-size: 10px;
             color: #888;
             letter-spacing: 1px;
             text-align: center;
@@ -102,25 +115,31 @@
         .item-grid {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
 
+        /* アイテムボタンの大型化・押しやすさ向上 */
         .btn-item-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(0, 243, 255, 0.4);
-            border-radius: 6px;
-            padding: 5px 3px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgba(0, 243, 255, 0.5);
+            border-radius: 8px;
+            padding: 10px 6px;
             color: #fff;
-            font-size: 9px;
+            font-size: 11px;
             font-weight: bold;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            touch-action: manipulation;
+        }
+
+        .btn-item-card:active {
+            background: rgba(0, 243, 255, 0.3);
         }
 
         .btn-item-card.disabled {
-            opacity: 0.3;
+            opacity: 0.25;
             pointer-events: none;
             border-color: #444;
         }
@@ -128,12 +147,13 @@
         .item-count {
             background: #ff0055;
             color: #fff;
-            border-radius: 8px;
-            padding: 1px 4px;
-            font-size: 8px;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 900;
         }
 
-        /* UIオーバーレイ */
+        /* オーバーレイ全般 */
         .overlay-screen {
             position: absolute;
             inset: 0;
@@ -187,6 +207,7 @@
         .btn-secondary { background: transparent; border: 1px solid rgba(255, 255, 255, 0.2); color: #aaa; }
         .status-badge { font-size: 11px; color: #ff0055; font-weight: bold; }
 
+        /* ダイアログ（色選択・ターゲット選択） */
         .modal-dialog {
             position: absolute;
             top: 50%; left: 50%;
@@ -199,11 +220,13 @@
             width: 85%;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
+            text-align: center;
         }
 
-        .color-selector-box { display: flex; justify-content: space-around; margin: 6px 0; }
-        .color-dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; }
+        .color-selector-box { display: flex; justify-content: space-around; margin: 10px 0; }
+        .color-dot { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; }
+        .target-btn { padding: 8px; background: rgba(0,243,255,0.2); border: 1px solid #00f3ff; color: #fff; border-radius: 6px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -211,6 +234,7 @@
         <!-- 左側：メインゲーム画面 -->
         <div id="canvas-wrapper">
             <canvas id="gameCanvas"></canvas>
+            <div id="screen-blackout">THINKING...</div>
         </div>
 
         <!-- 右側：GUIパネル -->
@@ -221,7 +245,7 @@
                 <div class="score-display">消去: <span id="gui-cleared-count">0</span>/500</div>
             </div>
 
-            <div class="item-section-title">ITEMS</div>
+            <div class="item-section-title">ITEMS (MAX 5)</div>
             <div class="item-grid">
                 <button id="btn-item-double" class="btn-item-card" onclick="useItem('double')">お邪魔2倍 <span id="cnt-double" class="item-count">0</span></button>
                 <button id="btn-item-triple" class="btn-item-card" onclick="useItem('triple')">お邪魔3倍 <span id="cnt-triple" class="item-count">0</span></button>
@@ -234,7 +258,7 @@
             </div>
         </div>
 
-        <!-- タイトル＆設定画面等 -->
+        <!-- UI画面群 -->
         <div id="screen-title" class="overlay-screen">
             <div>
                 <div class="sub-title" style="text-align:center;">REAL-TIME MULTI PUZZLE</div>
@@ -297,7 +321,7 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const PEER_PREFIX = 'cyber-puzzle-v2026-fix2-';
+        const PEER_PREFIX = 'cyber-puzzle-v2026-fix3-';
 
         const ROWS = 15;
         const COLS = 8;
@@ -332,34 +356,34 @@
 
         let turnTimer = 10;
         let turnTimerInterval = null;
+        let isTimerPaused = false; // アイテム使用時のタイマーストップフラグ
 
+        // 各アイテムストック上限5個
         let inventory = { double: 0, triple: 0, skip: 0, pierce: 0, color: 0, redirect: 0, forceshoot: 0, defense: 0 };
-        let activeBuffs = { multiplier: 1, isPiercing: false, redirectTarget: null, redirectTurns: 0, isDefending: false, forceShootDisabled: false };
+        let activeBuffs = { multiplier: 1, isPiercing: false, redirectTarget: null, isDefending: false };
 
-        // 発射台・引っ張り操作変数
+        // 物理・発射操作
         let shooterX = 0, shooterY = 0;
         let bulletX = 0, bulletY = 0;
         let bulletVX = 0, bulletVY = 0;
         let bulletData = null, nextBubble = null;
         let isMoving = false;
-        let wallReflections = 0;
-        const MAX_SPEED = 18;
 
-        // 引っ張り（スリングショット）用フラグ
+        // 引っ張り操作
         let isDragging = false;
         let dragStartX = 0, dragStartY = 0;
         let dragCurrentX = 0, dragCurrentY = 0;
 
+        // 落下アニメーション用のパーティクル配列
+        let fallingBubbles = [];
         let flyingOjamaBalls = [];
         let DEAD_LINE_Y = 0;
 
-        // 画面サイズ調整（動的レスポンシブ対応）
         function resizeCanvas() {
             let wrapper = document.getElementById('canvas-wrapper');
             canvas.width = wrapper.clientWidth;
             canvas.height = wrapper.clientHeight;
 
-            // 画面幅に合わせて玉の半径を動的に計算
             RADIUS = canvas.width / (COLS * 2 + 1);
             DIAMETER = RADIUS * 2;
             ROW_HEIGHT = RADIUS * Math.sqrt(3);
@@ -376,7 +400,6 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // 画面制御・ PeerJS 処理（基本ロジック同等）
         function showScreen(id) {
             document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
             if (id && document.getElementById(id)) document.getElementById(id).style.display = 'flex';
@@ -541,17 +564,16 @@
             onTurnChanged();
         }
 
-        // 引っ張り（スリングショット）操作イベント
+        // --- タッチ＆引っ張り（威力可変）処理 ---
         canvas.addEventListener('touchstart', (e) => {
-            if (gameState !== 'playing' || isMoving || battleTurnState !== 'my_turn') return;
+            if (gameState !== 'playing' || isMoving || battleTurnState !== 'my_turn' || isTimerPaused) return;
             e.preventDefault();
             let touch = e.touches[0];
             let rect = canvas.getBoundingClientRect();
             let tx = touch.clientX - rect.left;
             let ty = touch.clientY - rect.top;
 
-            // 玉の周辺をタッチした場合に引っ張り開始
-            if (Math.hypot(tx - bulletX, ty - bulletY) < RADIUS * 3) {
+            if (Math.hypot(tx - bulletX, ty - bulletY) < RADIUS * 3.5) {
                 isDragging = true;
                 dragStartX = bulletX;
                 dragStartY = bulletY;
@@ -574,26 +596,27 @@
             e.preventDefault();
             isDragging = false;
 
-            // 引っ張った逆方向に打ち出し
             let dx = dragStartX - dragCurrentX;
             let dy = dragStartY - dragCurrentY;
             let dist = Math.hypot(dx, dy);
 
-            if (dist > 15) { // 一定以上引っ張ったら発射
+            if (dist > 10) {
+                // 引っ張り距離に応じて威力を可変（最大速度26）
+                let speed = Math.min(Math.max(dist * 0.18, 8), 26);
                 let angle = Math.atan2(dx, dy);
-                shootBulletAngle(angle);
+                bulletVX = Math.sin(angle) * speed;
+                bulletVY = -Math.cos(angle) * speed;
+                isMoving = true;
             }
         }, { passive: false });
 
-        function shootBulletAngle(angle) {
-            bulletVX = Math.sin(angle) * MAX_SPEED;
-            bulletVY = -Math.cos(angle) * MAX_SPEED;
-            isMoving = true;
-        }
-
         function forceAutoShoot() {
             if (isMoving) return;
-            shootBulletAngle((Math.random() * 1.0) - 0.5);
+            let speed = 15;
+            let angle = (Math.random() * 1.0) - 0.5;
+            bulletVX = Math.sin(angle) * speed;
+            bulletVY = -Math.cos(angle) * speed;
+            isMoving = true;
         }
 
         function onTurnChanged() {
@@ -602,7 +625,7 @@
             battleTurnState = (currentTurnPlayerId === myPlayerId) ? 'my_turn' : 'opponent_turn';
 
             turnTimerInterval = setInterval(() => {
-                if (gameState !== 'playing') return;
+                if (gameState !== 'playing' || isTimerPaused) return;
                 turnTimer--;
                 if (turnTimer <= 0) {
                     clearInterval(turnTimerInterval);
@@ -678,7 +701,6 @@
             bulletY = shooterY;
             bulletVX = 0; bulletVY = 0;
             isMoving = false;
-            wallReflections = 0;
         }
 
         function updateBulletPhysics() {
@@ -687,8 +709,8 @@
             bulletX += bulletVX;
             bulletY += bulletVY;
 
-            if (bulletX - RADIUS < 0) { bulletX = RADIUS; bulletVX = -bulletVX; wallReflections++; }
-            else if (bulletX + RADIUS > canvas.width) { bulletX = canvas.width - RADIUS; bulletVX = -bulletVX; wallReflections++; }
+            if (bulletX - RADIUS < 0) { bulletX = RADIUS; bulletVX = -bulletVX; }
+            else if (bulletX + RADIUS > canvas.width) { bulletX = canvas.width - RADIUS; bulletVX = -bulletVX; }
 
             let hit = false;
             if (bulletY <= RADIUS) hit = true;
@@ -729,6 +751,7 @@
             checkMatchAndClear(bestR, bestC);
         }
 
+        // --- 同色マッチ消去＆浮遊玉の物理落下ロジック ---
         function checkMatchAndClear(startR, startC) {
             let targetColor = grid[startR][startC].color;
             let matched = [];
@@ -741,7 +764,7 @@
                 if (visited[r][c] || !grid[r][c] || grid[r][c].color !== targetColor) return;
 
                 visited[r][c] = true;
-                matched.push({r, c, isGimmick: grid[r][c].isGimmick});
+                matched.push({r, c, isGimmick: grid[r][c].isGimmick, color: grid[r][c].color});
 
                 let neighbors = (r % 2 === 0) ? 
                     [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] :
@@ -753,13 +776,27 @@
             dfs(startR, startC);
 
             if (matched.length >= 3) {
+                // 消えた玉を落下アニメーションに登録
                 matched.forEach(cell => {
+                    addFallingBubble(cell.r, cell.c, cell.color);
                     grid[cell.r][cell.c] = null;
                     if (cell.isGimmick) grantRandomItem();
                 });
-                clearedCount += matched.length;
+
+                // 孤立した（天井と接続されていない）玉を検知して一緒に落下
+                let floating = findFloatingBubbles();
+                floating.forEach(cell => {
+                    addFallingBubble(cell.r, cell.c, cell.color);
+                    grid[cell.r][cell.c] = null;
+                    if (cell.isGimmick) grantRandomItem();
+                });
+
+                // 巻き込まれて落ちた玉も消去カウント（得点）に加算
+                let totalCleared = matched.length + floating.length;
+                clearedCount += totalCleared;
                 document.getElementById('gui-cleared-count').innerText = clearedCount;
-                sendOjamaToOpponent(matched.length * (ojamaMultiplier * activeBuffs.multiplier));
+
+                sendOjamaToOpponent(totalCleared * (ojamaMultiplier * activeBuffs.multiplier));
 
                 if (clearedCount >= 500) { triggerVictory(); return; }
             }
@@ -767,6 +804,77 @@
             checkDeadLineLoss();
             endMyTurn();
             spawnBullet();
+        }
+
+        // 天井繋がり検知DFS
+        function findFloatingBubbles() {
+            let connected = Array.from({length: ROWS}, () => Array(COLS).fill(false));
+            let queue = [];
+
+            // 1. 最上段（天井）の玉を起点として登録
+            if (grid[0]) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[0][c]) {
+                        connected[0][c] = true;
+                        queue.push({r: 0, c});
+                    }
+                }
+            }
+
+            // 2. 探索
+            while (queue.length > 0) {
+                let {r, c} = queue.shift();
+                let neighbors = (r % 2 === 0) ? 
+                    [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] :
+                    [[r-1, c], [r-1, c+1], [r, c-1], [r, c+1], [r+1, c], [r+1, c+1]];
+
+                for (let [nr, nc] of neighbors) {
+                    if (nr >= 0 && nr < ROWS) {
+                        let colsInRow = (nr % 2 === 0) ? COLS : COLS - 1;
+                        if (nc >= 0 && nc < colsInRow && grid[nr][nc] && !connected[nr][nc]) {
+                            connected[nr][nc] = true;
+                            queue.push({r: nr, c: nc});
+                        }
+                    }
+                }
+            }
+
+            // 3. 天井に繋がっていない孤立玉をリストアップ
+            let floating = [];
+            for (let r = 0; r < ROWS; r++) {
+                let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
+                for (let c = 0; c < colsInRow; c++) {
+                    if (grid[r][c] && !connected[r][c]) {
+                        floating.push({r, c, color: grid[r][c].color, isGimmick: grid[r][c].isGimmick});
+                    }
+                }
+            }
+            return floating;
+        }
+
+        function addFallingBubble(r, c, color) {
+            let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
+            fallingBubbles.push({
+                x: rowXOffset + c * DIAMETER,
+                y: RADIUS + r * ROW_HEIGHT,
+                vy: -2 + Math.random() * -3, // ポンと軽く浮き上がってから落下
+                vx: (Math.random() - 0.5) * 4,
+                color: color
+            });
+        }
+
+        function updateFallingBubbles() {
+            for (let i = fallingBubbles.length - 1; i >= 0; i--) {
+                let p = fallingBubbles[i];
+                p.vy += 0.8; // 重力加速度
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // 画面外下に落ちたら削除
+                if (p.y > canvas.height + 50) {
+                    fallingBubbles.splice(i, 1);
+                }
+            }
         }
 
         function sendOjamaToOpponent(count) {
@@ -864,8 +972,11 @@
 
         function grantRandomItem() {
             const keys = Object.keys(inventory);
-            inventory[keys[Math.floor(Math.random() * keys.length)]]++;
-            updateGUIItemButtons();
+            let pick = keys[Math.floor(Math.random() * keys.length)];
+            if (inventory[pick] < 5) { // 各アイテムの上限ストック数を5個に制限
+                inventory[pick]++;
+                updateGUIItemButtons();
+            }
         }
 
         function updateGUIItemButtons() {
@@ -874,28 +985,94 @@
                 let cnt = document.getElementById('cnt-' + k);
                 if (cnt) cnt.innerText = inventory[k];
                 if (btn) {
-                    if (inventory[k] > 0 && battleTurnState === 'my_turn') btn.classList.remove('disabled');
-                    else btn.classList.add('disabled');
+                    // 自ターン中でストックがあれば有効化
+                    if (inventory[k] > 0 && battleTurnState === 'my_turn') {
+                        btn.classList.remove('disabled');
+                    } else {
+                        btn.classList.add('disabled');
+                    }
                 }
             }
         }
 
+        // --- アイテム使用・選択ダイアログ＆画面暗転処理 ---
+        function pauseGameTimer() {
+            isTimerPaused = true;
+            document.getElementById('screen-blackout').style.display = 'flex';
+        }
+
+        function resumeGameTimer() {
+            isTimerPaused = false;
+            document.getElementById('screen-blackout').style.display = 'none';
+        }
+
         function useItem(type) {
             if (inventory[type] <= 0 || battleTurnState !== 'my_turn') return;
-            if (type === 'double') { inventory.double--; activeBuffs.multiplier = 2; }
-            else if (type === 'triple') { inventory.triple--; activeBuffs.multiplier = 3; }
-            else if (type === 'pierce') { inventory.pierce--; activeBuffs.isPiercing = true; }
-            else if (type === 'defense') { inventory.defense--; activeBuffs.isDefending = true; }
+
+            if (type === 'double') { inventory.double--; activeBuffs.multiplier = 2; updateGUIItemButtons(); }
+            else if (type === 'triple') { inventory.triple--; activeBuffs.multiplier = 3; updateGUIItemButtons(); }
+            else if (type === 'skip') { inventory.skip--; updateGUIItemButtons(); endMyTurn(); }
+            else if (type === 'pierce') { inventory.pierce--; activeBuffs.isPiercing = true; updateGUIItemButtons(); }
+            else if (type === 'defense') { inventory.defense--; activeBuffs.isDefending = true; updateGUIItemButtons(); }
+            else if (type === 'forceshoot') { inventory.forceshoot--; updateGUIItemButtons(); forceAutoShoot(); }
+            else if (type === 'color') { showColorSelectionDialog(); }
+            else if (type === 'redirect') { showTargetSelectionDialog(); }
+        }
+
+        function showColorSelectionDialog() {
+            pauseGameTimer();
+            let mc = document.getElementById('modal-container');
+            mc.style.display = 'block';
+            mc.innerHTML = `
+                <div class="modal-dialog">
+                    <div style="color:#00f3ff; font-weight:bold;">発射玉の色を選択</div>
+                    <div class="color-selector-box">
+                        ${BASE_COLORS.map(c => `<div class="color-dot" style="background:${c};" onclick="selectColor('${c}')"></div>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectColor(color) {
+            if (bulletData) bulletData.color = color;
+            inventory.color--;
+            document.getElementById('modal-container').style.display = 'none';
+            resumeGameTimer();
             updateGUIItemButtons();
         }
 
-        // 描画メインループ
+        function showTargetSelectionDialog() {
+            let opp = players.filter(p => p.id !== myPlayerId && !p.eliminated);
+            if (opp.length === 0) return;
+
+            pauseGameTimer();
+            let mc = document.getElementById('modal-container');
+            mc.style.display = 'block';
+            mc.innerHTML = `
+                <div class="modal-dialog">
+                    <div style="color:#00f3ff; font-weight:bold;">送り先プレイヤーを選択</div>
+                    <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                        ${opp.map(p => `<button class="target-btn" onclick="selectTarget(${p.id})">${p.name}</button>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectTarget(targetId) {
+            activeBuffs.redirectTarget = targetId;
+            inventory.redirect--;
+            document.getElementById('modal-container').style.display = 'none';
+            resumeGameTimer();
+            updateGUIItemButtons();
+        }
+
+        // --- 描画メインループ ---
         function gameLoop() {
             ctx.fillStyle = '#0d111e';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (gameState === 'playing' || gameState === 'ended') {
-                // デッドライン描画
+                // デッドライン
                 ctx.beginPath();
                 ctx.setLineDash([6, 6]);
                 ctx.moveTo(0, DEAD_LINE_Y);
@@ -905,7 +1082,7 @@
                 ctx.stroke();
                 ctx.setLineDash([]);
 
-                // 玉描画
+                // グリッド上の玉
                 for (let r = 0; r < ROWS; r++) {
                     if (!grid[r]) continue;
                     let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
@@ -930,13 +1107,23 @@
                     }
                 }
 
-                // 引っ張り操作中の「点線の予測ガイド線（約4cm相当: 150px）」の描画
+                // 落下アニメーションの玉を描画
+                updateFallingBubbles();
+                fallingBubbles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, RADIUS - 2, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                });
+
+                // 引っ張り操作中の予測ガイド線（引っ張る強さに応じて長さ変化）
                 if (isDragging) {
                     let dx = dragStartX - dragCurrentX;
                     let dy = dragStartY - dragCurrentY;
+                    let dist = Math.hypot(dx, dy);
                     let angle = Math.atan2(dx, dy);
 
-                    let guideLength = 150; // 約4cm分の長さ
+                    let guideLength = Math.min(dist * 1.5, 200); // 最大約4cm~5cm分
                     let targetX = bulletX + Math.sin(angle) * guideLength;
                     let targetY = bulletY - Math.cos(angle) * guideLength;
 
