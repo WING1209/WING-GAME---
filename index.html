@@ -103,6 +103,7 @@ input[type="text"], select {
   margin-bottom: 15px;
   text-align: center;
 }
+
 /* 右側GUIパネル */
 #right-gui-panel {
   position: absolute;
@@ -131,35 +132,32 @@ input[type="text"], select {
   color: #fff;
   border: 1px solid #666;
   border-radius: 6px;
-  padding: 6px 4px;
-  font-size: 11px;
+  padding: 8px 4px;
+  font-size: 12px;
+  font-weight: bold;
   cursor: pointer;
   text-align: center;
+  touch-action: manipulation;
 }
-.gui-item-btn.active {
-  background: #4caf50;
-  font-weight: bold;
+.gui-item-btn:active {
+  background: #ff9800;
 }
-.gui-item-btn.large {
-  font-size: 13px;
-  padding: 8px 4px;
-  border: 2px solid #ff9800;
-}
-/* ルーレット・演出モーダル */
+
+/* ルーレット・演出用 */
 #center-modal {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(0,0,0,0.9);
+  background: rgba(0,0,0,0.92);
   border: 2px solid #ffcc00;
   border-radius: 12px;
   padding: 20px;
   text-align: center;
   z-index: 200;
   display: none;
-  width: 80%;
-  max-width: 300px;
+  width: 85%;
+  max-width: 320px;
 }
 #big-announce {
   position: absolute;
@@ -192,7 +190,7 @@ input[type="text"], select {
 
   <!-- タイトル画面 -->
   <div id="screen-title" class="overlay-screen" style="display:flex;">
-    <h1 style="color:#ffcc00; font-size:32px; margin-bottom:30px;">WING★GAME</h1>
+    <h1 style="color:#ffcc00; font-size:32px; margin-bottom:30px;">WING GAME</h1>
     <button class="menu-btn" onclick="selectMainMenu('host')">ホスト</button>
     <button class="menu-btn sub" onclick="selectMainMenu('guest')">ゲスト</button>
     <button class="menu-btn gray" onclick="selectMainMenu('exit')">終了</button>
@@ -200,7 +198,7 @@ input[type="text"], select {
 
   <!-- ホスト設定：人数選択 -->
   <div id="screen-host-players" class="overlay-screen">
-    <h2>対戦人数の選択</h2>
+    <h2>対戦人数選択</h2>
     <select id="select-player-count">
       <option value="2">2人対戦</option>
       <option value="3">3人対戦</option>
@@ -213,7 +211,7 @@ input[type="text"], select {
   <!-- ホスト設定：ID・ゲームルール設定 -->
   <div id="screen-host-rules" class="overlay-screen">
     <h2>部屋設定</h2>
-    <p>共有ID: <span id="display-room-id" style="font-size:22px; color:#4da6ff; font-weight:bold;">----</span></p>
+    <p style="font-size:18px;">共通ID: <span id="display-room-id" style="font-size:24px; color:#4da6ff; font-weight:bold;">----</span></p>
     <label>勝利条件:</label>
     <select id="select-win-condition">
       <option value="1">1勝先取</option>
@@ -221,7 +219,7 @@ input[type="text"], select {
     </select>
     <label>お邪魔玉倍率:</label>
     <select id="select-ojama-rate">
-      <option value="1">1倍 (標準)</option>
+      <option value="1">1倍 (通常)</option>
       <option value="2">2倍</option>
       <option value="3">3倍</option>
     </select>
@@ -233,25 +231,25 @@ input[type="text"], select {
     <h2>ID入力</h2>
     <input type="text" id="input-room-id" maxlength="4" placeholder="4桁のIDを入力">
     <button class="menu-btn" onclick="joinRoomByCode()">接続</button>
-    <p id="guest-status-msg" style="color:#ff4d4d; font-size:14px;"></p>
+    <p id="guest-status-msg" style="color:#ff4d4d; font-size:14px; margin-top:10px;"></p>
   </div>
 
   <!-- 待機部屋 ＆ 名前入力 -->
   <div id="screen-lobby" class="overlay-screen">
     <h2>プレイヤー登録</h2>
-    <p id="lobby-status">接続プレイヤーを待っています...</p>
-    <input type="text" id="input-player-name" maxlength="6" placeholder="名前 (全角6文字以内)">
+    <p id="lobby-status" style="font-size:16px; margin-bottom:15px;">接続待ち...</p>
+    <input type="text" id="input-player-name" maxlength="6" placeholder="名前(全角6文字以内)">
     <button class="menu-btn" id="btn-submit-name" onclick="submitPlayerName()">決定</button>
   </div>
 
-  <!-- モーダル・演出用 -->
+  <!-- ルーレット・モーダル -->
   <div id="center-modal">
-    <h3 id="modal-title" style="color:#ffcc00; margin-top:0;">ルーレット</h3>
-    <p id="modal-body" style="font-size:18px; margin:15px 0;"></p>
-    <button class="menu-btn" id="modal-btn" onclick="handleModalClick()">タップ</button>
+    <h3 id="modal-title" style="color:#ffcc00; margin-top:0; font-size:20px;">順番決定</h3>
+    <p id="modal-body" style="font-size:18px; margin:20px 0;">ルーレットスタート！</p>
+    <button class="menu-btn" id="modal-btn" onclick="handleModalClick()">タップして停止</button>
   </div>
 
-  <!-- 画面中央ビッグアナウンス -->
+  <!-- アナウンス表示 -->
   <div id="big-announce"></div>
 </div>
 
