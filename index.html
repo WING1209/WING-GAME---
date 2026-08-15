@@ -254,7 +254,6 @@ let RADIUS = 16;
 let DIAMETER = RADIUS * 2;
 let ROW_HEIGHT = RADIUS * Math.sqrt(3);
 const BASE_COLORS = ['#ff0055', '#00f3ff', '#00ff66', '#ffe600', '#b000ff'];
-
 let gameState = 'title';
 let battleRole = '';
 let roomCode = '';
@@ -278,7 +277,6 @@ let turnTimer = 10;
 let turnTimerInterval = null;
 let inventory = { double: 0, triple: 0, skip: 0, pierce: 0, color: 0, redirect: 0, forceshoot: 0, defense: 0 };
 let activeBuffs = { multiplier: 1, isPiercing: false, redirectTarget: null, redirectTurns: 0, isDefending: false, forceShootDisabled: false };
-
 let shooterX = 0, shooterY = 0;
 let bulletX = 0, bulletY = 0;
 let bulletVX = 0, bulletVY = 0;
@@ -291,183 +289,194 @@ const MAX_SPEED = 18;
 let isDragging = false;
 let dragStartX = 0, dragStartY = 0;
 let dragCurrentX = 0, dragCurrentY = 0;
-
 let flyingOjamaBalls = [];
 let DEAD_LINE_Y = 0;
 
 function resizeCanvas() {
-  let w = window.innerWidth - 110;
-  let h = window.innerHeight;
-  
-  if (w <= 0) w = 300;
-  if (h <= 0) h = 500;
-
-  canvas.width = w;
-  canvas.height = h;
-  RADIUS = canvas.width / (COLS * 2 + 1);
-  DIAMETER = RADIUS * 2;
-  ROW_HEIGHT = RADIUS * Math.sqrt(3);
-  shooterX = canvas.width / 2;
-  shooterY = canvas.height - 50;
-  DEAD_LINE_Y = shooterY - (DIAMETER * 2);
-  if (!isMoving) {
-    bulletX = shooterX;
-    bulletY = shooterY;
-  }
+ let w = window.innerWidth - 110;
+ let h = window.innerHeight;
+ if (w <= 0) w = 300;
+ if (h <= 0) h = 500;
+ canvas.width = w;
+ canvas.height = h;
+ RADIUS = canvas.width / (COLS * 2 + 1);
+ DIAMETER = RADIUS * 2;
+ ROW_HEIGHT = RADIUS * Math.sqrt(3);
+ shooterX = canvas.width / 2;
+ shooterY = canvas.height - 50;
+ DEAD_LINE_Y = shooterY - (DIAMETER * 2);
+ if (!isMoving) {
+  bulletX = shooterX;
+  bulletY = shooterY;
+ }
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 function showScreen(id) {
-  document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
-  if (id && document.getElementById(id))
-    document.getElementById(id).style.display = 'flex';
+ document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
+ if (id && document.getElementById(id))
+  document.getElementById(id).style.display = 'flex';
 }
 
 function selectMainMenu(choice) {
-  closeNetwork();
-  if (choice === 'host') { battleRole = 'host'; showScreen('screen-host-config'); }
-  else { battleRole = 'guest'; showScreen('screen-guest-join'); }
+ closeNetwork();
+ if (choice === 'host') { battleRole = 'host'; showScreen('screen-host-config'); }
+ else { battleRole = 'guest'; showScreen('screen-guest-join'); }
 }
 
 function closeNetwork() {
-  if (guestConn) try { guestConn.close(); } catch(e){}
-  hostConnections.forEach(c => { try { c.close(); } catch(e){} });
-  if (peer) try { peer.destroy(); } catch(e){}
+ if (guestConn) try { guestConn.close(); } catch(e){}
+ hostConnections.forEach(c => { try { c.close(); } catch(e){} });
+ if (peer) try { peer.destroy(); } catch(e){}
 }
 
 function confirmHostSettings() {
-  maxPlayers = parseInt(document.getElementById('select-max-players').value);
-  ojamaMultiplier = parseInt(document.getElementById('select-ojama-mult').value);
-  roomCode = Math.floor(1000 + Math.random() * 9000).toString();
-  document.getElementById('display-room-code').innerText = roomCode;
-  showScreen('screen-host-wait');
-  
-  peer = new Peer(PEER_PREFIX + roomCode);
-  players = [{ id: 0, name: '', order: 0, wins: 0, eliminated: false }];
-  myPlayerId = 0;
-  
-  peer.on('open', () => document.getElementById('host-wait-status').innerText = `WAITING... (1/${maxPlayers})`);
-  peer.on('connection', (conn) => {
-    let assignedId = players.length;
-    if (assignedId >= maxPlayers) { conn.close(); return; }
-    hostConnections.push(conn);
-    players.push({ id: assignedId, name: '', order: 0, wins: 0, eliminated: false });
-    conn.on('open', () => {
-      conn.send({ type: 'init_guest', playerId: assignedId, maxPlayers, ojamaMult: ojamaMultiplier, players });
-      document.getElementById('host-wait-status').innerText = `WAITING... (${players.length}/${maxPlayers})`;
-      if (players.length === maxPlayers) {
-        broadcastHost({ type: 'start_name_input', players });
-        showScreen('screen-name-input');
-      }
-    });
-    conn.on('data', (d) => handleHostReceiveData(assignedId, d));
+ maxPlayers = parseInt(document.getElementById('select-max-players').value);
+ ojamaMultiplier = parseInt(document.getElementById('select-ojama-mult').value);
+ roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+ document.getElementById('display-room-code').innerText = roomCode;
+ showScreen('screen-host-wait');
+ 
+ peer = new Peer(PEER_PREFIX + roomCode);
+ players = [{ id: 0, name: '', order: 0, wins: 0, eliminated: false }];
+ myPlayerId = 0;
+ 
+ peer.on('open', () => document.getElementById('host-wait-status').innerText = `WAITING... (1/${maxPlayers})`);
+ peer.on('connection', (conn) => {
+  let assignedId = players.length;
+  if (assignedId >= maxPlayers) { conn.close(); return; }
+  hostConnections.push(conn);
+  players.push({ id: assignedId, name: '', order: 0, wins: 0, eliminated: false });
+  conn.on('open', () => {
+   conn.send({ type: 'init_guest', playerId: assignedId, maxPlayers, ojamaMult: ojamaMultiplier, players });
+   document.getElementById('host-wait-status').innerText = `WAITING... (${players.length}/${maxPlayers})`;
+   if (players.length === maxPlayers) {
+    broadcastHost({ type: 'start_name_input', players });
+    showScreen('screen-name-input');
+   }
   });
+  conn.on('data', (d) => handleHostReceiveData(assignedId, d));
+ });
 }
 
 function joinRoom() {
-  let code = document.getElementById('input-room-code').value.trim();
-  if (code.length !== 4) return;
-  roomCode = code;
-  peer = new Peer();
-  peer.on('open', () => {
-    guestConn = peer.connect(PEER_PREFIX + roomCode);
-    guestConn.on('data', handleGuestReceiveData);
-  });
+ let code = document.getElementById('input-room-code').value.trim();
+ if (code.length !== 4) return;
+ roomCode = code;
+ peer = new Peer();
+ peer.on('open', () => {
+  guestConn = peer.connect(PEER_PREFIX + roomCode);
+  guestConn.on('data', handleGuestReceiveData);
+ });
 }
 
 function broadcastHost(data) { hostConnections.forEach(c => { if (c && c.open) c.send(data); }); }
 function sendToHost(data) { if (guestConn && guestConn.open) guestConn.send(data); }
 
 function handleHostReceiveData(fromId, data) {
-  if (data.type === 'submit_name') {
-    let p = players.find(i => i.id === fromId);
-    if (p) p.name = data.name;
-    broadcastHost({ type: 'sync_players', players });
-    checkAllNamesSubmitted();
-  } else if (data.type === 'ready_start') {
-    readyCount++;
-    if (readyCount === maxPlayers) {
-      broadcastHost({ type: 'game_start_signal', players });
-      launchGameStartNotice();
-    }
-  } else if (data.type === 'send_ojama') {
-    handleOjamaRouting(data.targetId, data.count);
-  } else if (data.type === 'player_eliminated') {
-    let p = players.find(i => i.id === fromId);
-    if (p) p.eliminated = true;
-    checkVictoryConditionHost();
-  } else if (data.type === 'end_turn') {
-    advanceTurnHost();
+ if (data.type === 'submit_name') {
+  let p = players.find(i => i.id === fromId);
+  if (p) p.name = data.name;
+  broadcastHost({ type: 'sync_players', players });
+  checkAllNamesSubmitted();
+ } else if (data.type === 'ready_start') {
+  readyCount++;
+  if (readyCount === maxPlayers) {
+   broadcastHost({ type: 'game_start_signal', players });
+   launchGameStartNotice();
   }
+ } else if (data.type === 'send_ojama') {
+  handleOjamaRouting(data.targetId, data.count);
+ } else if (data.type === 'player_eliminated') {
+  let p = players.find(i => i.id === fromId);
+  if (p) p.eliminated = true;
+  checkVictoryConditionHost();
+ } else if (data.type === 'end_turn') {
+  advanceTurnHost();
+ }
 }
 
 function handleGuestReceiveData(data) {
-  if (data.type === 'init_guest') {
-    myPlayerId = data.playerId;
-    maxPlayers = data.maxPlayers;
-    if (data.players) players = data.players;
-  }
-  else if (data.type === 'start_name_input') { showScreen('screen-name-input'); }
-  else if (data.type === 'start_roulette') { players = data.players; showScreen('screen-roulette'); startRouletteAnimation(); }
-  else if (data.type === 'game_start_signal') { launchGameStartNotice(); }
-  else if (data.type === 'receive_ojama') { if (data.targetId === myPlayerId) triggerOjamaFlyIn(data.count); }
-  else if (data.type === 'sync_turn') { currentTurnPlayerId = data.currentTurnPlayerId; onTurnChanged(); }
-  else if (data.type === 'game_over_win') { showGameOverBanner(data.winnerName + " WIN!"); }
+ if (data.type === 'init_guest') {
+  myPlayerId = data.playerId;
+  maxPlayers = data.maxPlayers;
+  if (data.players) players = data.players;
+ }
+ else if (data.type === 'sync_players') { players = data.players; }
+ else if (data.type === 'start_name_input') { showScreen('screen-name-input'); }
+ else if (data.type === 'start_roulette') { 
+  players = data.players; 
+  showScreen('screen-roulette'); 
+  startRouletteAnimation(); 
+ }
+ else if (data.type === 'game_start_signal') { launchGameStartNotice(); }
+ else if (data.type === 'receive_ojama') { if (data.targetId === myPlayerId) triggerOjamaFlyIn(data.count); }
+ else if (data.type === 'sync_turn') { currentTurnPlayerId = data.currentTurnPlayerId; onTurnChanged(); }
+ else if (data.type === 'game_over_win') { showGameOverBanner(data.winnerName + " WIN!"); }
 }
 
 function submitPlayerName() {
-  let inputName = document.getElementById('input-player-name').value.trim() || "P" + (myPlayerId + 1);
-  let myP = players.find(p => p.id === myPlayerId);
-  if (myP) myP.name = inputName;
-  document.getElementById('name-wait-msg').innerText = "WAITING FOR OTHERS...";
-  if (battleRole === 'host') checkAllNamesSubmitted();
-  else sendToHost({ type: 'submit_name', name: inputName });
+ let inputName = document.getElementById('input-player-name').value.trim() || "P" + (myPlayerId + 1);
+ let myP = players.find(p => p.id === myPlayerId);
+ if (myP) myP.name = inputName;
+ document.getElementById('name-wait-msg').innerText = "WAITING FOR OTHERS...";
+ if (battleRole === 'host') {
+  checkAllNamesSubmitted();
+ } else {
+  sendToHost({ type: 'submit_name', name: inputName });
+ }
 }
 
 function checkAllNamesSubmitted() {
-  if (players.length < maxPlayers) return;
-  if (players.every(p => p.name && p.name.trim() !== '')) {
-    let orders = Array.from({length: maxPlayers}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
-    players.forEach((p, idx) => p.order = orders[idx]);
-    broadcastHost({ type: 'start_roulette', players });
-    showScreen('screen-roulette');
-    startRouletteAnimation();
-  }
+ if (players.length < maxPlayers) return;
+ // 全員の名前が入力されているか確認
+ if (players.every(p => p.name && p.name.trim() !== '')) {
+  let orders = Array.from({length: maxPlayers}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+  players.forEach((p, idx) => p.order = orders[idx]);
+  
+  // ゲストへ通知
+  broadcastHost({ type: 'start_roulette', players });
+  // ホスト自身の画面移行
+  showScreen('screen-roulette');
+  startRouletteAnimation();
+ }
 }
 
 function startRouletteAnimation() {
-  rouletteState = 'running';
-  let count = 1;
-  rouletteInterval = setInterval(() => {
-    document.getElementById('roulette-display').innerText = count;
-    count = (count % maxPlayers) + 1;
-  }, 80);
+ rouletteState = 'running';
+ let count = 1;
+ rouletteInterval = setInterval(() => {
+  document.getElementById('roulette-display').innerText = count;
+  count = (count % maxPlayers) + 1;
+ }, 80);
 }
 
 function handleRouletteTap() {
-  let btn = document.getElementById('btn-roulette-action');
-  if (rouletteState === 'running') {
-    clearInterval(rouletteInterval);
-    rouletteState = 'stopped';
-    let myP = players.find(p => p.id === myPlayerId);
-    let order = myP ? myP.order : 1;
-    document.getElementById('roulette-display').innerText = order;
-    document.getElementById('my-order-result').innerText = `YOU ARE NO.${order}`;
-    btn.innerText = "READY";
-  } else if (rouletteState === 'stopped') {
-    rouletteState = 'ready_wait';
-    btn.innerText = "WAITING...";
-    if (battleRole === 'host') {
-      readyCount++;
-      if (readyCount === maxPlayers) {
-        broadcastHost({ type: 'game_start_signal', players });
-        launchGameStartNotice();
-      }
-    } else sendToHost({ type: 'ready_start' });
+ let btn = document.getElementById('btn-roulette-action');
+ if (rouletteState === 'running') {
+  clearInterval(rouletteInterval);
+  rouletteState = 'stopped';
+  let myP = players.find(p => p.id === myPlayerId);
+  let order = myP ? myP.order : 1;
+  document.getElementById('roulette-display').innerText = order;
+  document.getElementById('my-order-result').innerText = `YOU ARE NO.${order}`;
+  btn.innerText = "READY";
+ } else if (rouletteState === 'stopped') {
+  rouletteState = 'ready_wait';
+  btn.innerText = "WAITING...";
+  if (battleRole === 'host') {
+   readyCount++;
+   if (readyCount === maxPlayers) {
+    broadcastHost({ type: 'game_start_signal', players });
+    launchGameStartNotice();
+   }
+  } else {
+   sendToHost({ type: 'ready_start' });
   }
+ }
 }
-
+  
 function launchGameStartNotice() {
   showScreen('');
   document.getElementById('side-gui').style.display = 'flex';
