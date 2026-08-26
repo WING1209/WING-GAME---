@@ -2,59 +2,120 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <!-- スマホ全画面表示＆ズーム無効化・Safe Area対応 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>〇WINGパズル対戦〇</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: #111; font-family: sans-serif; color: #fff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+        
+        /* dvh (Dynamic Viewport Height) を使用して全機種の画面サイズに正確にフィット */
+        body, html { 
+            width: 100vw; 
+            height: 100dvh; 
+            overflow: hidden; 
+            background: #000; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            color: #fff; 
+        }
 
         /* 点滅アニメーション */
         .blink { animation: blinker 1.2s linear infinite; }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        /* 画面振動 */
-        .shake { animation: shake 0.5s; }
+        /* 画面振動演出 */
+        .shake { animation: shake 0.4s; }
         @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            50% { transform: translate(-1px, 2px) rotate(1deg); }
-            100% { transform: translate(0, 0) rotate(0deg); }
+            0% { transform: translate(2px, 2px); }
+            20% { transform: translate(-3px, -2px); }
+            40% { transform: translate(3px, 1px); }
+            60% { transform: translate(-2px, 2px); }
+            80% { transform: translate(2px, -1px); }
+            100% { transform: translate(0, 0); }
         }
 
-        /* 画面切替 */
-        .screen { display: none; width: 100vw; height: 100vh; flex-direction: column; justify-content: center; align-items: center; position: absolute; top:0; left:0; }
+        /* 画面切替ベース */
+        .screen { 
+            display: none; 
+            width: 100vw; 
+            height: 100dvh; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 10;
+        }
         .active { display: flex; }
 
         /* タイトル・メニュー */
-        #title-screen h1 { font-size: 2rem; color: #00ffff; text-shadow: 0 0 10px #00ffff; text-align: center; }
-        .btn { background: #333; border: 2px solid #00ffff; color: #fff; padding: 12px 20px; margin: 8px; font-size: 1.1rem; border-radius: 8px; width: 220px; text-align: center; }
+        #title-screen h1 { font-size: 1.8rem; color: #00ffff; text-shadow: 0 0 10px #00ffff; text-align: center; padding: 0 10px; }
+        .btn { background: #222; border: 2px solid #00ffff; color: #fff; padding: 12px; margin: 8px; font-size: 1.1rem; border-radius: 8px; width: 220px; text-align: center; }
         .btn:active { background: #00ffff; color: #000; }
-        input[type="text"] { font-size: 1.2rem; padding: 10px; text-align: center; margin: 10px; border-radius: 8px; border: none; width: 80%; }
+        input[type="text"] { font-size: 1.2rem; padding: 10px; text-align: center; margin: 10px; border-radius: 8px; border: none; width: 70%; }
 
-        /* ゲーム画面 (7:3 分割) */
+        /* ゲーム画面 (3:7 分割) */
         #game-screen { flex-direction: row; }
-        #gui-panel { width: 30vw; height: 100vh; background: #222; border-right: 2px solid #444; display: flex; flex-direction: column; justify-content: space-around; padding: 5px; font-size: 0.75rem; }
-        #canvas-panel { width: 70vw; height: 100vh; position: relative; }
-        canvas { width: 100%; height: 100%; background: #000; display: block; }
+        
+        /* 左側 3割 UIパネル */
+        #gui-panel { 
+            width: 30vw; 
+            height: 100dvh; 
+            background: #181818; 
+            border-right: 1px solid #333; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            padding: 10px 4px; 
+            font-size: 0.7rem; 
+        }
+
+        /* 右側 7割 キャンバス領域 */
+        #canvas-panel { 
+            width: 70vw; 
+            height: 100dvh; 
+            position: relative; 
+            background: #050505; 
+        }
+        canvas { width: 100%; height: 100%; display: block; }
 
         /* UI アイテムリスト (1行1列表示) */
-        .item-row { background: #333; margin: 3px 0; padding: 6px 2px; border-radius: 4px; text-align: center; border: 1px solid #555; }
-        
+        .item-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+        .item-row { 
+            background: #2a2a2a; 
+            padding: 5px 2px; 
+            border-radius: 4px; 
+            text-align: center; 
+            border: 1px solid #444; 
+            font-size: 0.65rem;
+            color: #aaa;
+        }
+        .item-active { border-color: #00ff00; color: #fff; background: #004400; font-weight: bold; }
+
         /* オーバーレイ */
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        .overlay { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); 
+            display: none; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 100; 
+        }
         .big-text { font-size: 3.5rem; color: #ff0; text-shadow: 0 0 20px #ff0; }
     </style>
 </head>
 <body>
 
-    <!-- タイトル画面 -->
+    <!-- 1. タイトル画面 -->
     <div id="title-screen" class="screen active" onclick="switchScreen('menu-screen')">
         <h1>〇WINGパズル対戦〇</h1>
-        <div class="blink" style="margin-top: 40px;">画面タップでスタート</div>
+        <div class="blink" style="margin-top: 40px; color: #aaa;">画面タップでスタート</div>
     </div>
 
-    <!-- メニュー画面 -->
+    <!-- 2. メニュー画面 -->
     <div id="menu-screen" class="screen">
         <div class="btn" onclick="selectHost()">① ホスト</div>
         <div class="btn" onclick="selectGuest()">② ゲスト</div>
@@ -63,7 +124,7 @@
 
     <!-- ホスト：人数選択 -->
     <div id="host-count-screen" class="screen">
-        <h3>対戦人数を選択 (2〜5名)</h3>
+        <h3 style="margin-bottom:15px;">対戦人数を選択 (2〜5名)</h3>
         <div style="display:flex;">
             <div class="btn" style="width:45px;" onclick="setPlayerCount(2)">2</div>
             <div class="btn" style="width:45px;" onclick="setPlayerCount(3)">3</div>
@@ -93,38 +154,46 @@
         <div id="start-btn" class="btn" onclick="startRoulette()">ゲーム開始</div>
     </div>
 
-    <!-- ゲーム画面 -->
+    <!-- 3. ゲームメイン画面 (3:7 分割) -->
     <div id="game-screen" class="screen">
+        <!-- 左側 3割 UIパネル -->
         <div id="gui-panel">
             <div>
-                <div>NAME:</div>
-                <div id="gui-name" style="color:#00ffff; font-weight:bold;">-</div>
+                <div style="color:#888;">PLAYER</div>
+                <div id="gui-name" style="color:#00ffff; font-weight:bold; overflow:hidden;">-</div>
             </div>
+            
             <div>
-                <div>ターン制限:</div>
-                <div id="gui-timer" style="color:#ff0; font-size:1.2rem;">10</div>
+                <div style="color:#888;">TIME</div>
+                <div id="gui-timer" style="color:#ff0; font-size:1.2rem; font-weight:bold;">10</div>
             </div>
+
             <div>
-                <div>消した玉:</div>
-                <div id="gui-score" style="color:#ff0;">0/500</div>
+                <div style="color:#888;">SCORE</div>
+                <div id="gui-score" style="color:#ff0; font-weight:bold;">0/500</div>
             </div>
-            <div>
-                <div>NEXT:</div>
-                <div id="gui-next" style="width:20px; height:20px; border-radius:50%; background:#fff; margin:2px auto;"></div>
+
+            <div style="text-align:center;">
+                <div style="color:#888;">NEXT</div>
+                <div id="gui-next" style="width:22px; height:22px; border-radius:50%; background:#fff; margin:4px auto; border:1px solid #fff;"></div>
             </div>
-            <!-- アイテム1行1列表示 -->
-            <div id="item-list">
-                <div class="item-row">2倍</div>
-                <div class="item-row">3倍</div>
-                <div class="item-row">スキップ</div>
-                <div class="item-row">貫通</div>
-                <div class="item-row">色変更</div>
-                <div class="item-row">ミステリー</div>
+
+            <!-- アイテムリスト (1行1列表示) -->
+            <div class="item-list">
+                <div class="item-row" id="item-0">2倍</div>
+                <div class="item-row" id="item-1">3倍</div>
+                <div class="item-row" id="item-2">スキップ</div>
+                <div class="item-row" id="item-3">貫通</div>
+                <div class="item-row" id="item-4">色変更</div>
+                <div class="item-row" id="item-5">ミステリー</div>
             </div>
         </div>
 
+        <!-- 右側 7割 キャンバス領域 -->
         <div id="canvas-panel">
             <canvas id="gameCanvas"></canvas>
+            
+            <!-- ルーレット・演出用オーバーレイ -->
             <div id="overlay" class="overlay">
                 <div id="overlay-text" class="big-text"></div>
                 <div id="overlay-btn" class="btn" style="display:none; margin-top:20px;">STOP</div>
@@ -137,7 +206,7 @@
         let myName = "";
         let roomCode = "1234";
 
-        // 全角変換・自動切り出し
+        // 全角自動変換フィルタ
         document.getElementById('player-name-input').addEventListener('input', function(e) {
             let val = e.target.value.replace(/[A-Za-z0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
             e.target.value = val.slice(0, 6);
@@ -196,7 +265,7 @@
             };
         }
 
-        // カウントダウンタイマー (10秒)
+        // タイマー制御
         let turnTime = 10;
         let timerInterval;
         function startTurnTimer() {
@@ -208,69 +277,195 @@
                 document.getElementById('gui-timer').innerText = turnTime;
                 if(turnTime <= 0) {
                     clearInterval(timerInterval);
-                    alert("ターン終了！");
                 }
             }, 1000);
         }
 
-        // Canvas パズル描画
+        // --- パズル＆描画エンジン ---
         let canvas, ctx;
-        const COLORS = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'];
+        const COLORS = ['#ff3366', '#33cc66', '#3399ff', '#ffcc00', '#cc33ff'];
         let board = [], currentBall, nextColor;
+        let dragStart = null, dragCurrent = null;
 
         function initCanvas() {
             canvas = document.getElementById('gameCanvas');
+            // 高解像度ディスプレイ向けにサイズ固定設定
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
             ctx = canvas.getContext('2d');
             
-            let r = canvas.width / 10;
-            for(let row=0; row<2; row++) {
-                for(let col=0; col<5; col++) {
-                    board.push({ x: col*(r*2)+r, y: row*(r*2)+r, color: COLORS[Math.floor(Math.random()*COLORS.length)], radius: r });
+            // 盤面初期化（最上部に2列）
+            board = [];
+            let radius = canvas.width / 10;
+            for(let row = 0; row < 2; row++) {
+                for(let col = 0; col < 5; col++) {
+                    board.push({
+                        x: col * (radius * 2) + radius,
+                        y: row * (radius * 2) + radius,
+                        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+                        radius: radius
+                    });
                 }
             }
-            nextColor = COLORS[Math.floor(Math.random()*COLORS.length)];
+            nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
             spawnBall();
-            requestAnimationFrame(draw);
+
+            // イベントリスナー設定（タッチ操作）
+            canvas.addEventListener('touchstart', handleTouchStart, {passive: false});
+            canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
+            canvas.addEventListener('touchend', handleTouchEnd, {passive: false});
+
+            requestAnimationFrame(gameLoop);
         }
 
         function spawnBall() {
-            let r = canvas.width / 10;
-            let isRainbow = Math.random() < 0.2;
-            currentBall = { x: canvas.width/2, y: canvas.height - r*2, color: isRainbow ? '#fff' : nextColor, radius: r };
-            nextColor = COLORS[Math.floor(Math.random()*COLORS.length)];
+            let radius = canvas.width / 10;
+            let isRainbow = Math.random() < 0.2; // 20%でレインボー
+            
+            // 発射位置は画面下部中央（Y座標: 画面高さの 88% 位置）
+            currentBall = {
+                x: canvas.width / 2,
+                y: canvas.height * 0.88,
+                originX: canvas.width / 2,
+                originY: canvas.height * 0.88,
+                color: isRainbow ? 'rainbow' : nextColor,
+                radius: radius,
+                vx: 0,
+                vy: 0,
+                isMoving: false
+            };
+            
+            nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
             document.getElementById('gui-next').style.background = nextColor;
         }
 
-        function draw() {
+        // --- タッチ操作（引っ張り発射） ---
+        function handleTouchStart(e) {
+            e.preventDefault();
+            if (!currentBall || currentBall.isMoving) return;
+            let touch = e.touches[0];
+            let rect = canvas.getBoundingClientRect();
+            dragStart = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+            dragCurrent = { ...dragStart };
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (!dragStart || currentBall.isMoving) return;
+            let touch = e.touches[0];
+            let rect = canvas.getBoundingClientRect();
+            dragCurrent = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            if (!dragStart || currentBall.isMoving) return;
+            
+            let dx = dragStart.x - dragCurrent.x;
+            let dy = dragStart.y - dragCurrent.y;
+            
+            // 引っ張り距離が十分な場合に発射
+            if (Math.hypot(dx, dy) > 10) {
+                currentBall.vx = dx * 0.12; // スピード調整
+                currentBall.vy = dy * 0.12;
+                currentBall.isMoving = true;
+            }
+            dragStart = null;
+            dragCurrent = null;
+        }
+
+        // --- メインゲームループ ---
+        function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 限界ライン (横点線)
+            // 1. 限界LINE（画面上部25%位置の横点線）
+            let limitY = canvas.height * 0.25;
             ctx.beginPath();
-            ctx.setLineDash([4, 4]);
-            ctx.moveTo(0, canvas.height * 0.25);
-            ctx.lineTo(canvas.width, canvas.height * 0.25);
-            ctx.strokeStyle = "red";
+            ctx.setLineDash([6, 6]);
+            ctx.moveTo(0, limitY);
+            ctx.lineTo(canvas.width, limitY);
+            ctx.strokeStyle = "#ff3333";
+            ctx.lineWidth = 2;
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // 玉の描画
+            // 2. 既存の玉を描画
             board.forEach(b => {
                 ctx.beginPath();
-                ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2);
+                ctx.arc(b.x, b.y, b.radius - 1, 0, Math.PI * 2);
                 ctx.fillStyle = b.color;
                 ctx.fill();
+                ctx.closePath();
             });
 
-            if(currentBall) {
+            // 3. 発射台／発射玉の処理
+            if (currentBall) {
+                // 移動処理
+                if (currentBall.isMoving) {
+                    currentBall.x += currentBall.vx;
+                    currentBall.y += currentBall.vy;
+
+                    // 左右の壁反射
+                    if (currentBall.x - currentBall.radius < 0 || currentBall.x + currentBall.radius > canvas.width) {
+                        currentBall.vx *= -1;
+                    }
+
+                    // 他の玉との衝突判定
+                    board.forEach(b => {
+                        let dist = Math.hypot(b.x - currentBall.x, b.y - currentBall.y);
+                        if (dist < b.radius + currentBall.radius) {
+                            currentBall.isMoving = false;
+                            board.push({
+                                x: currentBall.x,
+                                y: currentBall.y,
+                                color: currentBall.color === 'rainbow' ? COLORS[0] : currentBall.color,
+                                radius: currentBall.radius
+                            });
+                            spawnBall();
+                        }
+                    });
+
+                    // 画面上部への到達判定
+                    if (currentBall.y - currentBall.radius < 0) {
+                        currentBall.isMoving = false;
+                        board.push({
+                            x: currentBall.x,
+                            y: currentBall.radius,
+                            color: currentBall.color === 'rainbow' ? COLORS[0] : currentBall.color,
+                            radius: currentBall.radius
+                        });
+                        spawnBall();
+                    }
+                }
+
+                // 発射ガイドライン（引っ張っている時の矢印演出）
+                if (dragStart && dragCurrent) {
+                    ctx.beginPath();
+                    ctx.moveTo(currentBall.x, currentBall.y);
+                    ctx.lineTo(currentBall.x + (dragStart.x - dragCurrent.x), currentBall.y + (dragStart.y - dragCurrent.y));
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+
+                // 発射玉描画
                 ctx.beginPath();
-                ctx.arc(currentBall.x, currentBall.y, currentBall.radius, 0, Math.PI*2);
-                ctx.fillStyle = currentBall.color;
+                ctx.arc(currentBall.x, currentBall.y, currentBall.radius - 1, 0, Math.PI * 2);
+                if (currentBall.color === 'rainbow') {
+                    let grad = ctx.createLinearGradient(currentBall.x - 10, currentBall.y - 10, currentBall.x + 10, currentBall.y + 10);
+                    grad.addColorStop(0, "red"); grad.addColorStop(0.5, "green"); grad.addColorStop(1, "blue");
+                    ctx.fillStyle = grad;
+                } else {
+                    ctx.fillStyle = currentBall.color;
+                }
                 ctx.fill();
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.closePath();
             }
 
-            requestAnimationFrame(draw);
+            requestAnimationFrame(gameLoop);
         }
     </script>
 </body>
