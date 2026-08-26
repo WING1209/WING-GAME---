@@ -1,1049 +1,277 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<!-- スマホ専用:全機種画面フィット設定 -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>CYBER PUZZLE BATTLE</title>
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<style>
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background-color: #05050a;
-  color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  position: fixed;
-}
-#game-container {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle at center, #101428 0%, #05050a 100%);
-  display: flex;
-  flex-direction: row;
-  overflow: hidden;
-}
-#canvas-wrapper {
-  position: relative;
-  flex: 1;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  background-color: #0d111e;
-}
-#gameCanvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-#side-gui {
-  width: 110px;
-  height: 100%;
-  min-height: 0;
-  background: rgba(15, 23, 42, 0.95);
-  border-left: 2px solid rgba(0, 243, 255, 0.3);
-  display: flex;
-  flex-direction: column;
-  padding: 8px 4px;
-  gap: 6px;
-  z-index: 20;
-  overflow-y: auto;
-}
-.player-info-card {
-  background: rgba(0, 243, 255, 0.1);
-  border: 1px solid #00f3ff;
-  border-radius: 6px;
-  padding: 4px;
-  text-align: center;
-}
-.player-name-title {
-  font-size: 13px;
-  font-weight: 900;
-  color: #00f3ff;
-  text-shadow: 0 0 5px #00f3ff;
-  word-break: break-all;
-}
-.score-display {
-  font-size: 10px;
-  color: #ffe600;
-  margin-top: 2px;
-  font-weight: bold;
-}
-.item-section-title {
-  font-size: 9px;
-  color: #888;
-  letter-spacing: 1px;
-  text-align: center;
-}
-.item-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.btn-item-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(0, 243, 255, 0.4);
-  border-radius: 6px;
-  padding: 5px 3px;
-  color: #fff;
-  font-size: 9px;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.btn-item-card.disabled {
-  opacity: 0.3;
-  pointer-events: none;
-  border-color: #444;
-}
-.item-count {
-  background: #ff0055;
-  color: #fff;
-  border-radius: 8px;
-  padding: 1px 4px;
-  font-size: 8px;
-}
-.overlay-screen {
-  position: absolute;
-  inset: 0;
-  background: rgba(5, 5, 10, 0.95);
-  backdrop-filter: blur(8px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  gap: 16px;
-  z-index: 100;
-}
-.sub-title { font-size: 11px; letter-spacing: 3px; color: #00f3ff; font-weight: 700; }
-.main-logo {
-  font-size: 28px;
-  font-weight: 900;
-  font-style: italic;
-  background: linear-gradient(135deg, #00f3ff, #ff0055);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.menu-box {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(0, 243, 255, 0.2);
-  padding: 16px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 90%;
-}
-label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #d0d5e0; }
-input, select { padding: 6px 8px; font-size: 13px; border-radius: 6px; border: 1px solid rgba(0, 243, 255, 0.3); background-color: rgba(15, 20, 35, 0.8); color: #00f3ff; text-align: center; }
-.btn-action {
-  width: 90%;
-  padding: 12px;
-  font-size: 14px;
-  font-weight: 800;
-  color: #05050a;
-  background: linear-gradient(90deg, #00f3ff, #00aaff);
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-}
-.btn-secondary { background: transparent; border: 1px solid rgba(255, 255, 255, 0.2); color: #aaa; }
-.status-badge { font-size: 11px; color: #ff0055; font-weight: bold; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>〇WINGパズル対戦〇</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #111; font-family: sans-serif; color: #fff; }
+
+        /* 点滅アニメーション */
+        .blink { animation: blinker 1.2s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        /* 画面振動 */
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            50% { transform: translate(-1px, 2px) rotate(1deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
+        /* 画面切替 */
+        .screen { display: none; width: 100vw; height: 100vh; flex-direction: column; justify-content: center; align-items: center; position: absolute; top:0; left:0; }
+        .active { display: flex; }
+
+        /* タイトル・メニュー */
+        #title-screen h1 { font-size: 2rem; color: #00ffff; text-shadow: 0 0 10px #00ffff; text-align: center; }
+        .btn { background: #333; border: 2px solid #00ffff; color: #fff; padding: 12px 20px; margin: 8px; font-size: 1.1rem; border-radius: 8px; width: 220px; text-align: center; }
+        .btn:active { background: #00ffff; color: #000; }
+        input[type="text"] { font-size: 1.2rem; padding: 10px; text-align: center; margin: 10px; border-radius: 8px; border: none; width: 80%; }
+
+        /* ゲーム画面 (7:3 分割) */
+        #game-screen { flex-direction: row; }
+        #gui-panel { width: 30vw; height: 100vh; background: #222; border-right: 2px solid #444; display: flex; flex-direction: column; justify-content: space-around; padding: 5px; font-size: 0.75rem; }
+        #canvas-panel { width: 70vw; height: 100vh; position: relative; }
+        canvas { width: 100%; height: 100%; background: #000; display: block; }
+
+        /* UI アイテムリスト (1行1列表示) */
+        .item-row { background: #333; margin: 3px 0; padding: 6px 2px; border-radius: 4px; text-align: center; border: 1px solid #555; }
+        
+        /* オーバーレイ */
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        .big-text { font-size: 3.5rem; color: #ff0; text-shadow: 0 0 20px #ff0; }
+    </style>
 </head>
 <body>
-<div id="game-container">
-  <!-- 左側:メインゲーム画面 -->
-  <div id="canvas-wrapper">
-    <canvas id="gameCanvas"></canvas>
-  </div>
-  <!-- 右側:GUI パネル -->
-  <div id="side-gui" style="display:none;">
-    <div class="player-info-card">
-      <div class="sub-title">PLAYER</div>
-      <div id="gui-player-name" class="player-name-title">---</div>
-      <div class="score-display">消去: <span id="gui-cleared-count">0</span>/500</div>
+
+    <!-- タイトル画面 -->
+    <div id="title-screen" class="screen active" onclick="switchScreen('menu-screen')">
+        <h1>〇WINGパズル対戦〇</h1>
+        <div class="blink" style="margin-top: 40px;">画面タップでスタート</div>
     </div>
-    <div class="item-section-title">ITEMS</div>
-    <div class="item-grid">
-      <button id="btn-item-double" class="btn-item-card" onclick="useItem('double')">お邪魔2倍 <span id="cnt-double" class="item-count">0</span></button>
-      <button id="btn-item-triple" class="btn-item-card" onclick="useItem('triple')">お邪魔3倍 <span id="cnt-triple" class="item-count">0</span></button>
-      <button id="btn-item-skip" class="btn-item-card" onclick="useItem('skip')">スキップ <span id="cnt-skip" class="item-count">0</span></button>
-      <button id="btn-item-pierce" class="btn-item-card" onclick="useItem('pierce')">貫通 <span id="cnt-pierce" class="item-count">0</span></button>
-      <button id="btn-item-color" class="btn-item-card" onclick="useItem('color')">色替え <span id="cnt-color" class="item-count">0</span></button>
-      <button id="btn-item-redirect" class="btn-item-card" onclick="useItem('redirect')">おしつけ <span id="cnt-redirect" class="item-count">0</span></button>
-      <button id="btn-item-forceshoot" class="btn-item-card" onclick="useItem('forceshoot')">発射 <span id="cnt-forceshoot" class="item-count">0</span></button>
-      <button id="btn-item-defense" class="btn-item-card" onclick="useItem('defense')">防御 <span id="cnt-defense" class="item-count">0</span></button>
+
+    <!-- メニュー画面 -->
+    <div id="menu-screen" class="screen">
+        <div class="btn" onclick="selectHost()">① ホスト</div>
+        <div class="btn" onclick="selectGuest()">② ゲスト</div>
+        <div class="btn" onclick="location.reload()">③ EXIT</div>
     </div>
-  </div>
-  <!-- タイトル&設定画面等 -->
-  <div id="screen-title" class="overlay-screen">
-    <div>
-      <div class="sub-title" style="text-align:center;">REAL-TIME MULTI PUZZLE</div>
-      <div class="main-logo">CYBER⚡PAZZLE</div>
+
+    <!-- ホスト：人数選択 -->
+    <div id="host-count-screen" class="screen">
+        <h3>対戦人数を選択 (2〜5名)</h3>
+        <div style="display:flex;">
+            <div class="btn" style="width:45px;" onclick="setPlayerCount(2)">2</div>
+            <div class="btn" style="width:45px;" onclick="setPlayerCount(3)">3</div>
+            <div class="btn" style="width:45px;" onclick="setPlayerCount(4)">4</div>
+            <div class="btn" style="width:45px;" onclick="setPlayerCount(5)">5</div>
+        </div>
     </div>
-    <button class="btn-action" onclick="selectMainMenu('host')">部屋を作る (HOST)</button>
-    <button class="btn-action btn-secondary" onclick="selectMainMenu('guest')">部屋に入る (GUEST)</button>
-  </div>
-  <div id="screen-host-config" class="overlay-screen" style="display:none;">
-    <h2 style="color:#00f3ff; font-size: 18px;">MATCH CONFIG</h2>
-    <div class="menu-box">
-      <label>対戦人数
-        <select id="select-max-players">
-          <option value="2">2 Players</option>
-          <option value="3">3 Players</option>
-          <option value="4">4 Players</option>
-        </select>
-      </label>
-      <label>先取数
-        <select id="select-target-wins"><option value="1">1 WIN</option></select>
-      </label>
-      <label>お邪魔倍率
-        <select id="select-ojama-mult"><option value="1">1.0x</option><option value="2">2.0x</option></select>
-      </label>
+
+    <!-- 名前入力画面 -->
+    <div id="name-screen" class="screen">
+        <h3>名前を入力 (全角6文字)</h3>
+        <input type="text" id="player-name-input" maxlength="6" placeholder="なまえ">
+        <div class="btn" onclick="submitName()">決定</div>
     </div>
-    <button class="btn-action" onclick="confirmHostSettings()">ルーム作成</button>
-  </div>
-  <div id="screen-host-wait" class="overlay-screen" style="display:none;">
-    <div class="sub-title">ROOM CODE</div>
-    <div id="display-room-code" style="font-size: 40px; font-weight: 900; color: #00f3ff;">----</div>
-    <div id="host-wait-status" class="status-badge">CONNECTING...</div>
-  </div>
-  <div id="screen-guest-join" class="overlay-screen" style="display:none;">
-    <h2 style="color:#00f3ff; font-size:18px;">ENTER CODE</h2>
-    <input type="number" id="input-room-code" placeholder="4桁コード" style="font-size: 20px; width: 70%;">
-    <button class="btn-action" onclick="joinRoom()">接続する</button>
-    <p id="guest-status-msg" class="status-badge"></p>
-  </div>
-  <div id="screen-name-input" class="overlay-screen" style="display:none;">
-    <h2 style="color:#00f3ff; font-size: 18px;">PLAYER NAME</h2>
-    <input type="text" id="input-player-name" maxlength="6" placeholder="名前(6文字以内)" style="font-size: 16px; width: 70%;">
-    <button class="btn-action" onclick="submitPlayerName()">完了</button>
-    <p id="name-wait-msg" class="status-badge"></p>
-  </div>
-  <div id="screen-roulette" class="overlay-screen" style="display:none;">
-    <div class="sub-title">TURN ORDER</div>
-    <div id="roulette-display" style="font-size: 60px; font-weight: 900; color:#ff0055;">1</div>
-    <p id="my-order-result" style="font-size: 14px; color:#00f3ff;"></p>
-    <button id="btn-roulette-action" class="btn-action" onclick="handleRouletteTap()">STOP</button>
-  </div>
-  <div id="modal-container" style="display: none;"></div>
-</div>
 
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const PEER_PREFIX = 'cyber-puzzle-v2026-fix3-';
-const ROWS = 15;
-const COLS = 8;
-let RADIUS = 16;
-let DIAMETER = RADIUS * 2;
-let ROW_HEIGHT = RADIUS * Math.sqrt(3);
-const BASE_COLORS = ['#ff0055', '#00f3ff', '#00ff66', '#ffe600', '#b000ff'];
-let gameState = 'title';
-let battleRole = '';
-let roomCode = '';
-let myPlayerId = 0;
-let maxPlayers = 2;
-let ojamaMultiplier = 1;
-let peer = null;
-let guestConn = null;
-let hostConnections = [];
-let players = [];
-let readyCount = 0;
-let rouletteState = 'idle';
-let rouletteInterval = null;
-let battleTurnState = 'waiting';
-let currentTurnPlayerId = 0;
-let grid = [];
-let clearedCount = 0;
-let isEliminated = false;
-let isCheckingVictory = true;
-let turnTimer = 10;
-let turnTimerInterval = null;
-let inventory = { double: 0, triple: 0, skip: 0, pierce: 0, color: 0, redirect: 0, forceshoot: 0, defense: 0 };
-let activeBuffs = { multiplier: 1, isPiercing: false, redirectTarget: null, redirectTurns: 0, isDefending: false, forceShootDisabled: false };
-let shooterX = 0, shooterY = 0;
-let bulletX = 0, bulletY = 0;
-let bulletVX = 0, bulletVY = 0;
-let bulletData = null, nextBubble = null;
-let isMoving = false;
-let wallReflections = 0;
-const MAX_SPEED = 18;
+    <!-- ゲスト：コード入力 -->
+    <div id="guest-code-screen" class="screen">
+        <h3>4桁のRoom Noを入力</h3>
+        <input type="text" id="room-code-input" maxlength="4" placeholder="1234">
+        <div class="btn" onclick="switchScreen('name-screen')">次へ</div>
+    </div>
 
-// スリングショット用変数
-let isDragging = false;
-let dragStartX = 0, dragStartY = 0;
-let dragCurrentX = 0, dragCurrentY = 0;
-let flyingOjamaBalls = [];
-let DEAD_LINE_Y = 0;
+    <!-- 待機画面 -->
+    <div id="lobby-screen" class="screen">
+        <h2>ROOM: <span id="display-code" style="color:#00ffff;">----</span></h2>
+        <div class="blink" style="margin: 20px;">参加者を待ち待機中...</div>
+        <div id="start-btn" class="btn" onclick="startRoulette()">ゲーム開始</div>
+    </div>
 
-function resizeCanvas() {
- let w = window.innerWidth - 110;
- let h = window.innerHeight;
- if (w <= 0) w = 300;
- if (h <= 0) h = 500;
- canvas.width = w;
- canvas.height = h;
- RADIUS = canvas.width / (COLS * 2 + 1);
- DIAMETER = RADIUS * 2;
- ROW_HEIGHT = RADIUS * Math.sqrt(3);
- shooterX = canvas.width / 2;
- shooterY = canvas.height - 50;
- DEAD_LINE_Y = shooterY - (DIAMETER * 2);
- if (!isMoving) {
-  bulletX = shooterX;
-  bulletY = shooterY;
- }
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+    <!-- ゲーム画面 -->
+    <div id="game-screen" class="screen">
+        <div id="gui-panel">
+            <div>
+                <div>NAME:</div>
+                <div id="gui-name" style="color:#00ffff; font-weight:bold;">-</div>
+            </div>
+            <div>
+                <div>ターン制限:</div>
+                <div id="gui-timer" style="color:#ff0; font-size:1.2rem;">10</div>
+            </div>
+            <div>
+                <div>消した玉:</div>
+                <div id="gui-score" style="color:#ff0;">0/500</div>
+            </div>
+            <div>
+                <div>NEXT:</div>
+                <div id="gui-next" style="width:20px; height:20px; border-radius:50%; background:#fff; margin:2px auto;"></div>
+            </div>
+            <!-- アイテム1行1列表示 -->
+            <div id="item-list">
+                <div class="item-row">2倍</div>
+                <div class="item-row">3倍</div>
+                <div class="item-row">スキップ</div>
+                <div class="item-row">貫通</div>
+                <div class="item-row">色変更</div>
+                <div class="item-row">ミステリー</div>
+            </div>
+        </div>
 
-function showScreen(id) {
- document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
- if (id && document.getElementById(id))
-  document.getElementById(id).style.display = 'flex';
-}
+        <div id="canvas-panel">
+            <canvas id="gameCanvas"></canvas>
+            <div id="overlay" class="overlay">
+                <div id="overlay-text" class="big-text"></div>
+                <div id="overlay-btn" class="btn" style="display:none; margin-top:20px;">STOP</div>
+            </div>
+        </div>
+    </div>
 
-function selectMainMenu(choice) {
- closeNetwork();
- if (choice === 'host') { battleRole = 'host'; showScreen('screen-host-config'); }
- else { battleRole = 'guest'; showScreen('screen-guest-join'); }
-}
+    <script>
+        let maxPlayers = 2;
+        let myName = "";
+        let roomCode = "1234";
 
-function closeNetwork() {
- if (guestConn) try { guestConn.close(); } catch(e){}
- hostConnections.forEach(c => { try { c.close(); } catch(e){} });
- if (peer) try { peer.destroy(); } catch(e){}
-}
+        // 全角変換・自動切り出し
+        document.getElementById('player-name-input').addEventListener('input', function(e) {
+            let val = e.target.value.replace(/[A-Za-z0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+            e.target.value = val.slice(0, 6);
+        });
 
-function confirmHostSettings() {
- maxPlayers = parseInt(document.getElementById('select-max-players').value);
- ojamaMultiplier = parseInt(document.getElementById('select-ojama-mult').value);
- roomCode = Math.floor(1000 + Math.random() * 9000).toString();
- document.getElementById('display-room-code').innerText = roomCode;
- showScreen('screen-host-wait');
- 
- peer = new Peer(PEER_PREFIX + roomCode);
- players = [{ id: 0, name: '', order: 0, wins: 0, eliminated: false }];
- myPlayerId = 0;
- 
- peer.on('open', () => document.getElementById('host-wait-status').innerText = `WAITING... (1/${maxPlayers})`);
- peer.on('connection', (conn) => {
-  let assignedId = players.length;
-  if (assignedId >= maxPlayers) { conn.close(); return; }
-  hostConnections.push(conn);
-  players.push({ id: assignedId, name: '', order: 0, wins: 0, eliminated: false });
-  conn.on('open', () => {
-   conn.send({ type: 'init_guest', playerId: assignedId, maxPlayers, ojamaMult: ojamaMultiplier, players });
-   document.getElementById('host-wait-status').innerText = `WAITING... (${players.length}/${maxPlayers})`;
-   if (players.length === maxPlayers) {
-    broadcastHost({ type: 'start_name_input', players });
-    showScreen('screen-name-input');
-   }
-  });
-  conn.on('data', (d) => handleHostReceiveData(assignedId, d));
- });
-}
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
 
-function joinRoom() {
- let code = document.getElementById('input-room-code').value.trim();
- if (code.length !== 4) return;
- roomCode = code;
- peer = new Peer();
- peer.on('open', () => {
-  guestConn = peer.connect(PEER_PREFIX + roomCode);
-  guestConn.on('data', handleGuestReceiveData);
- });
-}
+        function selectHost() { switchScreen('host-count-screen'); }
+        function selectGuest() { switchScreen('guest-code-screen'); }
 
-function broadcastHost(data) { hostConnections.forEach(c => { if (c && c.open) c.send(data); }); }
-function sendToHost(data) { if (guestConn && guestConn.open) guestConn.send(data); }
+        function setPlayerCount(cnt) {
+            maxPlayers = cnt;
+            switchScreen('name-screen');
+        }
 
-function handleHostReceiveData(fromId, data) {
- if (data.type === 'submit_name') {
-  let p = players.find(i => i.id === fromId);
-  if (p) p.name = data.name;
-  broadcastHost({ type: 'sync_players', players });
-  checkAllNamesSubmitted();
- } else if (data.type === 'ready_start') {
-  readyCount++;
-  if (readyCount === maxPlayers) {
-   broadcastHost({ type: 'game_start_signal', players });
-   launchGameStartNotice();
-  }
- } else if (data.type === 'send_ojama') {
-  handleOjamaRouting(data.targetId, data.count);
- } else if (data.type === 'player_eliminated') {
-  let p = players.find(i => i.id === fromId);
-  if (p) p.eliminated = true;
-  checkVictoryConditionHost();
- } else if (data.type === 'end_turn') {
-  advanceTurnHost();
- }
-}
+        function submitName() {
+            myName = document.getElementById('player-name-input').value || "ゲスト";
+            document.getElementById('gui-name').innerText = myName;
+            roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+            document.getElementById('display-code').innerText = roomCode;
+            switchScreen('lobby-screen');
+        }
 
-function handleGuestReceiveData(data) {
- if (data.type === 'init_guest') {
-  myPlayerId = data.playerId;
-  maxPlayers = data.maxPlayers;
-  if (data.players) players = data.players;
- }
- else if (data.type === 'sync_players') { players = data.players; }
- else if (data.type === 'start_name_input') { showScreen('screen-name-input'); }
- else if (data.type === 'start_roulette') { 
-  players = data.players; 
-  showScreen('screen-roulette'); 
-  startRouletteAnimation(); 
- }
- else if (data.type === 'game_start_signal') { launchGameStartNotice(); }
- else if (data.type === 'receive_ojama') { if (data.targetId === myPlayerId) triggerOjamaFlyIn(data.count); }
- else if (data.type === 'sync_turn') { currentTurnPlayerId = data.currentTurnPlayerId; onTurnChanged(); }
- else if (data.type === 'game_over_win') { showGameOverBanner(data.winnerName + " WIN!"); }
-}
+        function startRoulette() {
+            switchScreen('game-screen');
+            initCanvas();
+            
+            const overlay = document.getElementById('overlay');
+            const text = document.getElementById('overlay-text');
+            const btn = document.getElementById('overlay-btn');
+            overlay.style.display = 'flex';
+            btn.style.display = 'block';
 
-function submitPlayerName() {
- let inputName = document.getElementById('input-player-name').value.trim() || "P" + (myPlayerId + 1);
- let myP = players.find(p => p.id === myPlayerId);
- if (myP) myP.name = inputName;
- document.getElementById('name-wait-msg').innerText = "WAITING FOR OTHERS...";
- if (battleRole === 'host') {
-  checkAllNamesSubmitted();
- } else {
-  sendToHost({ type: 'submit_name', name: inputName });
- }
-}
+            let count = 1;
+            let timer = setInterval(() => {
+                text.innerText = count;
+                count = (count % maxPlayers) + 1;
+            }, 80);
 
-function checkAllNamesSubmitted() {
- if (players.length < maxPlayers) return;
- // 全員の名前が入力されているか確認
- if (players.every(p => p.name && p.name.trim() !== '')) {
-  let orders = Array.from({length: maxPlayers}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
-  players.forEach((p, idx) => p.order = orders[idx]);
-  
-  // ゲストへ通知
-  broadcastHost({ type: 'start_roulette', players });
-  // ホスト自身の画面移行
-  showScreen('screen-roulette');
-  startRouletteAnimation();
- }
-}
+            btn.onclick = () => {
+                clearInterval(timer);
+                btn.style.display = 'none';
+                document.body.classList.add('shake');
+                setTimeout(() => {
+                    document.body.classList.remove('shake');
+                    text.classList.add('blink');
+                    setTimeout(() => {
+                        text.classList.remove('blink');
+                        overlay.style.display = 'none';
+                        startTurnTimer();
+                    }, 1000);
+                }, 400);
+            };
+        }
 
-function startRouletteAnimation() {
- rouletteState = 'running';
- let count = 1;
- rouletteInterval = setInterval(() => {
-  document.getElementById('roulette-display').innerText = count;
-  count = (count % maxPlayers) + 1;
- }, 80);
-}
+        // カウントダウンタイマー (10秒)
+        let turnTime = 10;
+        let timerInterval;
+        function startTurnTimer() {
+            turnTime = 10;
+            document.getElementById('gui-timer').innerText = turnTime;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                turnTime--;
+                document.getElementById('gui-timer').innerText = turnTime;
+                if(turnTime <= 0) {
+                    clearInterval(timerInterval);
+                    alert("ターン終了！");
+                }
+            }, 1000);
+        }
 
-function handleRouletteTap() {
- let btn = document.getElementById('btn-roulette-action');
- if (rouletteState === 'running') {
-  clearInterval(rouletteInterval);
-  rouletteState = 'stopped';
-  let myP = players.find(p => p.id === myPlayerId);
-  let order = myP ? myP.order : 1;
-  document.getElementById('roulette-display').innerText = order;
-  document.getElementById('my-order-result').innerText = `YOU ARE NO.${order}`;
-  btn.innerText = "READY";
- } else if (rouletteState === 'stopped') {
-  rouletteState = 'ready_wait';
-  btn.innerText = "WAITING...";
-  if (battleRole === 'host') {
-   readyCount++;
-   if (readyCount === maxPlayers) {
-    broadcastHost({ type: 'game_start_signal', players });
-    launchGameStartNotice();
-   }
-  } else {
-   sendToHost({ type: 'ready_start' });
-  }
- }
-}
-  
-function launchGameStartNotice() {
-  showScreen('');
-  document.getElementById('side-gui').style.display = 'flex';
-  let myP = players.find(p => p.id === myPlayerId);
-  document.getElementById('gui-player-name').innerText = myP ? myP.name : 'PLAYER';
-  
-  setTimeout(() => {
-    resizeCanvas();
-    gameState = 'playing';
-    initGridForBattle();
-    bulletData = null;
-    spawnBullet();
-    updateGUIItemButtons();
-    let firstPlayer = players.find(p => p && p.order === 1);
-    currentTurnPlayerId = firstPlayer ? firstPlayer.id : 0;
-    onTurnChanged();
-  }, 50);
-}
+        // Canvas パズル描画
+        let canvas, ctx;
+        const COLORS = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'];
+        let board = [], currentBall, nextColor;
 
-// ==========================================
-// 引っ張り(スリングショット) & ガイド描画処理
-// ==========================================
-canvas.addEventListener('touchstart', (e) => {
-  if (gameState !== 'playing' || isMoving || battleTurnState !== 'my_turn') return;
-  e.preventDefault();
-  let touch = e.touches[0];
-  let rect = canvas.getBoundingClientRect();
-  let tx = touch.clientX - rect.left;
-  let ty = touch.clientY - rect.top;
-
-  if (Math.hypot(tx - bulletX, ty - bulletY) < RADIUS * 3) {
-    isDragging = true;
-    dragStartX = bulletX;
-    dragStartY = bulletY;
-    dragCurrentX = tx;
-    dragCurrentY = ty;
-  }
-}, { passive: false });
-
-canvas.addEventListener('touchmove', (e) => {
-  if (!isDragging) return;
-  e.preventDefault();
-  let touch = e.touches[0];
-  let rect = canvas.getBoundingClientRect();
-  dragCurrentX = touch.clientX - rect.left;
-  dragCurrentY = touch.clientY - rect.top;
-}, { passive: false });
-
-canvas.addEventListener('touchend', (e) => {
-  if (!isDragging) return;
-  e.preventDefault();
-  isDragging = false;
-
-  let dx = dragStartX - dragCurrentX;
-  let dy = dragStartY - dragCurrentY;
-  let dist = Math.hypot(dx, dy);
-
-  if (dist > 10) {
-    let angle = Math.atan2(dx, dy);
-    shootBulletAngle(angle, dist);
-  }
-}, { passive: false });
-
-function shootBulletAngle(angle, pullDist) {
-  let speedFactor = Math.min(pullDist / 60, 1.0);
-  let finalSpeed = Math.max(MAX_SPEED * speedFactor, 6);
-  bulletVX = Math.sin(angle) * finalSpeed;
-  bulletVY = Math.cos(angle) * finalSpeed;
-  isMoving = true;
-}
-
-function forceAutoShoot() {
-  if (isMoving) return;
-  shootBulletAngle((Math.random() * 1.0) - 0.5, 50);
-}
-
-function onTurnChanged() {
-  clearInterval(turnTimerInterval);
-  turnTimer = 10;
-  battleTurnState = (currentTurnPlayerId === myPlayerId) ? 'my_turn' : 'opponent_turn';
-  turnTimerInterval = setInterval(() => {
-    if (gameState !== 'playing') return;
-    turnTimer--;
-    if (turnTimer <= 0) {
-      forceAutoShoot();
-    }
-  }, 1000);
-  if (battleTurnState === 'my_turn' && !isMoving) updateGUIItemButtons();
-}
-
-function endMyTurn() {
-  clearInterval(turnTimerInterval);
-  battleTurnState = 'waiting';
-  activeBuffs.multiplier = 1;
-  activeBuffs.isPiercing = false;
-  activeBuffs.isDefending = false;
-  spawnGimmickBubble();
-  if (battleRole === 'host') advanceTurnHost();
-  else sendToHost({ type: 'end_turn' });
-}
-
-function advanceTurnHost() {
-  let active = players.filter(p => !p.eliminated);
-  if (active.length <= 1) { checkVictoryConditionHost(); return; }
-  let currentP = players.find(p => p.id === currentTurnPlayerId);
-  let nextOrder = (currentP ? currentP.order : 1) % maxPlayers + 1;
-  let nextP = players.find(p => p.order === nextOrder);
-  while (nextP && nextP.eliminated) {
-    nextOrder = (nextOrder % maxPlayers) + 1;
-    nextP = players.find(p => p.order === nextOrder);
-  }
-  currentTurnPlayerId = nextP ? nextP.id : 0;
-  broadcastHost({ type: 'sync_turn', currentTurnPlayerId });
-  onTurnChanged();
-}
-
-function initGridForBattle() {
-  grid = [];
-  for (let r = 0; r < ROWS; r++) {
-    let row = [];
-    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-    for (let c = 0; c < colsInRow; c++) row.push(null);
-    grid.push(row);
-  }
-  for (let r = 0; r < 5; r++) {
-    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-    for (let c = 0; c < colsInRow; c++) {
-      grid[r][c] = { color: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)], isGimmick: false };
-    }
-  }
-}
-
-function spawnGimmickBubble() {
-  if (Math.random() < 0.20) {
-    let emptyCells = [];
-    for (let r = 0; r < 6; r++) {
-      let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-      for (let c = 0; c < colsInRow; c++) if (grid[r] && grid[r][c]) emptyCells.push({r, c});
-    }
-    if (emptyCells.length > 0) {
-      let target = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-      grid[target.r][target.c].isGimmick = true;
-    }
-  }
-}
-
-function spawnBullet() {
-  let isRainbow = Math.random() < 0.15;
-  let newBubbleColor = isRainbow ? 'rainbow' : BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)];
-
-  bulletData = bulletData ? nextBubble : { color: newBubbleColor, isGimmick: false };
-  
-  let nextIsRainbow = Math.random() < 0.15;
-  nextBubble = { color: nextIsRainbow ? 'rainbow' : BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)], isGimmick: false };
-
-  bulletX = shooterX;
-  bulletY = shooterY;
-  bulletVX = 0; bulletVY = 0;
-  isMoving = false;
-  wallReflections = 0;
-}
-
-function updateBulletPhysics() {
-  if (!isMoving || !bulletData) return;
-  bulletX += bulletVX;
-  bulletY += bulletVY;
-
-  if (bulletX - RADIUS < 0) { bulletX = RADIUS; bulletVX = -bulletVX; wallReflections++; }
-  else if (bulletX + RADIUS > canvas.width) { bulletX = canvas.width - RADIUS; bulletVX = -bulletVX; wallReflections++; }
-
-  let hit = false;
-  if (bulletY <= RADIUS) hit = true;
-  if (!hit) {
-    for (let r = 0; r < ROWS; r++) {
-      let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-      let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
-      for (let c = 0; c < colsInRow; c++) {
-        if (grid[r][c]) {
-          let cx = rowXOffset + c * DIAMETER;
-          let cy = RADIUS + r * ROW_HEIGHT;
-          if (Math.hypot(bulletX - cx, bulletY - cy) < DIAMETER) {
-            hit = true;
-            if (bulletData.color === 'rainbow') {
-              triggerRainbowClear(r, c);
+        function initCanvas() {
+            canvas = document.getElementById('gameCanvas');
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            ctx = canvas.getContext('2d');
+            
+            let r = canvas.width / 10;
+            for(let row=0; row<2; row++) {
+                for(let col=0; col<5; col++) {
+                    board.push({ x: col*(r*2)+r, y: row*(r*2)+r, color: COLORS[Math.floor(Math.random()*COLORS.length)], radius: r });
+                }
             }
-            break;
-          }
+            nextColor = COLORS[Math.floor(Math.random()*COLORS.length)];
+            spawnBall();
+            requestAnimationFrame(draw);
         }
-      }
-      if (hit) break;
-    }
-  }
-  if (hit) { isMoving = false; if (bulletData.color !== 'rainbow') snapBulletToGrid(); }
-}
 
-function triggerRainbowClear(hitR, hitC) {
-  let targetColor = grid[hitR][hitC] ? grid[hitR][hitC].color : null;
-  if (!targetColor) {
-    snapBulletToGrid();
-    return;
-  }
-
-  let cleared = 0;
-  for (let r = 0; r < ROWS; r++) {
-    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-    for (let c = 0; c < colsInRow; c++) {
-      if (grid[r][c] && grid[r][c].color === targetColor) {
-        grid[r][c] = null;
-        cleared++;
-      }
-    }
-  }
-
-  clearedCount += cleared;
-  document.getElementById('gui-cleared-count').innerText = clearedCount;
-  
-  dropFloatingBubbles();
-
-  if (clearedCount >= 500) { triggerVictory(); return; }
-  endMyTurn();
-  spawnBullet();
-}
-
-function dropFloatingBubbles() {
-  let visited = Array.from({length: ROWS}, () => Array(COLS).fill(false));
-  
-  function getNeighbors(r, c) {
-    let neighbors = [];
-    let offsets = (r % 2 === 0) ? 
-      [[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]] : 
-      [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
-    
-    for (let [dr, dc] of offsets) {
-      let nr = r + dr;
-      let nc = c + dc;
-      if (nr >= 0 && nr < ROWS) {
-        let nCols = (nr % 2 === 0) ? COLS : COLS - 1;
-        if (nc >= 0 && nc < nCols) {
-          neighbors.push({r: nr, c: nc});
+        function spawnBall() {
+            let r = canvas.width / 10;
+            let isRainbow = Math.random() < 0.2;
+            currentBall = { x: canvas.width/2, y: canvas.height - r*2, color: isRainbow ? '#fff' : nextColor, radius: r };
+            nextColor = COLORS[Math.floor(Math.random()*COLORS.length)];
+            document.getElementById('gui-next').style.background = nextColor;
         }
-      }
-    }
-    return neighbors;
-  }
 
-  let queue = [];
-  let colsTop = (0 % 2 === 0) ? COLS : COLS - 1;
-  for (let c = 0; c < colsTop; c++) {
-    if (grid[0][c]) {
-      visited[0][c] = true;
-      queue.push({r: 0, c});
-    }
-  }
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  while (queue.length > 0) {
-    let curr = queue.shift();
-    for (let n of getNeighbors(curr.r, curr.c)) {
-      if (grid[n.r][n.c] && !visited[n.r][n.c]) {
-        visited[n.r][n.c] = true;
-        queue.push(n);
-      }
-    }
-  }
+            // 限界ライン (横点線)
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.moveTo(0, canvas.height * 0.25);
+            ctx.lineTo(canvas.width, canvas.height * 0.25);
+            ctx.strokeStyle = "red";
+            ctx.stroke();
+            ctx.setLineDash([]);
 
-  for (let r = 0; r < ROWS; r++) {
-    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-    for (let c = 0; c < colsInRow; c++) {
-      if (grid[r][c] && !visited[r][c]) {
-        grid[r][c] = null;
-      }
-    }
-  }
-}
+            // 玉の描画
+            board.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2);
+                ctx.fillStyle = b.color;
+                ctx.fill();
+            });
 
-function snapBulletToGrid() {
-  let bestR = 0, bestC = 0, minDist = 9999;
-  for (let r = 0; r < ROWS; r++) {
-    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-    let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
-    for (let c = 0; c < colsInRow; c++) {
-      if (!grid[r][c]) {
-        let cx = rowXOffset + c * DIAMETER;
-        let cy = RADIUS + r * ROW_HEIGHT;
-        let d = Math.hypot(bulletX - cx, bulletY - cy);
-        if (d < minDist) { minDist = d; bestR = r; bestC = c; }
-      }
-    }
-  }
-  grid[bestR][bestC] = { color: bulletData.color, isGimmick: bulletData.isGimmick };
-  checkMatchAndClear(bestR, bestC);
-}
+            if(currentBall) {
+                ctx.beginPath();
+                ctx.arc(currentBall.x, currentBall.y, currentBall.radius, 0, Math.PI*2);
+                ctx.fillStyle = currentBall.color;
+                ctx.fill();
+            }
 
-function checkMatchAndClear(startR, startC) {
-  let targetColor = grid[startR][startC].color;
-  let matched = [];
-  let visited = Array.from({length: ROWS}, () => Array(COLS).fill(false));
-
-  function dfs(r, c) {
-    if (r < 0 || r >= ROWS) return;
-    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-    if (c < 0 || c >= colsInRow) return;
-    if (visited[r][c] || !grid[r][c] || grid[r][c].color !== targetColor) return;
-    visited[r][c] = true;
-    matched.push({r, c, isGimmick: grid[r][c].isGimmick});
-
-    let neighbors = (r % 2 === 0) ? 
-      [[r-1, c-1], [r-1, c], [r, c-1], [r, c+1], [r+1, c-1], [r+1, c]] : 
-      [[r-1, c], [r-1, c+1], [r, c-1], [r, c+1], [r+1, c], [r+1, c+1]];
-    for (let [nr, nc] of neighbors) dfs(nr, nc);
-  }
-
-  dfs(startR, startC);
-
-  if (matched.length >= 3) {
-    matched.forEach(cell => {
-      grid[cell.r][cell.c] = null;
-      if (cell.isGimmick) grantRandomItem();
-    });
-    clearedCount += matched.length;
-    document.getElementById('gui-cleared-count').innerText = clearedCount;
-    dropFloatingBubbles();
-    sendOjamaToOpponent(matched.length * (ojamaMultiplier * activeBuffs.multiplier));
-  }
-
-  if (clearedCount >= 500) { triggerVictory(); return; }
-  checkDeadLineLoss();
-  endMyTurn();
-  spawnBullet();
-}
-
-function sendOjamaToOpponent(count) {
-  let targetId = activeBuffs.redirectTarget;
-  if (targetId === null) {
-    let opp = players.filter(p => p.id !== myPlayerId && !p.eliminated);
-    if (opp.length > 0) targetId = opp[Math.floor(Math.random() * opp.length)].id;
-  }
-  if (targetId !== null) {
-    if (battleRole === 'host') handleOjamaRouting(targetId, count);
-    else sendToHost({ type: 'send_ojama', targetId, count });
-  }
-}
-
-function handleOjamaRouting(targetId, count) {
-  if (targetId === myPlayerId) triggerOjamaFlyIn(count);
-  else broadcastHost({ type: 'receive_ojama', targetId, count });
-}
-
-function triggerOjamaFlyIn(count) {
-  if (count <= 0) return;
-  isCheckingVictory = false;
-  for (let i = 0; i < count; i++) {
-    flyingOjamaBalls.push({
-      x: Math.random() * (canvas.width - 40) + 20,
-      y: canvas.height + 30,
-      targetColor: BASE_COLORS[Math.floor(Math.random() * BASE_COLORS.length)],
-      speed: 12 + Math.random() * 6
-    });
-  }
-}
-
-function updateFlyingOjama() {
-  for (let i = flyingOjamaBalls.length - 1; i >= 0; i--) {
-    let ball = flyingOjamaBalls[i];
-    ball.y -= ball.speed;
-    if (ball.y < 100) {
-      landOjamaInGrid(ball.targetColor);
-      flyingOjamaBalls.splice(i, 1);
-    }
-  }
-}
-
-function landOjamaInGrid(color) {
-  for (let r = ROWS - 1; r >= 0; r--) {
-    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-    for (let c = 0; c < colsInRow; c++) {
-      if (!grid[r][c]) {
-        grid[r][c] = { color: color, isGimmick: false };
-        return;
-      }
-    }
-  }
-}
-
-function checkDeadLineLoss() {
-  for (let c = 0; c < COLS; c++) {
-    if (grid[12] && grid[12][c]) {
-      triggerElimination();
-      break;
-    }
-  }
-}
-
-function triggerElimination() {
-  isEliminated = true;
-  if (battleRole === 'host') {
-    let p = players.find(i => i.id === myPlayerId);
-    if (p) p.eliminated = true;
-    checkVictoryConditionHost();
-  } else {
-    sendToHost({ type: 'player_eliminated' });
-  }
-  showGameOverBanner("YOU LOSE...");
-}
-
-function checkVictoryConditionHost() {
-  let active = players.filter(p => !p.eliminated);
-  if (active.length === 1) {
-    let winner = active[0];
-    broadcastHost({ type: 'game_over_win', winnerName: winner.name });
-    showGameOverBanner(winner.name + " WIN!");
-  }
-}
-
-function showGameOverBanner(msg) {
-  gameState = 'gameover';
-  clearInterval(turnTimerInterval);
-  let div = document.createElement('div');
-  div.className = 'overlay-screen';
-  div.innerHTML = `<div class="main-logo" style="font-size:36px;">${msg}</div><button class="btn-action" onclick="location.reload()">タイトルに戻る</button>`;
-  document.getElementById('game-container').appendChild(div);
-}
-
-function grantRandomItem() {
-  let keys = Object.keys(inventory);
-  let k = keys[Math.floor(Math.random() * keys.length)];
-  inventory[k]++;
-  updateGUIItemButtons();
-}
-
-function updateGUIItemButtons() {
-  for (let k in inventory) {
-    let cntEl = document.getElementById('cnt-' + k);
-    let btnEl = document.getElementById('btn-item-' + k);
-    if (cntEl) cntEl.innerText = inventory[k];
-    if (btnEl) {
-      if (inventory[k] <= 0) btnEl.classList.add('disabled');
-      else btnEl.classList.remove('disabled');
-    }
-  }
-}
-
-function useItem(type) {
-  if (battleTurnState !== 'my_turn' || inventory[type] <= 0) return;
-  inventory[type]--;
-  updateGUIItemButtons();
-  if (type === 'double') activeBuffs.multiplier = 2;
-  if (type === 'triple') activeBuffs.multiplier = 3;
-  if (type === 'skip') { endMyTurn(); }
-  if (type === 'pierce') activeBuffs.isPiercing = true;
-  if (type === 'color') {
-    let keys = BASE_COLORS;
-    bulletData.color = keys[Math.floor(Math.random() * keys.length)];
-  }
-  if (type === 'redirect') {
-    let opp = players.filter(p => p.id !== myPlayerId && !p.eliminated);
-    if (opp.length > 0) activeBuffs.redirectTarget = opp[Math.floor(Math.random() * opp.length)].id;
-  }
-  if (type === 'forceshoot') { forceAutoShoot(); }
-  if (type === 'defense') activeBuffs.isDefending = true;
-}
-
-// ==========================================
-// 描画処理
-// ==========================================
-function drawBubble(x, y, color, isGimmick) {
-  ctx.beginPath();
-  ctx.arc(x, y, RADIUS, 0, Math.PI * 2);
-  
-  if (color === 'rainbow') {
-    let grad = ctx.createRadialGradient(x - RADIUS/3, y - RADIUS/3, RADIUS/10, x, y, RADIUS);
-    grad.addColorStop(0, '#ff0055');
-    grad.addColorStop(0.2, '#ffe600');
-    grad.addColorStop(0.4, '#00ff66');
-    grad.addColorStop(0.6, '#00f3ff');
-    grad.addColorStop(0.8, '#b000ff');
-    grad.addColorStop(1, '#ffffff');
-    ctx.fillStyle = grad;
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  } else {
-    ctx.fillStyle = color || '#555';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-  }
-
-  if (isGimmick) {
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('★', x, y);
-  }
-}
-
-function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  for (let r = 0; r < ROWS; r++) {
-    let colsInRow = (r % 2 === 0) ? COLS : COLS - 1;
-    let rowXOffset = (r % 2 === 0) ? RADIUS : RADIUS * 2;
-    for (let c = 0; c < colsInRow; c++) {
-      let b = grid[r][c];
-      if (b) {
-        let cx = rowXOffset + c * DIAMETER;
-        let cy = RADIUS + r * ROW_HEIGHT;
-        drawBubble(cx, cy, b.color, b.isGimmick);
-      }
-    }
-  }
-
-  ctx.strokeStyle = 'rgba(255, 0, 85, 0.4)';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([4, 4]);
-  ctx.beginPath();
-  ctx.moveTo(0, DEAD_LINE_Y);
-  ctx.lineTo(canvas.width, DEAD_LINE_Y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  if (gameState === 'playing') {
-    if (isDragging) {
-      let dx = dragStartX - dragCurrentX;
-      let dy = dragStartY - dragCurrentY;
-      let dist = Math.hypot(dx, dy);
-      if (dist > 5) {
-        let angle = Math.atan2(dx, dy);
-        
-        let baseGuideLength = 110;
-        let maxExtraLength = 40;
-        let guideFactor = Math.min(dist / 80, 1.0);
-        let totalGuideLength = baseGuideLength + (maxExtraLength * guideFactor);
-
-        ctx.strokeStyle = 'rgba(0, 243, 255, 0.8)';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(shooterX, shooterY);
-        ctx.lineTo(shooterX + Math.sin(angle) * totalGuideLength, shooterY + Math.cos(angle) * totalGuideLength);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
-
-    if (bulletData) {
-      drawBubble(bulletX, bulletY, bulletData.color, bulletData.isGimmick);
-    }
-  }
-
-  for (let ball of flyingOjamaBalls) {
-    drawBubble(ball.x, ball.y, ball.targetColor, false);
-  }
-}
-
-function gameLoop() {
-  if (gameState === 'playing') {
-    updateBulletPhysics();
-    updateFlyingOjama();
-  }
-  render();
-  requestAnimationFrame(gameLoop);
-}
-
-requestAnimationFrame(gameLoop);
-</script>
+            requestAnimationFrame(draw);
+        }
+    </script>
 </body>
 </html>
