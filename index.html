@@ -499,62 +499,66 @@
             startTurnTimer();
         }
 
-        function showSkipNoticeAndNext() {
-            if (playerList[currentTurnIndex].name === myName) {
-                const overlay = document.getElementById('overlay');
-                const text = document.getElementById('overlay-text');
-                overlay.style.display = 'flex';
-                text.innerText = "1回休み";
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                    do {
-                        currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
-                    } while (!playerList[currentTurnIndex].active);
-                    updateTurnUI();
-                    startTurnTimer();
-                }, 1500);
-            } else {
-                do {
-                    currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
-                } while (!playerList[currentTurnIndex].active);
-                updateTurnUI();
-                startTurnTimer();
+       function showSkipNoticeAndNext() {
+    if (playerList[currentTurnIndex].name === myName) {
+        const overlay = document.getElementById('overlay');
+        const text = document.getElementById('overlay-text');
+        overlay.style.display = 'flex';
+        text.innerText = "1回休み";
+        // ★ 1500ms → 700ms に高速化
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            do {
+                currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
+            } while (!playerList[currentTurnIndex].active);
+            updateTurnUI();
+            startTurnTimer();
+        }, 700);
+    } else {
+        do {
+            currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
+        } while (!playerList[currentTurnIndex].active);
+        updateTurnUI();
+        startTurnTimer();
+    }
+}
+
+function updateTurnUI() {
+    let isMyTurn = (currentTurnIndex === myTurnIndex);
+    let status = document.getElementById('gui-turn-status');
+    const overlay = document.getElementById('overlay');
+    const text = document.getElementById('overlay-text');
+    const sub = document.getElementById('overlay-sub');
+    const btn = document.getElementById('overlay-btn');
+
+    btn.style.display = 'none';
+    sub.innerHTML = "";
+
+    if (isMyTurn) {
+        status.innerText = "★あなたの番";
+        status.style.color = "#00ff00";
+
+        overlay.style.display = 'flex';
+        text.innerText = `${myName}\nの番です！`;
+        text.style.color = "#00ffff";
+
+        // ★ 1200ms → 400ms に短縮し、待ち時間を解消
+        setTimeout(() => {
+            if (!isGameOver && !isTimerPaused && !isProcessingOjama) {
+                overlay.style.display = 'none';
             }
-        }
+        }, 400);
+    } else {
+        let currentName = playerList[currentTurnIndex].name;
+        status.innerText = `${currentName}の番`;
+        status.style.color = "#ff3366";
 
-        function updateTurnUI() {
-            let isMyTurn = (currentTurnIndex === myTurnIndex);
-            let status = document.getElementById('gui-turn-status');
-            const overlay = document.getElementById('overlay');
-            const text = document.getElementById('overlay-text');
-            const sub = document.getElementById('overlay-sub');
-            const btn = document.getElementById('overlay-btn');
-
-            btn.style.display = 'none';
-            sub.innerHTML = "";
-
-            if (isMyTurn) {
-                status.innerText = "★あなたの番";
-                status.style.color = "#00ff00";
-
-                overlay.style.display = 'flex';
-                text.innerText = `${myName}\nの番です！`;
-                text.style.color = "#00ffff";
-
-                setTimeout(() => {
-                    if (!isGameOver && !isTimerPaused && !isProcessingOjama) overlay.style.display = 'none';
-                }, 1200);
-            } else {
-                let currentName = playerList[currentTurnIndex].name;
-                status.innerText = `${currentName}の番`;
-                status.style.color = "#ff3366";
-
-                overlay.style.display = 'flex';
-                text.innerText = `${currentName}\nの番です`;
-                text.style.color = "#ffffff";
-                sub.innerHTML = `<div class="blink" style="font-size:1.3rem; color:#ffcc00; margin-top:15px; font-weight:bold;">PLEASE WAIT...</div>`;
-            }
-        }
+        overlay.style.display = 'flex';
+        text.innerText = `${currentName}\nの番です`;
+        text.style.color = "#ffffff";
+        sub.innerHTML = `<div class="blink" style="font-size:1.3rem; color:#ffcc00; margin-top:15px; font-weight:bold;">PLEASE WAIT...</div>`;
+    }
+}
 
         // --- 盤面・パズル・物理エンジン ---
         let canvas, ctx;
