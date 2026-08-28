@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING★パズル対戦〇</title>
+    <title>〇WINGパズル対戦〇</title>
     <!-- WebRTC通信用ライブラリ (PeerJS) -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -92,7 +92,7 @@
             justify-content: center; align-items: center; z-index: 100; text-align: center; padding: 20px;
             pointer-events: auto;
         }
-        .big-text { font-size: 2rem; color: #ff0; text-shadow: 0 0 20px #ff0; font-weight: bold; }
+        .big-text { font-size: 1.8rem; color: #ff0; text-shadow: 0 0 20px #ff0; font-weight: bold; word-break: break-all; }
         
         .select-box { background: #222; border: 2px solid #00ffff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 10px; width: 85%; max-width: 300px; }
         .color-btn { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff; display: inline-block; margin: 4px; }
@@ -233,12 +233,13 @@
         let connections = [];
         let hostConn = null;
         let playerList = [];
-        let orderedPlayerList = []; // 順番確定後のプレイヤーリスト
+        let orderedPlayerList = []; 
         let myTurnIndex = -1;
         let currentTurnIndex = 0;
         let isGameOver = false;
-        let isGameStarted = false; // ゲーム本編開始フラグ（二重発火防止用）
+        let isGameStarted = false; 
         let rainbowAngle = 0;
+        let rouletteTimer = null; // ルーレットタイマー保持用
 
         // 全角変換
         document.getElementById('player-name-input').addEventListener('input', function(e) {
@@ -375,7 +376,8 @@
             }
 
             let rIdx = 0;
-            let timer = setInterval(() => {
+            if (rouletteTimer) clearInterval(rouletteTimer);
+            rouletteTimer = setInterval(() => {
                 rIdx = (rIdx + 1) % playerList.length;
                 text.innerText = playerList[rIdx].name;
             }, 80);
@@ -383,13 +385,11 @@
             btn.onclick = (e) => {
                 e.stopPropagation();
                 if (!isHost) return;
-                clearInterval(timer);
+                clearInterval(rouletteTimer);
                 btn.style.display = 'none';
                 btn.onclick = null;
                 
                 let firstTurn = rIdx;
-                
-                // 順番順リスト作成（firstTurnから時計回り）
                 orderedPlayerList = [];
                 for (let i = 0; i < playerList.length; i++) {
                     let idx = (firstTurn + i) % playerList.length;
@@ -403,7 +403,9 @@
 
         // 順番確認ダイアログの表示
         function showOrderConfirmationUI(ordList) {
+            if (rouletteTimer) clearInterval(rouletteTimer); // ゲスト側タイマーを必ず停止
             orderedPlayerList = ordList;
+            
             const overlay = document.getElementById('overlay');
             const text = document.getElementById('overlay-text');
             const sub = document.getElementById('overlay-sub');
@@ -440,24 +442,12 @@
             if (isGameStarted) return;
             isGameStarted = true;
 
-            playerList = orderedPlayerList; // 確定した順番に並び替え
+            playerList = orderedPlayerList; // 確定した順番に更新
             myTurnIndex = playerList.findIndex(p => p.name === myName);
             currentTurnIndex = 0;
 
-            const overlay = document.getElementById('overlay');
-            const text = document.getElementById('overlay-text');
-            const sub = document.getElementById('overlay-sub');
-            
-            sub.innerHTML = "";
-            text.innerText = `${playerList[0].name} 先攻！`;
-            text.classList.add('blink');
-
-            setTimeout(() => {
-                text.classList.remove('blink');
-                overlay.style.display = 'none';
-                updateTurnUI();
-                startTurnTimer();
-            }, 1200);
+            updateTurnUI();
+            startTurnTimer();
         }
 
         // タイマー制御
@@ -519,12 +509,36 @@
         function updateTurnUI() {
             let isMyTurn = (currentTurnIndex === myTurnIndex);
             let status = document.getElementById('gui-turn-status');
+            const overlay = document.getElementById('overlay');
+            const text = document.getElementById('overlay-text');
+            const sub = document.getElementById('overlay-sub');
+            const btn = document.getElementById('overlay-btn');
+
+            btn.style.display = 'none';
+            sub.innerHTML = "";
+
             if (isMyTurn) {
                 status.innerText = "★あなたの番";
                 status.style.color = "#00ff00";
+
+                // 自分のターン開始演出
+                overlay.style.display = 'flex';
+                text.innerText = `${myName}\nの番です！`;
+                text.style.color = "#00ffff";
+
+                setTimeout(() => {
+                    if (!isGameOver) overlay.style.display = 'none';
+                }, 1200);
             } else {
-                status.innerText = `${playerList[currentTurnIndex].name}の番`;
+                let currentName = playerList[currentTurnIndex].name;
+                status.innerText = `${currentName}の番`;
                 status.style.color = "#ff3366";
+
+                // 相手のターン待機画面（完全ロック）
+                overlay.style.display = 'flex';
+                text.innerText = `${currentName}\nの番です`;
+                text.style.color = "#ffffff";
+                sub.innerHTML = `<div class="blink" style="font-size:1.4rem; color:#ffcc00; margin-top:20px; font-weight:bold;">PLEASE WAIT...</div>`;
             }
         }
 
@@ -615,7 +629,7 @@
             }
         }
 
-        // タッチ操作
+        // タッチ操作（自分のターンのみ発火）
         function handleTouchStart(e) {
             e.preventDefault();
             if (currentTurnIndex !== myTurnIndex || isGameOver || !isGameStarted) return;
@@ -773,7 +787,7 @@
                     }
                 }
 
-                // 発射ガイドライン
+                // 発射ガイドライン（自分のターンのみ）
                 if (dragStart && dragCurrent && currentTurnIndex === myTurnIndex && isGameStarted) {
                     ctx.beginPath();
                     ctx.moveTo(currentBall.x, currentBall.y);
@@ -945,6 +959,7 @@
             if (droppedCount > 0) addScoreAndAttack(droppedCount);
         }
 
+        // --- お邪魔玉ターゲット厳密計算 ---
         function addScoreAndAttack(count) {
             myScore += count;
             document.getElementById('gui-score').innerText = `${myScore}/500`;
@@ -958,16 +973,23 @@
             let ojamaCount = count * 2 * activeMultiplier;
             activeMultiplier = 1;
 
-            let targetIdx = (myTurnIndex + 1) % playerList.length;
-            while (!playerList[targetIdx].active) {
-                targetIdx = (targetIdx + 1) % playerList.length;
-            }
-
+            let targetIdx = -1;
             if (mysteryTargetIndex !== -1) {
                 targetIdx = mysteryTargetIndex;
+            } else {
+                // 自分の次の生存プレイヤーを正確に取得
+                let nextIdx = (myTurnIndex + 1) % playerList.length;
+                while (nextIdx !== myTurnIndex && !playerList[nextIdx].active) {
+                    nextIdx = (nextIdx + 1) % playerList.length;
+                }
+                if (nextIdx !== myTurnIndex) {
+                    targetIdx = nextIdx;
+                }
             }
 
-            sendSignal({ type: 'OJAMA_ATTACK', count: ojamaCount, targetIndex: targetIdx });
+            if (targetIdx !== -1) {
+                sendSignal({ type: 'OJAMA_ATTACK', count: ojamaCount, targetIndex: targetIdx });
+            }
         }
 
         // --- 4. 物理・お邪魔玉アニメーション ---
