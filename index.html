@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING🎵パズル対戦〇</title>
-    <!-- PeerJS WebRTCライブラリ -->
+    <title>〇WING🔷パズル対戦〇</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -21,7 +20,6 @@
             color: #fff; overscroll-behavior: none;
         }
 
-        /* PCアクセスブロック画面 */
         #pc-block-screen {
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
             background: #111; color: #ff3366; z-index: 9999;
@@ -29,7 +27,6 @@
             text-align: center; padding: 20px; font-weight: bold;
         }
 
-        /* アニメーション */
         .blink { animation: blinker 1.2s linear infinite; }
         @keyframes blinker { 50% { opacity: 0; } }
 
@@ -43,7 +40,6 @@
             100% { transform: translate(0, 0); }
         }
 
-        /* 画面切替 */
         .screen { 
             display: none; width: 100vw; height: 100dvh; 
             flex-direction: column; justify-content: center; align-items: center; 
@@ -52,14 +48,12 @@
         }
         .active { display: flex; }
 
-        /* タイトル・メニュー */
         #title-screen h1 { font-size: 2rem; color: #00ffff; text-shadow: 0 0 15px #00ffff; text-align: center; font-weight: bold; }
         .btn { background: #222; border: 2px solid #00ffff; color: #fff; padding: 12px; margin: 8px; font-size: 1.1rem; border-radius: 8px; width: 220px; text-align: center; cursor: pointer; }
         .btn:active { background: #00ffff; color: #000; }
         .btn-opt { width: 50px; height: 50px; line-height: 24px; padding: 10px 0; margin: 5px; font-weight: bold; font-size: 1.2rem; }
         input[type="text"] { font-size: 1.2rem; padding: 10px; text-align: center; margin: 10px; border-radius: 8px; border: none; width: 80%; max-width: 280px; color: #000; }
 
-        /* スマホ用対戦レイアウト（左7割：ゲーム盤面、右3割：GUI＆アイテム） */
         #game-screen { 
             display: none; flex-direction: row; 
             width: 100vw; height: 100dvh; position: absolute; top: 0; left: 0; z-index: 20;
@@ -78,7 +72,6 @@
             font-size: 0.7rem; z-index: 25; flex-shrink: 0;
         }
 
-        /* 右側アイテムリスト */
         .item-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
         .item-row { 
             background: #2a2a2a; padding: 6px 2px; border-radius: 6px; text-align: center; 
@@ -87,7 +80,7 @@
         }
         .item-active { border-color: #00ff00; color: #fff; background: #004400; font-weight: bold; box-shadow: 0 0 6px #00ff00; }
 
-        /* 全画面オーバーレイ */
+        /* 全画面オーバーレイ（勝利時・ダイアログ用） */
         .overlay { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.85); display: none; flex-direction: column; 
@@ -96,6 +89,15 @@
         }
         .big-text { font-size: 1.6rem; color: #ff0; text-shadow: 0 0 15px #ff0; font-weight: bold; word-break: break-all; white-space: pre-wrap; }
         
+        /* 相手ターン時の非透過・軽量バナー表示 */
+        #turn-banner {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(20, 20, 20, 0.75); border: 2px solid #ff3366;
+            border-radius: 20px; padding: 6px 16px; font-size: 0.85rem; font-weight: bold;
+            color: #fff; text-shadow: 0 0 8px #ff3366; display: none; z-index: 30;
+            pointer-events: none; white-space: nowrap; box-shadow: 0 0 10px rgba(255, 51, 102, 0.5);
+        }
+
         .select-box { background: #222; border: 2px solid #00ffff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 300px; }
         .color-btn { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; display: inline-block; margin: 4px; cursor: pointer; }
 
@@ -106,12 +108,9 @@
 </head>
 <body>
 
-    <!-- PCブロック画面 -->
     <div id="pc-block-screen">
         <h2>📱 スマートフォン専用</h2>
-        <p style="margin-top: 15px; color: #aaa; font-weight: normal; font-size: 0.9rem;">
-            スマートフォンからアクセスしてお楽しみください。
-        </p>
+        <p style="margin-top: 15px; color: #aaa; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
     <!-- 1. タイトル画面 -->
@@ -127,7 +126,6 @@
         <div class="btn" onclick="location.reload()">③ EXIT</div>
     </div>
 
-    <!-- 人数選択画面 -->
     <div id="host-count-screen" class="screen">
         <h3 style="margin-bottom:15px;">対戦人数を選択 (2〜5名)</h3>
         <div style="display:flex;">
@@ -138,21 +136,18 @@
         </div>
     </div>
 
-    <!-- 名前入力画面 -->
     <div id="name-screen" class="screen">
         <h3>名前を入力 (全角6文字)</h3>
         <input type="text" id="player-name-input" maxlength="6" placeholder="なまえ">
         <div class="btn" onclick="submitName()">決定</div>
     </div>
 
-    <!-- コード入力画面 -->
     <div id="guest-code-screen" class="screen">
         <h3>4桁のRoom Noを入力</h3>
         <input type="text" id="room-code-input" maxlength="4" placeholder="1234" inputmode="numeric">
         <div class="btn" onclick="submitGuestCode()">次へ</div>
     </div>
 
-    <!-- 待機画面 -->
     <div id="lobby-screen" class="screen">
         <h2 id="room-display-title">ROOM: <span id="display-code" style="color:#00ffff;">----</span></h2>
         <div id="lobby-status" class="blink" style="margin: 20px;">参加者を待ち待機中...</div>
@@ -160,26 +155,25 @@
         <div id="host-start-btn" class="btn" style="display:none;" onclick="startRouletteSequence()">ゲーム開始</div>
     </div>
 
-    <!-- 3. スマホ対戦画面（左7割：ゲーム盤面、右3割：GUI） -->
+    <!-- 3. スマホ対戦画面 -->
     <div id="game-screen">
-        <!-- 左側：盤面領域 -->
         <div id="canvas-panel">
             <canvas id="gameCanvas"></canvas>
             
-            <!-- 全画面共通オーバーレイ -->
+            <!-- 相手ターン時用の上部強調バナー（背景を隠さない） -->
+            <div id="turn-banner">〇〇 のターン</div>
+
             <div id="overlay" class="overlay">
                 <div id="overlay-text" class="big-text"></div>
                 <div id="overlay-sub" style="margin-top:10px; color:#aaa; font-size:0.85rem;"></div>
                 <div id="overlay-btn" class="btn" style="display:none; margin-top:15px;">STOP</div>
             </div>
 
-            <!-- アイテム選択用ダイアログ -->
             <div id="item-modal" class="overlay" style="z-index:110;">
                 <div class="select-box" id="item-modal-content"></div>
             </div>
         </div>
 
-        <!-- 右側：GUIパネル -->
         <div id="gui-panel">
             <div>
                 <div style="color:#888;">PLAYER</div>
@@ -202,7 +196,6 @@
                 <div id="gui-next" style="width:20px; height:20px; border-radius:50%; background:#fff; margin:2px auto; border:1px solid #fff;"></div>
             </div>
 
-            <!-- アイテムストック（最大5個） -->
             <div style="color:#888;">ITEMS (<span id="item-total-count">0</span>/5)</div>
             <div class="item-list">
                 <div class="item-row" id="item-btn-0" onclick="useItem(0)"><span>2倍</span><span id="stock-0">0</span></div>
@@ -216,7 +209,6 @@
     </div>
 
     <script>
-        // PCチェック
         function checkDevice() {
             const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
             const isMobileWidth = window.innerWidth <= 1024;
@@ -226,7 +218,6 @@
         }
         window.addEventListener('load', checkDevice);
 
-        // --- 通信・基本状態 ---
         let isHost = false;
         let maxPlayers = 2;
         let myName = "ゲスト";
@@ -244,7 +235,6 @@
         let skipTargetName = null;
         let mysteryTargetIndex = -1;
 
-        // 全角変換
         document.getElementById('player-name-input').addEventListener('input', function(e) {
             let val = e.target.value.replace(/[A-Za-z0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
             e.target.value = val.slice(0, 6);
@@ -351,7 +341,6 @@
             document.getElementById('player-list').innerHTML = html;
         }
 
-        // --- 順番決め ＆ 確定フロー ---
         function startRouletteSequence() {
             if (isGameStarted) return;
             broadcast({ type: 'START_ROULETTE' });
@@ -442,14 +431,13 @@
         function startGameAction() {
             if (isGameStarted) return;
             isGameStarted = true;
+            document.getElementById('overlay').style.display = 'none';
 
             playerList = orderedPlayerList;
             myTurnIndex = playerList.findIndex(p => p.name === myName);
             currentTurnIndex = 0;
 
-            // プレイヤー個別の初期2列ランダム生成
             generateInitialBoard();
-
             updateTurnUI();
             startTurnTimer();
         }
@@ -470,16 +458,20 @@
                 document.getElementById('gui-timer').innerText = turnTime;
 
                 if (turnTime <= 0) {
-                    clearInterval(timerInterval);
+                    stopTurnTimer();
                     nextTurn();
                 }
             }, 1000);
         }
 
+        function stopTurnTimer() {
+            clearInterval(timerInterval);
+            document.getElementById('gui-timer').innerText = "-";
+        }
+
         function nextTurn() {
             if (isGameOver) return;
 
-            // スキップ判定
             if (skipTargetName === playerList[currentTurnIndex].name) {
                 skipTargetName = null;
                 showSkipNoticeAndNext();
@@ -490,7 +482,6 @@
                 currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
             } while (!playerList[currentTurnIndex].active);
 
-            // 毎ターン20%の確率で画面内に1個アイテム玉（？マーク）をランダム生成
             if (currentTurnIndex === myTurnIndex && Math.random() < 0.20) {
                 spawnItemBallOnBoard();
             }
@@ -499,66 +490,53 @@
             startTurnTimer();
         }
 
-       function showSkipNoticeAndNext() {
-    if (playerList[currentTurnIndex].name === myName) {
-        const overlay = document.getElementById('overlay');
-        const text = document.getElementById('overlay-text');
-        overlay.style.display = 'flex';
-        text.innerText = "1回休み";
-        // ★ 1500ms → 700ms に高速化
-        setTimeout(() => {
-            overlay.style.display = 'none';
-            do {
-                currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
-            } while (!playerList[currentTurnIndex].active);
-            updateTurnUI();
-            startTurnTimer();
-        }, 700);
-    } else {
-        do {
-            currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
-        } while (!playerList[currentTurnIndex].active);
-        updateTurnUI();
-        startTurnTimer();
-    }
-}
-
-function updateTurnUI() {
-    let isMyTurn = (currentTurnIndex === myTurnIndex);
-    let status = document.getElementById('gui-turn-status');
-    const overlay = document.getElementById('overlay');
-    const text = document.getElementById('overlay-text');
-    const sub = document.getElementById('overlay-sub');
-    const btn = document.getElementById('overlay-btn');
-
-    btn.style.display = 'none';
-    sub.innerHTML = "";
-
-    if (isMyTurn) {
-        status.innerText = "★あなたの番";
-        status.style.color = "#00ff00";
-
-        overlay.style.display = 'flex';
-        text.innerText = `${myName}\nの番です！`;
-        text.style.color = "#00ffff";
-
-        // ★ 1200ms → 400ms に短縮し、待ち時間を解消
-        setTimeout(() => {
-            if (!isGameOver && !isTimerPaused && !isProcessingOjama) {
-                overlay.style.display = 'none';
+        function showSkipNoticeAndNext() {
+            if (playerList[currentTurnIndex].name === myName) {
+                const overlay = document.getElementById('overlay');
+                const text = document.getElementById('overlay-text');
+                overlay.style.display = 'flex';
+                text.innerText = "1回休み";
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    do {
+                        currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
+                    } while (!playerList[currentTurnIndex].active);
+                    updateTurnUI();
+                    startTurnTimer();
+                }, 700);
+            } else {
+                do {
+                    currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
+                } while (!playerList[currentTurnIndex].active);
+                updateTurnUI();
+                startTurnTimer();
             }
-        }, 400);
-    } else {
-        let currentName = playerList[currentTurnIndex].name;
-        status.innerText = `${currentName}の番`;
-        status.style.color = "#ff3366";
+        }
 
-        overlay.style.display = 'flex';
-        text.innerText = `${currentName}\nの番です`;
-        text.style.color = "#ffffff";
-        sub.innerHTML = `<div class="blink" style="font-size:1.3rem; color:#ffcc00; margin-top:15px; font-weight:bold;">PLEASE WAIT...</div>`;
-    }
-}
+        function updateTurnUI() {
+            let isMyTurn = (currentTurnIndex === myTurnIndex);
+            let status = document.getElementById('gui-turn-status');
+            const banner = document.getElementById('turn-banner');
+
+            // 暗いオーバーレイは削除し、背景は100%明るいまま保持
+            document.getElementById('overlay').style.display = 'none';
+
+            if (isMyTurn) {
+                status.innerText = "★あなたの番";
+                status.style.color = "#00ff00";
+                status.classList.add('blink');
+                banner.style.display = 'none';
+            } else {
+                let currentName = playerList[currentTurnIndex].name;
+                status.innerText = `${currentName}の番`;
+                status.style.color = "#ff3366";
+                status.classList.remove('blink');
+
+                // 盤面上部に強調スリムバナーを表示（盤面を隠さない）
+                banner.innerText = `【 ${currentName} 】のターン`;
+                banner.style.display = 'block';
+            }
+        }
 
         // --- 盤面・パズル・物理エンジン ---
         let canvas, ctx;
@@ -575,7 +553,7 @@ function updateTurnUI() {
 
         let activeMultiplier = 1;
         let isPenetrateMode = false;
-        let itemStocks = [0, 0, 0, 0, 0, 0]; // 2倍, 3倍, スキップ, 貫通, 色替え, ミステリー
+        let itemStocks = [0, 0, 0, 0, 0, 0];
 
         function resizeCanvas() {
             if (!canvas) return;
@@ -647,7 +625,6 @@ function updateTurnUI() {
             }
         }
 
-        // タッチ操作
         function handleTouchStart(e) {
             e.preventDefault();
             if (currentTurnIndex !== myTurnIndex || isGameOver || !isGameStarted || isTimerPaused || isProcessingOjama) return;
@@ -677,12 +654,14 @@ function updateTurnUI() {
                 let vx = dx * 0.15;
                 let vy = dy * 0.15;
 
-                // 貫通弾かつ反射2回以上の警告
                 if (isPenetrateMode && checkBounceCountLimit(vx, vy) >= 2) {
-                    alert("壁での反射が2回以上になるため発射できません！直線に近い角度で狙ってください。");
+                    alert("壁での反射が2回以上になるため発射できません！");
                     dragStart = null; dragCurrent = null;
                     return;
                 }
+
+                // 発射した瞬間に持ち時間タイマーを即時停止！
+                stopTurnTimer();
 
                 currentBall.vx = vx;
                 currentBall.vy = vy;
@@ -719,11 +698,9 @@ function updateTurnUI() {
             else if (data.type === 'WINNER') handleWin(data.winnerName);
         }
 
-        // --- ループ＆アニメーション ---
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 境界限界線
             let limitY = getGridCoord(10, 0).y;
             ctx.beginPath();
             ctx.setLineDash([6, 6]);
@@ -731,7 +708,6 @@ function updateTurnUI() {
             ctx.strokeStyle = "#ff3333"; ctx.lineWidth = 2; ctx.stroke();
             ctx.setLineDash([]);
 
-            // 盤面描画
             Object.values(board).forEach(b => {
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, radius - 1, 0, Math.PI * 2);
@@ -747,7 +723,6 @@ function updateTurnUI() {
                 ctx.closePath();
             });
 
-            // 発射玉描画＆移動判定
             if (currentBall) {
                 if (currentBall.isMoving) {
                     currentBall.x += currentBall.vx;
@@ -758,7 +733,6 @@ function updateTurnUI() {
                     }
 
                     if (isPenetrateMode) {
-                        // 貫通弾モード
                         for (let key in board) {
                             let b = board[key];
                             if (Math.hypot(b.x - currentBall.x, b.y - currentBall.y) < radius * 1.8) {
@@ -770,10 +744,10 @@ function updateTurnUI() {
                             currentBall.isMoving = false;
                             isPenetrateMode = false;
                             spawnBall();
+                            // アイドリングなしで直ちに次のターンへ
                             nextTurn();
                         }
                     } else {
-                        // 通常弾モード
                         let hit = (currentBall.y - radius <= 0);
                         for (let key in board) {
                             let b = board[key];
@@ -786,12 +760,12 @@ function updateTurnUI() {
                             currentBall.isMoving = false;
                             snapToGrid(currentBall);
                             spawnBall();
+                            // アイドリングなしで直ちに次のターンへ
                             nextTurn();
                         }
                     }
                 }
 
-                // ガイドライン
                 if (dragStart && dragCurrent && currentTurnIndex === myTurnIndex && isGameStarted) {
                     ctx.beginPath();
                     ctx.moveTo(currentBall.x, currentBall.y);
@@ -912,7 +886,6 @@ function updateTurnUI() {
             if (droppedCount > 0) addScoreAndAttack(droppedCount);
         }
 
-        // --- お邪魔玉攻撃計算 ＆ ターゲット決定 ---
         function addScoreAndAttack(count) {
             myScore += count;
             document.getElementById('gui-score').innerText = `${myScore}/500`;
@@ -923,7 +896,6 @@ function updateTurnUI() {
                 return;
             }
 
-            // デフォルト：消した数 × 2 × 倍率
             let ojamaCount = count * 2 * activeMultiplier;
             activeMultiplier = 1;
 
@@ -965,7 +937,6 @@ function updateTurnUI() {
             }
         }
 
-        // --- お邪魔玉受領・着弾演出 ---
         function receiveOjama(count, targetIdx) {
             if (myTurnIndex !== targetIdx) return;
             isProcessingOjama = true;
@@ -1028,10 +999,9 @@ function updateTurnUI() {
             }
         }
 
-        // --- アイテムシステム ---
         function triggerItemRoulette() {
             let totalStock = itemStocks.reduce((a, b) => a + b, 0);
-            if (totalStock >= 5) return; // ストック上限5個
+            if (totalStock >= 5) return;
 
             isTimerPaused = true;
             const overlay = document.getElementById('overlay');
@@ -1177,11 +1147,10 @@ function updateTurnUI() {
                 setTimeout(() => {
                     overlay.style.display = 'none';
                     isTimerPaused = false;
-                }, 1500);
+                }, 1200);
             };
         }
 
-        // --- 勝敗＆再戦管理 ---
         function handlePlayerDefeat(defIdx) {
             playerList[defIdx].active = false;
             if (defIdx === myTurnIndex) {
@@ -1202,7 +1171,7 @@ function updateTurnUI() {
 
         function handleWin(winnerName) {
             isGameOver = true;
-            clearInterval(timerInterval);
+            stopTurnTimer();
             const overlay = document.getElementById('overlay');
             const text = document.getElementById('overlay-text');
             const sub = document.getElementById('overlay-sub');
