@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>⚡ CYBER WING PUZZLE ⚡</title>
+    <title>〇WING⚡パズル対戦〇</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -11,7 +11,7 @@
             user-select: none; -webkit-user-select: none;
             -webkit-touch-callout: none;
             touch-action: manipulation;
-            font-family: 'Consolas', 'Courier New', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Hiragino Sans', 'Meiryo', 'Consolas', sans-serif;
         }
         
         html, body { 
@@ -21,7 +21,7 @@
             color: #00ffff; overscroll-behavior: none;
         }
 
-        /* サイバーグリッド背景 */
+        /* サイバー背景 */
         body::before {
             content: "";
             position: fixed;
@@ -42,22 +42,16 @@
             text-shadow: 0 0 10px #ff0055;
         }
 
-        .blink { animation: blinker 1.2s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0.2; } }
-
-        .pulse-neon { animation: pulse 1.5s infinite alternate; }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 5px #ff0055, inset 0 0 5px #ff0055; }
-            100% { box-shadow: 0 0 15px #ff0055, inset 0 0 10px #ff0055; }
-        }
+        .blink { animation: blinker 1.0s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0.1; } }
 
         .shake { animation: shake 0.4s; }
         @keyframes shake {
-            0% { transform: translate(3px, 3px); }
-            20% { transform: translate(-4px, -3px); }
-            40% { transform: translate(4px, 2px); }
-            60% { transform: translate(-3px, 3px); }
-            80% { transform: translate(3px, -2px); }
+            0% { transform: translate(4px, 4px); }
+            20% { transform: translate(-5px, -4px); }
+            40% { transform: translate(5px, 3px); }
+            60% { transform: translate(-4px, 4px); }
+            80% { transform: translate(4px, -3px); }
             100% { transform: translate(0, 0); }
         }
 
@@ -69,17 +63,18 @@
         }
         .active { display: flex; }
 
-        h1 { 
-            font-size: 2.2rem; color: #00ffff; 
+        h1.main-title { 
+            font-size: 2.5rem; color: #00ffff; 
             text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 40px #00ffff; 
             text-align: center; font-weight: 900; letter-spacing: 2px;
+            margin-bottom: 25px;
         }
 
         .btn { 
-            background: rgba(10, 15, 30, 0.8); 
+            background: rgba(10, 15, 30, 0.9); 
             border: 2px solid #00ffff; color: #00ffff; 
             padding: 12px; margin: 8px; font-size: 1.1rem; font-weight: bold;
-            border-radius: 4px; width: 230px; text-align: center; cursor: pointer;
+            border-radius: 6px; width: 240px; text-align: center; cursor: pointer;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
             text-shadow: 0 0 5px #00ffff;
             transition: all 0.2s ease;
@@ -88,85 +83,82 @@
             background: #00ffff; color: #000; 
             box-shadow: 0 0 20px #00ffff;
         }
-        .btn-opt { width: 55px; height: 55px; line-height: 28px; padding: 10px 0; margin: 5px; font-weight: bold; font-size: 1.3rem; }
+        .btn-opt { width: 50px; height: 50px; line-height: 26px; padding: 10px 0; margin: 6px; font-weight: bold; font-size: 1.3rem; }
 
         input[type="text"] { 
-            font-size: 1.2rem; padding: 12px; text-align: center; margin: 10px; 
-            border-radius: 4px; border: 2px solid #ff0055; width: 80%; max-width: 280px; 
+            font-size: 1.2rem; padding: 12px; text-align: center; margin: 12px; 
+            border-radius: 6px; border: 2px solid #ff0055; width: 80%; max-width: 280px; 
             background: #0a0a15; color: #00ffff;
             box-shadow: 0 0 10px rgba(255, 0, 85, 0.4);
             outline: none;
         }
 
+        /* ゲーム画面レイアウト：画面比率 7(右:パズル) : 3(左:GUI) */
         #game-screen { 
             display: none; flex-direction: row; 
             width: 100vw; height: 100dvh; position: absolute; top: 0; left: 0; z-index: 20;
             overflow: hidden;
         }
-        #canvas-panel { 
-            flex: 1; height: 100dvh; position: relative; background: #020205; 
-            overflow: hidden; touch-action: none;
-        }
-        canvas { width: 100%; height: 100%; display: block; touch-action: none; }
 
-        /* サイバーGUIパネル */
+        /* 3割：GUIパネル（左側） - 1行1列表示 */
         #gui-panel { 
-            width: 115px; height: 100dvh; 
+            width: 30vw; height: 100dvh; 
             background: rgba(5, 8, 20, 0.95); 
-            border-left: 2px solid #00ffff; 
-            box-shadow: -5px 0 15px rgba(0, 255, 255, 0.2);
+            border-right: 2px solid #00ffff; 
+            box-shadow: 5px 0 15px rgba(0, 255, 255, 0.2);
             display: flex; flex-direction: column; justify-content: space-between; 
-            padding: calc(env(safe-area-inset-top) + 6px) 6px calc(env(safe-area-inset-bottom) + 6px) 6px; 
+            padding: calc(env(safe-area-inset-top) + 8px) 6px calc(env(safe-area-inset-bottom) + 8px) 6px; 
             font-size: 0.75rem; z-index: 25; flex-shrink: 0;
         }
 
-        .gui-label { color: #667799; font-weight: bold; font-size: 0.65rem; letter-spacing: 1px; }
+        .gui-box {
+            width: 100%; text-align: center; margin-bottom: 4px;
+            background: rgba(15, 22, 40, 0.6); padding: 4px 2px; border-radius: 4px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
 
-        .item-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+        .gui-label { color: #88aacc; font-weight: bold; font-size: 0.65rem; letter-spacing: 0.5px; margin-bottom: 2px; }
+
+        .item-list { display: flex; flex-direction: column; gap: 3px; width: 100%; }
         .item-row { 
-            background: rgba(20, 25, 45, 0.8); padding: 6px 4px; border-radius: 3px; text-align: center; 
+            background: rgba(20, 25, 45, 0.8); padding: 4px 6px; border-radius: 3px; text-align: center; 
             border: 1px solid #334466; font-size: 0.65rem; color: #556688; cursor: pointer;
-            display: flex; justify-content: space-between;
+            display: flex; justify-content: space-between; align-items: center;
         }
         .item-active { 
-            border-color: #00ff00; color: #00ff00; background: rgba(0, 255, 0, 0.1); 
+            border-color: #00ff00; color: #00ff00; background: rgba(0, 255, 0, 0.15); 
             font-weight: bold; box-shadow: 0 0 8px rgba(0, 255, 0, 0.4); 
             text-shadow: 0 0 5px #00ff00;
         }
 
+        /* 7割：パズルエリア（右側） */
+        #canvas-panel { 
+            width: 70vw; height: 100dvh; position: relative; background: #020205; 
+            overflow: hidden; touch-action: none;
+        }
+        canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+
         .overlay { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(2, 2, 8, 0.88); display: none; flex-direction: column; 
+            background: rgba(2, 2, 8, 0.90); display: none; flex-direction: column; 
             justify-content: center; align-items: center; z-index: 100; text-align: center; padding: 15px;
             pointer-events: auto; backdrop-filter: blur(4px);
         }
         .big-text { 
-            font-size: 1.8rem; color: #ffff00; 
+            font-size: 2.0rem; color: #ffff00; 
             text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00; 
             font-weight: bold; word-break: break-all; white-space: pre-wrap; 
-        }
-        
-        /* 相手ターン時のスタイリッシュ横断バナー */
-        #turn-banner {
-            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-            background: rgba(10, 5, 20, 0.85); 
-            border: 1.5px solid #ff0055;
-            border-radius: 20px; padding: 6px 18px; font-size: 0.85rem; font-weight: bold;
-            color: #ffffff; text-shadow: 0 0 8px #ff0055; display: none; z-index: 30;
-            pointer-events: none; white-space: nowrap; 
-            box-shadow: 0 0 12px rgba(255, 0, 85, 0.5);
-            letter-spacing: 1px;
         }
 
         .select-box { 
             background: #080d1a; border: 2px solid #00ffff; border-radius: 8px; 
-            padding: 15px; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 300px; 
+            padding: 15px; display: flex; flex-direction: column; gap: 8px; width: 90%; max-width: 280px; 
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
         }
-        .color-btn { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; display: inline-block; margin: 4px; cursor: pointer; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
+        .color-btn { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff; display: inline-block; margin: 4px; cursor: pointer; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
 
-        .order-list { margin: 15px 0; text-align: left; background: #050a15; padding: 12px; border-radius: 6px; border: 1px solid #00ffff; width: 85%; }
-        .order-item { font-size: 1rem; margin: 4px 0; color: #fff; }
+        .order-list { margin: 12px 0; text-align: left; background: #050a15; padding: 10px; border-radius: 6px; border: 1px solid #00ffff; width: 90%; }
+        .order-item { font-size: 0.95rem; margin: 4px 0; color: #fff; }
         .order-num { color: #00ffff; font-weight: bold; margin-right: 6px; text-shadow: 0 0 5px #00ffff; }
     </style>
 </head>
@@ -178,20 +170,21 @@
     </div>
 
     <!-- 1. タイトル画面 -->
-    <div id="title-screen" class="screen active">
-        <h1>CYBER WING<br><span style="font-size:1.4rem; color:#ff0055; text-shadow:0 0 10px #ff0055;">PUZZLE BATTLE</span></h1>
-        <div class="btn" style="margin-top: 40px;" onclick="goToMenu()">START GAME</div>
+    <div id="title-screen" class="screen active" onclick="showGameMenu()">
+        <h1 class="main-title">〇WING<br>パズル対戦〇</h1>
+        <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:30px;">スタート</div>
     </div>
 
     <!-- 2. メニュー画面 -->
     <div id="menu-screen" class="screen">
-        <div class="btn" onclick="selectHost()">① HOST (部屋作成)</div>
-        <div class="btn" onclick="selectGuest()">② GUEST (部屋参加)</div>
+        <div class="btn" onclick="selectHost()">① ホスト</div>
+        <div class="btn" onclick="selectGuest()">② ゲスト</div>
         <div class="btn" onclick="location.reload()">③ EXIT</div>
     </div>
 
+    <!-- ホスト：人数選択 -->
     <div id="host-count-screen" class="screen">
-        <h3 style="margin-bottom:15px; color:#00ffff; text-shadow:0 0 5px #00ffff;">対戦人数 (2〜5名)</h3>
+        <h3 style="margin-bottom:15px; color:#00ffff; text-shadow:0 0 5px #00ffff;">対戦人数選択</h3>
         <div style="display:flex;">
             <div class="btn btn-opt" onclick="setPlayerCount(2)">2</div>
             <div class="btn btn-opt" onclick="setPlayerCount(3)">3</div>
@@ -200,76 +193,85 @@
         </div>
     </div>
 
+    <!-- 名前入力（ひらがな・英数字のみ・自動全角変換・最大6文字） -->
     <div id="name-screen" class="screen">
-        <h3 style="color:#00ffff; text-shadow:0 0 5px #00ffff;">PLAYER NAME</h3>
+        <h3 style="color:#00ffff; text-shadow:0 0 5px #00ffff;">プレイヤーネーム入力</h3>
         <input type="text" id="player-name-input" maxlength="6" placeholder="なまえ">
-        <div class="btn" onclick="submitName()">ENTER</div>
+        <div class="btn" onclick="submitName()">入力完了</div>
     </div>
 
+    <!-- ゲスト：4桁コード入力 -->
     <div id="guest-code-screen" class="screen">
-        <h3 style="color:#ff0055; text-shadow:0 0 5px #ff0055;">ROOM CODE (4桁)</h3>
+        <h3 style="color:#ff0055; text-shadow:0 0 5px #ff0055;">4桁の数字を入力</h3>
         <input type="text" id="room-code-input" maxlength="4" placeholder="1234" inputmode="numeric">
-        <div class="btn" onclick="submitGuestCode()">NEXT</div>
+        <div class="btn" onclick="submitGuestCode()">次へ</div>
     </div>
 
+    <!-- 待機ロビー画面 -->
     <div id="lobby-screen" class="screen">
-        <h2 id="room-display-title">ROOM ID: <span id="display-code" style="color:#00ffff; text-shadow: 0 0 8px #00ffff;">----</span></h2>
-        <div id="lobby-status" class="blink" style="margin: 20px; color:#ff0055;">WAITING FOR PLAYERS...</div>
-        <div id="player-list" style="margin-bottom:20px; color:#00ff00; line-height: 1.6; font-size: 1.1rem; text-shadow:0 0 5px #00ff00;"></div>
-        <div id="host-start-btn" class="btn" style="display:none;" onclick="startRouletteSequence()">START BATTLE</div>
+        <h2 id="room-display-title">接続コード: <span id="display-code" style="color:#00ffff; text-shadow: 0 0 8px #00ffff;">----</span></h2>
+        <div id="player-list" style="margin:20px 0; color:#00ff00; line-height: 1.8; font-size: 1.1rem; text-shadow:0 0 5px #00ff00;"></div>
+        <div id="lobby-status" class="blink" style="margin-bottom: 20px; color:#ff0055; font-weight:bold;">参加者を待ち待機中...</div>
+        <div id="host-start-btn" class="btn" style="display:none;" onclick="startRouletteSequence()">ゲーム開始</div>
     </div>
 
-    <!-- 3. スマホ対戦画面 -->
+    <!-- 3. スマホ対戦画面 (7:3 分割) -->
     <div id="game-screen">
-        <div id="canvas-panel">
-            <canvas id="gameCanvas"></canvas>
-            
-            <!-- 相手ターン時用の上部強調バナー（背景を隠さない） -->
-            <div id="turn-banner" class="pulse-neon">〇〇 のターン</div>
-
-            <div id="overlay" class="overlay">
-                <div id="overlay-text" class="big-text"></div>
-                <div id="overlay-sub" style="margin-top:10px; color:#88aacc; font-size:0.85rem;"></div>
-                <div id="overlay-btn" class="btn" style="display:none; margin-top:15px;">STOP</div>
-            </div>
-
-            <div id="item-modal" class="overlay" style="z-index:110;">
-                <div class="select-box" id="item-modal-content"></div>
-            </div>
-        </div>
-
+        <!-- 3割：GUIパネル (左側) -->
         <div id="gui-panel">
-            <div>
+            <div class="gui-box">
                 <div class="gui-label">PLAYER</div>
                 <div id="gui-name" style="color:#00ffff; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-shadow:0 0 5px #00ffff;">-</div>
                 <div id="gui-turn-status" style="color:#ff0055; font-weight:bold; margin-top:2px;">-</div>
             </div>
             
-            <div>
+            <div class="gui-box">
                 <div class="gui-label">TIME</div>
-                <div id="gui-timer" style="color:#ffff00; font-size:1.3rem; font-weight:bold; text-shadow:0 0 8px #ffff00;">10</div>
+                <div id="gui-timer" style="color:#ffff00; font-size:1.2rem; font-weight:bold; text-shadow:0 0 8px #ffff00;">10</div>
             </div>
 
-            <div>
+            <div class="gui-box">
                 <div class="gui-label">SCORE</div>
                 <div id="gui-score" style="color:#ffff00; font-weight:bold; text-shadow:0 0 5px #ffff00;">0/500</div>
             </div>
 
-            <div style="text-align:center;">
+            <div class="gui-box">
                 <div class="gui-label">NEXT</div>
-                <div id="gui-next" style="width:22px; height:22px; border-radius:50%; background:#fff; margin:3px auto; border:1px solid #fff; box-shadow:0 0 8px #fff;"></div>
+                <div id="gui-next" style="width:20px; height:20px; border-radius:50%; background:#fff; margin:2px auto; border:1px solid #fff; box-shadow:0 0 8px #fff;"></div>
             </div>
 
-            <div>
-                <div class="gui-label">ITEMS (<span id="item-total-count">0</span>/5)</div>
-                <div class="item-list" style="margin-top:3px;">
+            <div style="width:100%;">
+                <div class="gui-label" style="text-align:center;">ITEMS (<span id="item-total-count">0</span>/5)</div>
+                <div class="item-list" style="margin-top:2px;">
                     <div class="item-row" id="item-btn-0" onclick="useItem(0)"><span>2倍</span><span id="stock-0">0</span></div>
                     <div class="item-row" id="item-btn-1" onclick="useItem(1)"><span>3倍</span><span id="stock-1">0</span></div>
                     <div class="item-row" id="item-btn-2" onclick="useItem(2)"><span>スキップ</span><span id="stock-2">0</span></div>
                     <div class="item-row" id="item-btn-3" onclick="useItem(3)"><span>貫通</span><span id="stock-3">0</span></div>
-                    <div class="item-row" id="item-btn-4" onclick="useItem(4)"><span>色替え</span><span id="stock-4">0</span></div>
-                    <div class="item-row" id="item-btn-5" onclick="useItem(5)"><span>ターゲット</span><span id="stock-5">0</span></div>
+                    <div class="item-row" id="item-btn-4" onclick="useItem(4)"><span>色変更</span><span id="stock-4">0</span></div>
+                    <div class="item-row" id="item-btn-5" onclick="useItem(5)"><span>ミステリー</span><span id="stock-5">0</span></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- 7割：パズルエリア (右側) -->
+        <div id="canvas-panel">
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- 5秒前カウントダウン＆演出用オーバーレイ -->
+            <div id="overlay" class="overlay">
+                <div id="overlay-text" class="big-text"></div>
+                <div id="overlay-sub" style="margin-top:10px; color:#88aacc; font-size:0.85rem;"></div>
+                <div id="overlay-btn" class="btn" style="display:none; margin-top:15px;">ストップ</div>
+            </div>
+
+            <!-- 観戦中点滅表示 (脱落時) -->
+            <div id="spectate-banner" class="blink" style="display:none; position:absolute; bottom:15px; left:50%; transform:translateX(-50%); color:#ff0055; font-weight:bold; font-size:0.9rem; z-index:40; text-shadow:0 0 5px #ff0055; white-space:nowrap;">
+                他プレイヤー対戦中...
+            </div>
+
+            <!-- アイテム専用ダイアログ -->
+            <div id="item-modal" class="overlay" style="z-index:110;">
+                <div class="select-box" id="item-modal-content"></div>
             </div>
         </div>
     </div>
@@ -301,8 +303,13 @@
         let skipTargetName = null;
         let mysteryTargetIndex = -1;
 
+        // 名前入力制御：ひらがな・英数字のみ自動全角化＆最大6文字
         document.getElementById('player-name-input').addEventListener('input', function(e) {
-            let val = e.target.value.replace(/[A-Za-z0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+            let val = e.target.value;
+            // 英数字・記号を全角に変換
+            val = val.replace(/[A-Za-z0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+            // ひらがな・英数字以外を除去
+            val = val.replace(/[^あ-んア-ンーＡ-Ｚａ-ｚ０-９]/g, '');
             e.target.value = val.slice(0, 6);
         });
 
@@ -312,7 +319,7 @@
             if(target) target.classList.add('active');
         }
 
-        function goToMenu() { switchScreen('menu-screen'); }
+        function showGameMenu() { switchScreen('menu-screen'); }
         function selectHost() { isHost = true; switchScreen('host-count-screen'); }
         function selectGuest() { isHost = false; switchScreen('guest-code-screen'); }
         function setPlayerCount(cnt) { maxPlayers = cnt; switchScreen('name-screen'); }
@@ -343,7 +350,7 @@
             switchScreen('lobby-screen');
         }
 
-        const PEER_PREFIX = "cyber-puzzle-2026-";
+        const PEER_PREFIX = "cyber-wing-puzzle-2026-";
 
         function initPeerHost() {
             peer = new Peer(PEER_PREFIX + roomCode);
@@ -377,7 +384,7 @@
                     broadcast({ type: 'PLAYER_LIST', list: playerList });
                     if (playerList.length === maxPlayers) {
                         document.getElementById('host-start-btn').style.display = 'block';
-                        document.getElementById('lobby-status').innerText = "ALL PLAYERS READY!";
+                        document.getElementById('lobby-status').innerText = "指定人数達成！ゲーム開始可能です";
                     }
                 }
             } else {
@@ -402,11 +409,17 @@
             });
         }
 
+        function sendSignal(data) {
+            if (isHost) broadcast(data);
+            else if (hostConn) hostConn.send(data);
+        }
+
         function updatePlayerListUI() {
             let html = playerList.map((p, i) => `${i + 1}. ${p.name}`).join('<br>');
             document.getElementById('player-list').innerHTML = html;
         }
 
+        /* 順番決めルーレット演出 */
         function startRouletteSequence() {
             if (isGameStarted) return;
             broadcast({ type: 'START_ROULETTE' });
@@ -424,11 +437,11 @@
             const btn = document.getElementById('overlay-btn');
             const sub = document.getElementById('overlay-sub');
             overlay.style.display = 'flex';
-            sub.innerText = "";
+            sub.innerText = "順番決めルーレット";
             
             if (isHost) {
                 btn.style.display = 'block';
-                btn.innerText = "STOP";
+                btn.innerText = "ストップ";
             } else {
                 btn.style.display = 'none';
             }
@@ -437,25 +450,41 @@
             if (rouletteTimer) clearInterval(rouletteTimer);
             rouletteTimer = setInterval(() => {
                 rIdx = (rIdx + 1) % playerList.length;
-                text.innerText = playerList[rIdx].name;
-            }, 80);
+                text.innerText = `${rIdx + 1}`;
+            }, 60);
 
             btn.onclick = (e) => {
                 e.stopPropagation();
                 if (!isHost) return;
+                
+                // ゆっくりストップ演出
                 clearInterval(rouletteTimer);
                 btn.style.display = 'none';
-                btn.onclick = null;
                 
-                let firstTurn = rIdx;
-                orderedPlayerList = [];
-                for (let i = 0; i < playerList.length; i++) {
-                    let idx = (firstTurn + i) % playerList.length;
-                    orderedPlayerList.push(playerList[idx]);
-                }
+                let slowCount = 0;
+                let slowTimer = setInterval(() => {
+                    rIdx = (rIdx + 1) % playerList.length;
+                    text.innerText = `${rIdx + 1}`;
+                    slowCount++;
+                    if (slowCount >= 5) {
+                        clearInterval(slowTimer);
+                        
+                        // 振動演出＆大きく表示
+                        document.body.classList.add('shake');
+                        setTimeout(() => {
+                            document.body.classList.remove('shake');
+                            
+                            orderedPlayerList = [];
+                            for (let i = 0; i < playerList.length; i++) {
+                                let idx = (rIdx + i) % playerList.length;
+                                orderedPlayerList.push(playerList[idx]);
+                            }
 
-                broadcast({ type: 'ROULETTE_RESULT', orderedList: orderedPlayerList });
-                showOrderConfirmationUI(orderedPlayerList);
+                            broadcast({ type: 'ROULETTE_RESULT', orderedList: orderedPlayerList });
+                            showOrderConfirmationUI(orderedPlayerList);
+                        }, 500);
+                    }
+                }, 200);
             };
         }
 
@@ -469,18 +498,18 @@
             const btn = document.getElementById('overlay-btn');
 
             overlay.style.display = 'flex';
-            text.innerText = "【 PLAY ORDER 】";
+            text.innerText = "【 順番決定 】";
 
             let listHtml = `<div class="order-list">`;
             orderedPlayerList.forEach((p, idx) => {
-                listHtml += `<div class="order-item"><span class="order-num">${idx + 1}番:</span>${p.name}</div>`;
+                listHtml += `<div class="order-item"><span class="order-num">${idx + 1}番目:</span>${p.name}</div>`;
             });
             listHtml += `</div>`;
 
             if (isHost) {
                 sub.innerHTML = listHtml;
                 btn.style.display = 'block';
-                btn.innerText = "BATTLE START";
+                btn.innerText = "対戦スタート";
                 btn.onclick = (e) => {
                     e.stopPropagation();
                     btn.onclick = null;
@@ -489,7 +518,7 @@
                     startGameAction();
                 };
             } else {
-                sub.innerHTML = listHtml + `<div class="blink" style="color:#00ffff; margin-top:10px;">WAITING FOR HOST...</div>`;
+                sub.innerHTML = listHtml + `<div class="blink" style="color:#00ffff; margin-top:8px;">自動でゲームスタートします...</div>`;
                 btn.style.display = 'none';
             }
         }
@@ -503,11 +532,13 @@
             myTurnIndex = playerList.findIndex(p => p.name === myName);
             currentTurnIndex = 0;
 
-            generateInitialBoard();
+            if (isHost) {
+                generateInitialBoard();
+            }
             updateTurnUI();
         }
 
-        // --- タイマー (ローカル管理化でラグ・ズレを完全追放) ---
+        // --- タイマー管理 ---
         let turnTime = 10;
         let timerInterval = null;
 
@@ -521,11 +552,22 @@
                 turnTime--;
                 document.getElementById('gui-timer').innerText = turnTime;
 
+                // 残り5秒で画面中央に大きくカウントダウン表示
+                if (turnTime <= 5 && turnTime > 0) {
+                    let overlay = document.getElementById('overlay');
+                    let text = document.getElementById('overlay-text');
+                    overlay.style.display = 'flex';
+                    text.innerText = turnTime;
+                    text.style.color = "#ff0055";
+                    text.style.fontSize = "4.0rem";
+                }
+
                 if (turnTime <= 0) {
                     stopLocalTurnTimer();
-                    // 制限時間切れの場合は自動でパスして次のターンへ移行
-                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: getNextTurnIndex() });
-                    nextTurn(getNextTurnIndex());
+                    document.getElementById('overlay').style.display = 'none';
+                    let nextIdx = getNextTurnIndex();
+                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                    nextTurn(nextIdx);
                 }
             }, 1000);
         }
@@ -534,6 +576,7 @@
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = null;
             document.getElementById('gui-timer').innerText = "-";
+            document.getElementById('overlay').style.display = 'none';
         }
 
         function getNextTurnIndex() {
@@ -569,12 +612,13 @@
                 const text = document.getElementById('overlay-text');
                 overlay.style.display = 'flex';
                 text.innerText = "1回休み";
+                text.style.fontSize = "2.0rem";
                 setTimeout(() => {
                     overlay.style.display = 'none';
                     let nextIdx = getNextTurnIndex();
                     sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
                     nextTurn(nextIdx);
-                }, 700);
+                }, 1000);
             } else {
                 let nextIdx = getNextTurnIndex();
                 nextTurn(nextIdx);
@@ -584,7 +628,6 @@
         function updateTurnUI() {
             let isMyTurn = (currentTurnIndex === myTurnIndex);
             let status = document.getElementById('gui-turn-status');
-            const banner = document.getElementById('turn-banner');
 
             document.getElementById('overlay').style.display = 'none';
 
@@ -593,9 +636,7 @@
                 status.style.color = "#00ff00";
                 status.style.textShadow = "0 0 5px #00ff00";
                 status.classList.add('blink');
-                banner.style.display = 'none';
 
-                // ★自分のターンの時だけローカルでタイマー開始！
                 startLocalTurnTimer();
             } else {
                 let currentName = playerList[currentTurnIndex].name;
@@ -604,18 +645,14 @@
                 status.style.textShadow = "0 0 5px #ff0055";
                 status.classList.remove('blink');
 
-                banner.innerText = `【 ${currentName} 】のターン`;
-                banner.style.display = 'block';
-
                 stopLocalTurnTimer();
             }
         }
 
-        // --- 盤面・パズル・物理エンジン ---
+        // --- キャンバス・パズル物理エンジン ---
         let canvas, ctx;
         const COLS = 7;
         let radius = 0;
-        // ネオンカラーセット（ピンク・グリーン・シアン・イエロー・パープル）
         const COLORS = ['#ff0055', '#00ff66', '#00ffff', '#ffff00', '#cc00ff'];
         let board = {};
         let currentBall, nextColor;
@@ -649,7 +686,7 @@
             ctx = canvas.getContext('2d');
             resizeCanvas();
 
-            nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+            prepareNextBall();
             spawnBall();
 
             canvas.addEventListener('touchstart', handleTouchStart, {passive: false});
@@ -664,18 +701,26 @@
             for (let r = 0; r < 2; r++) {
                 for (let c = 0; c < COLS; c++) {
                     let pos = getGridCoord(r, c);
-                    board[`${r},${c}`] = {
-                        row: r, col: c, x: pos.x, y: pos.y,
-                        color: COLORS[Math.floor(Math.random() * COLORS.length)]
-                    };
+                    let color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                    board[`${r},${c}`] = { row: r, col: c, x: pos.x, y: pos.y, color: color };
                 }
             }
+            sendSignal({ type: 'SYNC_BOARD', board: board });
         }
 
         function getGridCoord(row, col) {
             let x = (col * radius * 2) + radius + (row % 2 === 1 ? radius * 0.5 : 0);
             let y = (row * radius * 1.732) + radius + 10;
             return { x, y };
+        }
+
+        function prepareNextBall() {
+            // 20%の確率でレインボー玉出現
+            if (Math.random() < 0.20) {
+                nextColor = 'RAINBOW';
+            } else {
+                nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+            }
         }
 
         function spawnBall() {
@@ -686,10 +731,16 @@
                 vx: 0, vy: 0,
                 isMoving: false
             };
-            nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+            prepareNextBall();
+
             let nextGui = document.getElementById('gui-next');
-            nextGui.style.background = nextColor;
-            nextGui.style.boxShadow = `0 0 10px ${nextColor}`;
+            if (nextColor === 'RAINBOW') {
+                nextGui.style.background = 'linear-gradient(45deg, red, yellow, green, cyan, blue, magenta)';
+                nextGui.style.boxShadow = `0 0 10px #ffffff`;
+            } else {
+                nextGui.style.background = nextColor;
+                nextGui.style.boxShadow = `0 0 10px ${nextColor}`;
+            }
         }
 
         function spawnItemBallOnBoard() {
@@ -698,9 +749,11 @@
             let targetKey = keys[Math.floor(Math.random() * keys.length)];
             if (!board[targetKey].isItem) {
                 board[targetKey].isItem = true;
+                sendSignal({ type: 'SPAWN_ITEM', key: targetKey });
             }
         }
 
+        /* タッチ・引っ張り発射操作 */
         function handleTouchStart(e) {
             e.preventDefault();
             if (currentTurnIndex !== myTurnIndex || isGameOver || !isGameStarted || isProcessingOjama) return;
@@ -730,18 +783,20 @@
                 let vx = dx * 0.15;
                 let vy = dy * 0.15;
 
+                // 貫通アイテム使用時の壁反射2回制限チェック
                 if (isPenetrateMode && checkBounceCountLimit(vx, vy) >= 2) {
                     alert("壁での反射が2回以上になるため発射できません！");
                     dragStart = null; dragCurrent = null;
                     return;
                 }
 
-                // ★発射した瞬間に自分のタイマーを即時停止！
                 stopLocalTurnTimer();
 
                 currentBall.vx = vx;
                 currentBall.vy = vy;
                 currentBall.isMoving = true;
+
+                sendSignal({ type: 'SHOOT_BALL', vx: vx, vy: vy, color: currentBall.color });
             }
             dragStart = null; dragCurrent = null;
         }
@@ -759,15 +814,18 @@
             return bounces;
         }
 
-        function sendSignal(data) {
-            if (isHost) broadcast(data);
-            else if (hostConn) hostConn.send(data);
-        }
-
         function processGameSignal(data) {
             if (data.type === 'START_ROULETTE') runRouletteUI();
             else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
             else if (data.type === 'START_GAME_ACTION') startGameAction();
+            else if (data.type === 'SYNC_BOARD') board = data.board;
+            else if (data.type === 'SPAWN_ITEM') { if (board[data.key]) board[data.key].isItem = true; }
+            else if (data.type === 'SHOOT_BALL') {
+                if (currentBall) {
+                    currentBall.vx = data.vx; currentBall.vy = data.vy;
+                    currentBall.color = data.color; currentBall.isMoving = true;
+                }
+            }
             else if (data.type === 'TURN_CHANGE') nextTurn(data.nextTurnIndex);
             else if (data.type === 'OJAMA_ATTACK') receiveOjama(data.count, data.targetIndex);
             else if (data.type === 'SKIP_APPLIED') skipTargetName = data.targetName;
@@ -778,29 +836,29 @@
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // デッドライン表示（赤色サイバー光線）
+            // 限界Line表示（発射位置から2玉上の横点線）
             let limitY = getGridCoord(10, 0).y;
             ctx.beginPath();
-            ctx.setLineDash([8, 6]);
+            ctx.setLineDash([6, 6]);
             ctx.moveTo(0, limitY); ctx.lineTo(canvas.width, limitY);
             ctx.strokeStyle = "#ff0055"; ctx.lineWidth = 2; 
             ctx.shadowColor = "#ff0055"; ctx.shadowBlur = 8;
             ctx.stroke();
             ctx.setLineDash([]);
-            ctx.shadowBlur = 0; // リセット
+            ctx.shadowBlur = 0;
 
-            // 盤面の玉描画（ネオン発光）
+            // 盤面の玉描画
             Object.values(board).forEach(b => {
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, radius - 1, 0, Math.PI * 2);
                 ctx.fillStyle = b.color;
                 ctx.shadowColor = b.color;
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = 8;
                 ctx.fill();
 
                 if (b.isItem) {
                     ctx.strokeStyle = "#ffff00"; ctx.lineWidth = 3; ctx.stroke();
-                    ctx.fillStyle = "#ffffff"; ctx.font = "bold 14px sans-serif";
+                    ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px sans-serif";
                     ctx.textAlign = "center"; ctx.textBaseline = "middle";
                     ctx.fillText("?", b.x, b.y);
                 }
@@ -808,7 +866,7 @@
             });
             ctx.shadowBlur = 0;
 
-            // 発射玉描画
+            // 発射玉描画＆移動処理
             if (currentBall) {
                 if (currentBall.isMoving) {
                     currentBall.x += currentBall.vx;
@@ -831,26 +889,32 @@
                             isPenetrateMode = false;
                             spawnBall();
 
-                            // ターン交代信号を発信し即座にチェンジ
                             let nextIdx = getNextTurnIndex();
                             sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
                             nextTurn(nextIdx);
                         }
                     } else {
                         let hit = (currentBall.y - radius <= 0);
+                        let hitKey = null;
                         for (let key in board) {
                             let b = board[key];
                             if (Math.hypot(b.x - currentBall.x, b.y - currentBall.y) < radius * 1.8) {
-                                hit = true; break;
+                                hit = true; hitKey = key; break;
                             }
                         }
 
                         if (hit) {
                             currentBall.isMoving = false;
-                            snapToGrid(currentBall);
+                            
+                            // レインボー玉処理
+                            if (currentBall.color === 'RAINBOW' && hitKey && board[hitKey]) {
+                                handleRainbowHit(board[hitKey].color);
+                            } else {
+                                snapToGrid(currentBall);
+                            }
+                            
                             spawnBall();
 
-                            // ターン交代信号を発信し即座にチェンジ
                             let nextIdx = getNextTurnIndex();
                             sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
                             nextTurn(nextIdx);
@@ -862,7 +926,7 @@
                     ctx.beginPath();
                     ctx.moveTo(currentBall.x, currentBall.y);
                     ctx.lineTo(currentBall.x + (dragStart.x - dragCurrent.x), currentBall.y + (dragStart.y - dragCurrent.y));
-                    ctx.strokeStyle = "rgba(0, 255, 255, 0.7)";
+                    ctx.strokeStyle = "rgba(0, 255, 255, 0.8)";
                     ctx.lineWidth = 3;
                     ctx.shadowColor = "#00ffff"; ctx.shadowBlur = 8;
                     ctx.stroke();
@@ -871,8 +935,15 @@
 
                 ctx.beginPath();
                 ctx.arc(currentBall.x, currentBall.y, radius - 1, 0, Math.PI * 2);
-                ctx.fillStyle = currentBall.color;
-                ctx.shadowColor = currentBall.color; ctx.shadowBlur = 12;
+                if (currentBall.color === 'RAINBOW') {
+                    let grad = ctx.createLinearGradient(currentBall.x - radius, currentBall.y - radius, currentBall.x + radius, currentBall.y + radius);
+                    grad.addColorStop(0, 'red'); grad.addColorStop(0.2, 'yellow'); grad.addColorStop(0.4, 'green'); 
+                    grad.addColorStop(0.6, 'cyan'); grad.addColorStop(0.8, 'blue'); grad.addColorStop(1, 'magenta');
+                    ctx.fillStyle = grad;
+                } else {
+                    ctx.fillStyle = currentBall.color;
+                }
+                ctx.shadowBlur = 10;
                 ctx.fill();
                 ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke(); ctx.closePath();
                 ctx.shadowBlur = 0;
@@ -882,6 +953,22 @@
             updateFlyingOjama();
 
             requestAnimationFrame(gameLoop);
+        }
+
+        // レインボー玉の全消し（落下）処理
+        function handleRainbowHit(targetColor) {
+            let clearedCount = 0;
+            Object.keys(board).forEach(key => {
+                if (board[key].color === targetColor) {
+                    createFallingBall(board[key]);
+                    delete board[key];
+                    clearedCount++;
+                }
+            });
+            if (clearedCount > 0) {
+                addScoreAndAttack(clearedCount);
+                dropFloatingBalls();
+            }
         }
 
         function snapToGrid(ball) {
@@ -1035,15 +1122,16 @@
             }
         }
 
+        /* お邪魔玉の飛翔＆判定一時ストップ演出 */
         function receiveOjama(count, targetIdx) {
             if (myTurnIndex !== targetIdx) return;
-            isProcessingOjama = true;
+            isProcessingOjama = true; // 相手の勝利判定・脱落判定を一時ストップ
 
             for (let i = 0; i < count; i++) {
                 flyingOjama.push({
                     x: Math.random() * canvas.width,
                     y: canvas.height + radius * 2,
-                    speed: 7 + Math.random() * 5,
+                    speed: 6 + Math.random() * 4,
                     color: COLORS[Math.floor(Math.random() * COLORS.length)]
                 });
             }
@@ -1065,6 +1153,7 @@
                 }
             }
 
+            // 着地完了後に勝利・脱落判定を再開
             if (flyingOjama.length === 0 && isProcessingOjama) {
                 isProcessingOjama = false;
                 checkDefeatCondition();
@@ -1098,6 +1187,7 @@
             }
         }
 
+        /* アイテム獲得ルーレット */
         function triggerItemRoulette() {
             let totalStock = itemStocks.reduce((a, b) => a + b, 0);
             if (totalStock >= 5) return;
@@ -1109,10 +1199,11 @@
 
             overlay.style.display = 'flex';
             text.innerText = "ITEM ROULETTE";
+            text.style.fontSize = "1.8rem";
             btn.style.display = 'block';
-            btn.innerText = "STOP";
+            btn.innerText = "ストップ";
 
-            let items = ["2倍", "3倍", "スキップ", "貫通", "色替え", "ターゲット"];
+            let items = ["2倍", "3倍", "スキップ", "貫通", "色変更", "ミステリー"];
             let idx = 0;
             let timer = setInterval(() => {
                 idx = (idx + 1) % items.length;
@@ -1163,13 +1254,14 @@
             else if (type === 5) openMysteryRouletteModal();
         }
 
+        /* アイテム処理時のタイマーストップ */
         function openSkipModal() {
             stopLocalTurnTimer();
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
             
-            let html = `<h3 style="color:#00ffff;">SKIP TARGET</h3>`;
+            let html = `<h3 style="color:#00ffff;">スキップ対象選択</h3>`;
             playerList.forEach((p, i) => {
                 if (i !== myTurnIndex && p.active) {
                     html += `<div class="btn" onclick="applySkip('${p.name}')">${p.name}</div>`;
@@ -1190,7 +1282,7 @@
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
 
-            let html = `<h3 style="color:#00ffff;">【1】SELECT SOURCE COLOR</h3><div>`;
+            let html = `<h3 style="color:#00ffff;">【1】変更元の色を選択</h3><div>`;
             COLORS.forEach(c => {
                 html += `<div class="color-btn" style="background:${c};" onclick="selectSourceColor('${c}')"></div>`;
             });
@@ -1201,7 +1293,7 @@
         function selectSourceColor(color) {
             selectedSrcColor = color;
             let content = document.getElementById('item-modal-content');
-            let html = `<h3 style="color:#00ffff;">【2】SELECT TARGET COLOR</h3><div>`;
+            let html = `<h3 style="color:#00ffff;">【2】変更先の色を選択</h3><div>`;
             COLORS.forEach(c => {
                 html += `<div class="color-btn" style="background:${c};" onclick="applyColorChange('${c}')"></div>`;
             });
@@ -1214,6 +1306,7 @@
             Object.values(board).forEach(b => {
                 if (b.color === selectedSrcColor) b.color = targetColor;
             });
+            sendSignal({ type: 'SYNC_BOARD', board: board });
         }
 
         function openMysteryRouletteModal() {
@@ -1224,7 +1317,7 @@
 
             overlay.style.display = 'flex';
             btn.style.display = 'block';
-            btn.innerText = "STOP";
+            btn.innerText = "ストップ";
 
             let targets = playerList.filter((p, i) => i !== myTurnIndex && p.active);
             let idx = 0;
@@ -1241,7 +1334,7 @@
 
                 let chosenTarget = targets[idx];
                 mysteryTargetIndex = playerList.findIndex(p => p.name === chosenTarget.name);
-                text.innerText = `${chosenTarget.name}\n集中攻撃！`;
+                text.innerText = `${chosenTarget.name}\nターゲット決定！`;
 
                 setTimeout(() => {
                     overlay.style.display = 'none';
@@ -1250,18 +1343,17 @@
             };
         }
 
+        /* 勝敗判定・脱落演出 */
         function handlePlayerDefeat(defIdx) {
             playerList[defIdx].active = false;
             if (defIdx === myTurnIndex) {
                 stopLocalTurnTimer();
                 let overlay = document.getElementById('overlay');
                 let text = document.getElementById('overlay-text');
-                let sub = document.getElementById('overlay-sub');
                 overlay.style.display = 'flex';
-                text.innerText = "SYSTEM OFFLINE\n(脱落)";
+                text.innerText = "脱落";
                 text.style.color = "#ff0055";
-                sub.innerText = "他プレイヤーの対戦を観戦中...";
-                sub.classList.add('blink');
+                document.getElementById('spectate-banner').style.display = 'block';
             }
 
             let activePlayers = playerList.filter(p => p.active);
@@ -1273,18 +1365,20 @@
         function handleWin(winnerName) {
             isGameOver = true;
             stopLocalTurnTimer();
+            document.getElementById('spectate-banner').style.display = 'none';
+
             const overlay = document.getElementById('overlay');
             const text = document.getElementById('overlay-text');
             const sub = document.getElementById('overlay-sub');
             overlay.style.display = 'flex';
-            text.innerText = `${winnerName}\nVICTORY!`;
+            text.innerText = `${winnerName}\nWIN`;
             text.style.color = "#00ffff";
-            sub.classList.remove('blink');
-            sub.innerHTML = `<div class="btn" onclick="reMatchFlow()">REMATCH / EXIT</div>`;
+            sub.innerHTML = `<div class="btn" onclick="reMatchFlow()">再戦 / 終了</div>`;
 
             startFireworks();
         }
 
+        /* 花火パーティクル演出 */
         let fireworks = [];
         function startFireworks() {
             for (let i = 0; i < 60; i++) {
@@ -1317,10 +1411,11 @@
             requestAnimationFrame(animateFireworks);
         }
 
+        /* 再戦フロー */
         function reMatchFlow() {
             if (isHost) {
                 let activeCnt = playerList.length;
-                if (confirm(`現在の参加人数は ${activeCnt} 名です。再戦しますか？`)) {
+                if (confirm(`参加人数：${activeCnt}名\nこの人数で再戦でよろしいですか？`)) {
                     isGameOver = false;
                     isGameStarted = false;
                     startRouletteSequence();
@@ -1328,7 +1423,7 @@
                     location.reload();
                 }
             } else {
-                alert("ホストの再戦操作を待っています...");
+                alert("ホストが再戦設定を行っています。しばらくお待ちください。");
             }
         }
     </script>
