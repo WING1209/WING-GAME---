@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING🔷パズル対戦〇</title>
+    <title>⚡ CYBER WING PUZZLE ⚡</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -11,24 +11,45 @@
             user-select: none; -webkit-user-select: none;
             -webkit-touch-callout: none;
             touch-action: manipulation;
+            font-family: 'Consolas', 'Courier New', -apple-system, BlinkMacSystemFont, sans-serif;
         }
         
         html, body { 
             width: 100vw; height: 100dvh; 
-            overflow: hidden; background: #000; 
-            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", Roboto, sans-serif; 
-            color: #fff; overscroll-behavior: none;
+            overflow: hidden; 
+            background: #030308;
+            color: #00ffff; overscroll-behavior: none;
+        }
+
+        /* サイバーグリッド背景 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: 
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+            z-index: 1;
         }
 
         #pc-block-screen {
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
-            background: #111; color: #ff3366; z-index: 9999;
+            background: #050510; color: #ff0055; z-index: 9999;
             flex-direction: column; justify-content: center; align-items: center;
             text-align: center; padding: 20px; font-weight: bold;
+            text-shadow: 0 0 10px #ff0055;
         }
 
         .blink { animation: blinker 1.2s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
+        @keyframes blinker { 50% { opacity: 0.2; } }
+
+        .pulse-neon { animation: pulse 1.5s infinite alternate; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 5px #ff0055, inset 0 0 5px #ff0055; }
+            100% { box-shadow: 0 0 15px #ff0055, inset 0 0 10px #ff0055; }
+        }
 
         .shake { animation: shake 0.4s; }
         @keyframes shake {
@@ -48,11 +69,34 @@
         }
         .active { display: flex; }
 
-        #title-screen h1 { font-size: 2rem; color: #00ffff; text-shadow: 0 0 15px #00ffff; text-align: center; font-weight: bold; }
-        .btn { background: #222; border: 2px solid #00ffff; color: #fff; padding: 12px; margin: 8px; font-size: 1.1rem; border-radius: 8px; width: 220px; text-align: center; cursor: pointer; }
-        .btn:active { background: #00ffff; color: #000; }
-        .btn-opt { width: 50px; height: 50px; line-height: 24px; padding: 10px 0; margin: 5px; font-weight: bold; font-size: 1.2rem; }
-        input[type="text"] { font-size: 1.2rem; padding: 10px; text-align: center; margin: 10px; border-radius: 8px; border: none; width: 80%; max-width: 280px; color: #000; }
+        h1 { 
+            font-size: 2.2rem; color: #00ffff; 
+            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 40px #00ffff; 
+            text-align: center; font-weight: 900; letter-spacing: 2px;
+        }
+
+        .btn { 
+            background: rgba(10, 15, 30, 0.8); 
+            border: 2px solid #00ffff; color: #00ffff; 
+            padding: 12px; margin: 8px; font-size: 1.1rem; font-weight: bold;
+            border-radius: 4px; width: 230px; text-align: center; cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            text-shadow: 0 0 5px #00ffff;
+            transition: all 0.2s ease;
+        }
+        .btn:active { 
+            background: #00ffff; color: #000; 
+            box-shadow: 0 0 20px #00ffff;
+        }
+        .btn-opt { width: 55px; height: 55px; line-height: 28px; padding: 10px 0; margin: 5px; font-weight: bold; font-size: 1.3rem; }
+
+        input[type="text"] { 
+            font-size: 1.2rem; padding: 12px; text-align: center; margin: 10px; 
+            border-radius: 4px; border: 2px solid #ff0055; width: 80%; max-width: 280px; 
+            background: #0a0a15; color: #00ffff;
+            box-shadow: 0 0 10px rgba(255, 0, 85, 0.4);
+            outline: none;
+        }
 
         #game-screen { 
             display: none; flex-direction: row; 
@@ -60,74 +104,94 @@
             overflow: hidden;
         }
         #canvas-panel { 
-            flex: 1; height: 100dvh; position: relative; background: #050505; 
+            flex: 1; height: 100dvh; position: relative; background: #020205; 
             overflow: hidden; touch-action: none;
         }
         canvas { width: 100%; height: 100%; display: block; touch-action: none; }
 
+        /* サイバーGUIパネル */
         #gui-panel { 
-            width: 110px; height: 100dvh; background: #111; border-left: 2px solid #333; 
+            width: 115px; height: 100dvh; 
+            background: rgba(5, 8, 20, 0.95); 
+            border-left: 2px solid #00ffff; 
+            box-shadow: -5px 0 15px rgba(0, 255, 255, 0.2);
             display: flex; flex-direction: column; justify-content: space-between; 
-            padding: calc(env(safe-area-inset-top) + 4px) 4px calc(env(safe-area-inset-bottom) + 4px) 4px; 
-            font-size: 0.7rem; z-index: 25; flex-shrink: 0;
+            padding: calc(env(safe-area-inset-top) + 6px) 6px calc(env(safe-area-inset-bottom) + 6px) 6px; 
+            font-size: 0.75rem; z-index: 25; flex-shrink: 0;
         }
+
+        .gui-label { color: #667799; font-weight: bold; font-size: 0.65rem; letter-spacing: 1px; }
 
         .item-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
         .item-row { 
-            background: #2a2a2a; padding: 6px 2px; border-radius: 6px; text-align: center; 
-            border: 1px solid #444; font-size: 0.65rem; color: #666; cursor: pointer;
-            display: flex; justify-content: space-between; padding-left: 6px; padding-right: 6px;
+            background: rgba(20, 25, 45, 0.8); padding: 6px 4px; border-radius: 3px; text-align: center; 
+            border: 1px solid #334466; font-size: 0.65rem; color: #556688; cursor: pointer;
+            display: flex; justify-content: space-between;
         }
-        .item-active { border-color: #00ff00; color: #fff; background: #004400; font-weight: bold; box-shadow: 0 0 6px #00ff00; }
+        .item-active { 
+            border-color: #00ff00; color: #00ff00; background: rgba(0, 255, 0, 0.1); 
+            font-weight: bold; box-shadow: 0 0 8px rgba(0, 255, 0, 0.4); 
+            text-shadow: 0 0 5px #00ff00;
+        }
 
-        /* 全画面オーバーレイ（勝利時・ダイアログ用） */
         .overlay { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); display: none; flex-direction: column; 
+            background: rgba(2, 2, 8, 0.88); display: none; flex-direction: column; 
             justify-content: center; align-items: center; z-index: 100; text-align: center; padding: 15px;
-            pointer-events: auto;
+            pointer-events: auto; backdrop-filter: blur(4px);
         }
-        .big-text { font-size: 1.6rem; color: #ff0; text-shadow: 0 0 15px #ff0; font-weight: bold; word-break: break-all; white-space: pre-wrap; }
+        .big-text { 
+            font-size: 1.8rem; color: #ffff00; 
+            text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00; 
+            font-weight: bold; word-break: break-all; white-space: pre-wrap; 
+        }
         
-        /* 相手ターン時の非透過・軽量バナー表示 */
+        /* 相手ターン時のスタイリッシュ横断バナー */
         #turn-banner {
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(20, 20, 20, 0.75); border: 2px solid #ff3366;
-            border-radius: 20px; padding: 6px 16px; font-size: 0.85rem; font-weight: bold;
-            color: #fff; text-shadow: 0 0 8px #ff3366; display: none; z-index: 30;
-            pointer-events: none; white-space: nowrap; box-shadow: 0 0 10px rgba(255, 51, 102, 0.5);
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            background: rgba(10, 5, 20, 0.85); 
+            border: 1.5px solid #ff0055;
+            border-radius: 20px; padding: 6px 18px; font-size: 0.85rem; font-weight: bold;
+            color: #ffffff; text-shadow: 0 0 8px #ff0055; display: none; z-index: 30;
+            pointer-events: none; white-space: nowrap; 
+            box-shadow: 0 0 12px rgba(255, 0, 85, 0.5);
+            letter-spacing: 1px;
         }
 
-        .select-box { background: #222; border: 2px solid #00ffff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 300px; }
-        .color-btn { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; display: inline-block; margin: 4px; cursor: pointer; }
+        .select-box { 
+            background: #080d1a; border: 2px solid #00ffff; border-radius: 8px; 
+            padding: 15px; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 300px; 
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        .color-btn { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; display: inline-block; margin: 4px; cursor: pointer; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
 
-        .order-list { margin: 15px 0; text-align: left; background: #111; padding: 12px; border-radius: 8px; border: 1px solid #00ffff; width: 85%; }
+        .order-list { margin: 15px 0; text-align: left; background: #050a15; padding: 12px; border-radius: 6px; border: 1px solid #00ffff; width: 85%; }
         .order-item { font-size: 1rem; margin: 4px 0; color: #fff; }
-        .order-num { color: #00ffff; font-weight: bold; margin-right: 6px; }
+        .order-num { color: #00ffff; font-weight: bold; margin-right: 6px; text-shadow: 0 0 5px #00ffff; }
     </style>
 </head>
 <body>
 
     <div id="pc-block-screen">
-        <h2>📱 スマートフォン専用</h2>
-        <p style="margin-top: 15px; color: #aaa; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
+        <h2>📱 スマホ専用</h2>
+        <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
     <!-- 1. タイトル画面 -->
     <div id="title-screen" class="screen active">
-        <h1>〇WINGパズル対戦〇</h1>
-        <div class="btn" style="margin-top: 40px;" onclick="goToMenu()">タップしてスタート</div>
+        <h1>CYBER WING<br><span style="font-size:1.4rem; color:#ff0055; text-shadow:0 0 10px #ff0055;">PUZZLE BATTLE</span></h1>
+        <div class="btn" style="margin-top: 40px;" onclick="goToMenu()">START GAME</div>
     </div>
 
     <!-- 2. メニュー画面 -->
     <div id="menu-screen" class="screen">
-        <div class="btn" onclick="selectHost()">① ホスト（部屋作成）</div>
-        <div class="btn" onclick="selectGuest()">② ゲスト（部屋参加）</div>
+        <div class="btn" onclick="selectHost()">① HOST (部屋作成)</div>
+        <div class="btn" onclick="selectGuest()">② GUEST (部屋参加)</div>
         <div class="btn" onclick="location.reload()">③ EXIT</div>
     </div>
 
     <div id="host-count-screen" class="screen">
-        <h3 style="margin-bottom:15px;">対戦人数を選択 (2〜5名)</h3>
+        <h3 style="margin-bottom:15px; color:#00ffff; text-shadow:0 0 5px #00ffff;">対戦人数 (2〜5名)</h3>
         <div style="display:flex;">
             <div class="btn btn-opt" onclick="setPlayerCount(2)">2</div>
             <div class="btn btn-opt" onclick="setPlayerCount(3)">3</div>
@@ -137,22 +201,22 @@
     </div>
 
     <div id="name-screen" class="screen">
-        <h3>名前を入力 (全角6文字)</h3>
+        <h3 style="color:#00ffff; text-shadow:0 0 5px #00ffff;">PLAYER NAME</h3>
         <input type="text" id="player-name-input" maxlength="6" placeholder="なまえ">
-        <div class="btn" onclick="submitName()">決定</div>
+        <div class="btn" onclick="submitName()">ENTER</div>
     </div>
 
     <div id="guest-code-screen" class="screen">
-        <h3>4桁のRoom Noを入力</h3>
+        <h3 style="color:#ff0055; text-shadow:0 0 5px #ff0055;">ROOM CODE (4桁)</h3>
         <input type="text" id="room-code-input" maxlength="4" placeholder="1234" inputmode="numeric">
-        <div class="btn" onclick="submitGuestCode()">次へ</div>
+        <div class="btn" onclick="submitGuestCode()">NEXT</div>
     </div>
 
     <div id="lobby-screen" class="screen">
-        <h2 id="room-display-title">ROOM: <span id="display-code" style="color:#00ffff;">----</span></h2>
-        <div id="lobby-status" class="blink" style="margin: 20px;">参加者を待ち待機中...</div>
-        <div id="player-list" style="margin-bottom:20px; color:#00ff00; line-height: 1.6; font-size: 1.1rem;"></div>
-        <div id="host-start-btn" class="btn" style="display:none;" onclick="startRouletteSequence()">ゲーム開始</div>
+        <h2 id="room-display-title">ROOM ID: <span id="display-code" style="color:#00ffff; text-shadow: 0 0 8px #00ffff;">----</span></h2>
+        <div id="lobby-status" class="blink" style="margin: 20px; color:#ff0055;">WAITING FOR PLAYERS...</div>
+        <div id="player-list" style="margin-bottom:20px; color:#00ff00; line-height: 1.6; font-size: 1.1rem; text-shadow:0 0 5px #00ff00;"></div>
+        <div id="host-start-btn" class="btn" style="display:none;" onclick="startRouletteSequence()">START BATTLE</div>
     </div>
 
     <!-- 3. スマホ対戦画面 -->
@@ -161,11 +225,11 @@
             <canvas id="gameCanvas"></canvas>
             
             <!-- 相手ターン時用の上部強調バナー（背景を隠さない） -->
-            <div id="turn-banner">〇〇 のターン</div>
+            <div id="turn-banner" class="pulse-neon">〇〇 のターン</div>
 
             <div id="overlay" class="overlay">
                 <div id="overlay-text" class="big-text"></div>
-                <div id="overlay-sub" style="margin-top:10px; color:#aaa; font-size:0.85rem;"></div>
+                <div id="overlay-sub" style="margin-top:10px; color:#88aacc; font-size:0.85rem;"></div>
                 <div id="overlay-btn" class="btn" style="display:none; margin-top:15px;">STOP</div>
             </div>
 
@@ -176,34 +240,36 @@
 
         <div id="gui-panel">
             <div>
-                <div style="color:#888;">PLAYER</div>
-                <div id="gui-name" style="color:#00ffff; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">-</div>
-                <div id="gui-turn-status" style="color:#ff3366; font-weight:bold; margin-top:2px;">-</div>
+                <div class="gui-label">PLAYER</div>
+                <div id="gui-name" style="color:#00ffff; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-shadow:0 0 5px #00ffff;">-</div>
+                <div id="gui-turn-status" style="color:#ff0055; font-weight:bold; margin-top:2px;">-</div>
             </div>
             
             <div>
-                <div style="color:#888;">TIME</div>
-                <div id="gui-timer" style="color:#ff0; font-size:1.2rem; font-weight:bold;">10</div>
+                <div class="gui-label">TIME</div>
+                <div id="gui-timer" style="color:#ffff00; font-size:1.3rem; font-weight:bold; text-shadow:0 0 8px #ffff00;">10</div>
             </div>
 
             <div>
-                <div style="color:#888;">SCORE</div>
-                <div id="gui-score" style="color:#ff0; font-weight:bold;">0/500</div>
+                <div class="gui-label">SCORE</div>
+                <div id="gui-score" style="color:#ffff00; font-weight:bold; text-shadow:0 0 5px #ffff00;">0/500</div>
             </div>
 
             <div style="text-align:center;">
-                <div style="color:#888;">NEXT</div>
-                <div id="gui-next" style="width:20px; height:20px; border-radius:50%; background:#fff; margin:2px auto; border:1px solid #fff;"></div>
+                <div class="gui-label">NEXT</div>
+                <div id="gui-next" style="width:22px; height:22px; border-radius:50%; background:#fff; margin:3px auto; border:1px solid #fff; box-shadow:0 0 8px #fff;"></div>
             </div>
 
-            <div style="color:#888;">ITEMS (<span id="item-total-count">0</span>/5)</div>
-            <div class="item-list">
-                <div class="item-row" id="item-btn-0" onclick="useItem(0)"><span>2倍</span><span id="stock-0">0</span></div>
-                <div class="item-row" id="item-btn-1" onclick="useItem(1)"><span>3倍</span><span id="stock-1">0</span></div>
-                <div class="item-row" id="item-btn-2" onclick="useItem(2)"><span>スキップ</span><span id="stock-2">0</span></div>
-                <div class="item-row" id="item-btn-3" onclick="useItem(3)"><span>貫通</span><span id="stock-3">0</span></div>
-                <div class="item-row" id="item-btn-4" onclick="useItem(4)"><span>色替え</span><span id="stock-4">0</span></div>
-                <div class="item-row" id="item-btn-5" onclick="useItem(5)"><span>ミステリー</span><span id="stock-5">0</span></div>
+            <div>
+                <div class="gui-label">ITEMS (<span id="item-total-count">0</span>/5)</div>
+                <div class="item-list" style="margin-top:3px;">
+                    <div class="item-row" id="item-btn-0" onclick="useItem(0)"><span>2倍</span><span id="stock-0">0</span></div>
+                    <div class="item-row" id="item-btn-1" onclick="useItem(1)"><span>3倍</span><span id="stock-1">0</span></div>
+                    <div class="item-row" id="item-btn-2" onclick="useItem(2)"><span>スキップ</span><span id="stock-2">0</span></div>
+                    <div class="item-row" id="item-btn-3" onclick="useItem(3)"><span>貫通</span><span id="stock-3">0</span></div>
+                    <div class="item-row" id="item-btn-4" onclick="useItem(4)"><span>色替え</span><span id="stock-4">0</span></div>
+                    <div class="item-row" id="item-btn-5" onclick="useItem(5)"><span>ターゲット</span><span id="stock-5">0</span></div>
+                </div>
             </div>
         </div>
     </div>
@@ -277,7 +343,7 @@
             switchScreen('lobby-screen');
         }
 
-        const PEER_PREFIX = "wing-puzzle-2026-";
+        const PEER_PREFIX = "cyber-puzzle-2026-";
 
         function initPeerHost() {
             peer = new Peer(PEER_PREFIX + roomCode);
@@ -311,7 +377,7 @@
                     broadcast({ type: 'PLAYER_LIST', list: playerList });
                     if (playerList.length === maxPlayers) {
                         document.getElementById('host-start-btn').style.display = 'block';
-                        document.getElementById('lobby-status').innerText = "全員揃いました！";
+                        document.getElementById('lobby-status').innerText = "ALL PLAYERS READY!";
                     }
                 }
             } else {
@@ -403,18 +469,18 @@
             const btn = document.getElementById('overlay-btn');
 
             overlay.style.display = 'flex';
-            text.innerText = "【 プレイ順番決定 】";
+            text.innerText = "【 PLAY ORDER 】";
 
             let listHtml = `<div class="order-list">`;
             orderedPlayerList.forEach((p, idx) => {
-                listHtml += `<div class="order-item"><span class="order-num">${idx + 1}番目:</span>${p.name}</div>`;
+                listHtml += `<div class="order-item"><span class="order-num">${idx + 1}番:</span>${p.name}</div>`;
             });
             listHtml += `</div>`;
 
             if (isHost) {
                 sub.innerHTML = listHtml;
                 btn.style.display = 'block';
-                btn.innerText = "対戦スタート！";
+                btn.innerText = "BATTLE START";
                 btn.onclick = (e) => {
                     e.stopPropagation();
                     btn.onclick = null;
@@ -423,7 +489,7 @@
                     startGameAction();
                 };
             } else {
-                sub.innerHTML = listHtml + `<div class="blink" style="color:#00ffff; margin-top:10px;">ホストの対戦開始を待っています...</div>`;
+                sub.innerHTML = listHtml + `<div class="blink" style="color:#00ffff; margin-top:10px;">WAITING FOR HOST...</div>`;
                 btn.style.display = 'none';
             }
         }
@@ -439,38 +505,50 @@
 
             generateInitialBoard();
             updateTurnUI();
-            startTurnTimer();
         }
 
-        // --- タイマー ＆ ターン制御 ---
+        // --- タイマー (ローカル管理化でラグ・ズレを完全追放) ---
         let turnTime = 10;
-        let timerInterval;
-        let isTimerPaused = false;
+        let timerInterval = null;
 
-        function startTurnTimer() {
+        function startLocalTurnTimer() {
+            stopLocalTurnTimer();
             turnTime = 10;
-            isTimerPaused = false;
             document.getElementById('gui-timer').innerText = turnTime;
-            clearInterval(timerInterval);
+
             timerInterval = setInterval(() => {
-                if (isTimerPaused || isGameOver || isProcessingOjama) return;
+                if (isGameOver || isProcessingOjama) return;
                 turnTime--;
                 document.getElementById('gui-timer').innerText = turnTime;
 
                 if (turnTime <= 0) {
-                    stopTurnTimer();
-                    nextTurn();
+                    stopLocalTurnTimer();
+                    // 制限時間切れの場合は自動でパスして次のターンへ移行
+                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: getNextTurnIndex() });
+                    nextTurn(getNextTurnIndex());
                 }
             }, 1000);
         }
 
-        function stopTurnTimer() {
-            clearInterval(timerInterval);
+        function stopLocalTurnTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = null;
             document.getElementById('gui-timer').innerText = "-";
         }
 
-        function nextTurn() {
+        function getNextTurnIndex() {
+            let nextIdx = currentTurnIndex;
+            do {
+                nextIdx = (nextIdx + 1) % playerList.length;
+            } while (!playerList[nextIdx].active);
+            return nextIdx;
+        }
+
+        function nextTurn(targetTurnIndex) {
             if (isGameOver) return;
+            stopLocalTurnTimer();
+
+            currentTurnIndex = targetTurnIndex;
 
             if (skipTargetName === playerList[currentTurnIndex].name) {
                 skipTargetName = null;
@@ -478,16 +556,11 @@
                 return;
             }
 
-            do {
-                currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
-            } while (!playerList[currentTurnIndex].active);
-
             if (currentTurnIndex === myTurnIndex && Math.random() < 0.20) {
                 spawnItemBallOnBoard();
             }
 
             updateTurnUI();
-            startTurnTimer();
         }
 
         function showSkipNoticeAndNext() {
@@ -498,18 +571,13 @@
                 text.innerText = "1回休み";
                 setTimeout(() => {
                     overlay.style.display = 'none';
-                    do {
-                        currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
-                    } while (!playerList[currentTurnIndex].active);
-                    updateTurnUI();
-                    startTurnTimer();
+                    let nextIdx = getNextTurnIndex();
+                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                    nextTurn(nextIdx);
                 }, 700);
             } else {
-                do {
-                    currentTurnIndex = (currentTurnIndex + 1) % playerList.length;
-                } while (!playerList[currentTurnIndex].active);
-                updateTurnUI();
-                startTurnTimer();
+                let nextIdx = getNextTurnIndex();
+                nextTurn(nextIdx);
             }
         }
 
@@ -518,23 +586,28 @@
             let status = document.getElementById('gui-turn-status');
             const banner = document.getElementById('turn-banner');
 
-            // 暗いオーバーレイは削除し、背景は100%明るいまま保持
             document.getElementById('overlay').style.display = 'none';
 
             if (isMyTurn) {
-                status.innerText = "★あなたの番";
+                status.innerText = "★YOUR TURN";
                 status.style.color = "#00ff00";
+                status.style.textShadow = "0 0 5px #00ff00";
                 status.classList.add('blink');
                 banner.style.display = 'none';
+
+                // ★自分のターンの時だけローカルでタイマー開始！
+                startLocalTurnTimer();
             } else {
                 let currentName = playerList[currentTurnIndex].name;
                 status.innerText = `${currentName}の番`;
-                status.style.color = "#ff3366";
+                status.style.color = "#ff0055";
+                status.style.textShadow = "0 0 5px #ff0055";
                 status.classList.remove('blink');
 
-                // 盤面上部に強調スリムバナーを表示（盤面を隠さない）
                 banner.innerText = `【 ${currentName} 】のターン`;
                 banner.style.display = 'block';
+
+                stopLocalTurnTimer();
             }
         }
 
@@ -542,7 +615,8 @@
         let canvas, ctx;
         const COLS = 7;
         let radius = 0;
-        const COLORS = ['#ff3366', '#33cc66', '#3399ff', '#ffcc00', '#cc33ff'];
+        // ネオンカラーセット（ピンク・グリーン・シアン・イエロー・パープル）
+        const COLORS = ['#ff0055', '#00ff66', '#00ffff', '#ffff00', '#cc00ff'];
         let board = {};
         let currentBall, nextColor;
         let dragStart = null, dragCurrent = null;
@@ -613,7 +687,9 @@
                 isMoving: false
             };
             nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-            document.getElementById('gui-next').style.background = nextColor;
+            let nextGui = document.getElementById('gui-next');
+            nextGui.style.background = nextColor;
+            nextGui.style.boxShadow = `0 0 10px ${nextColor}`;
         }
 
         function spawnItemBallOnBoard() {
@@ -627,7 +703,7 @@
 
         function handleTouchStart(e) {
             e.preventDefault();
-            if (currentTurnIndex !== myTurnIndex || isGameOver || !isGameStarted || isTimerPaused || isProcessingOjama) return;
+            if (currentTurnIndex !== myTurnIndex || isGameOver || !isGameStarted || isProcessingOjama) return;
             if (!currentBall || currentBall.isMoving) return;
             let touch = e.touches[0];
             let rect = canvas.getBoundingClientRect();
@@ -660,8 +736,8 @@
                     return;
                 }
 
-                // 発射した瞬間に持ち時間タイマーを即時停止！
-                stopTurnTimer();
+                // ★発射した瞬間に自分のタイマーを即時停止！
+                stopLocalTurnTimer();
 
                 currentBall.vx = vx;
                 currentBall.vy = vy;
@@ -692,6 +768,7 @@
             if (data.type === 'START_ROULETTE') runRouletteUI();
             else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
             else if (data.type === 'START_GAME_ACTION') startGameAction();
+            else if (data.type === 'TURN_CHANGE') nextTurn(data.nextTurnIndex);
             else if (data.type === 'OJAMA_ATTACK') receiveOjama(data.count, data.targetIndex);
             else if (data.type === 'SKIP_APPLIED') skipTargetName = data.targetName;
             else if (data.type === 'GAME_OVER') handlePlayerDefeat(data.playerIndex);
@@ -701,28 +778,37 @@
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // デッドライン表示（赤色サイバー光線）
             let limitY = getGridCoord(10, 0).y;
             ctx.beginPath();
-            ctx.setLineDash([6, 6]);
+            ctx.setLineDash([8, 6]);
             ctx.moveTo(0, limitY); ctx.lineTo(canvas.width, limitY);
-            ctx.strokeStyle = "#ff3333"; ctx.lineWidth = 2; ctx.stroke();
+            ctx.strokeStyle = "#ff0055"; ctx.lineWidth = 2; 
+            ctx.shadowColor = "#ff0055"; ctx.shadowBlur = 8;
+            ctx.stroke();
             ctx.setLineDash([]);
+            ctx.shadowBlur = 0; // リセット
 
+            // 盤面の玉描画（ネオン発光）
             Object.values(board).forEach(b => {
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, radius - 1, 0, Math.PI * 2);
                 ctx.fillStyle = b.color;
+                ctx.shadowColor = b.color;
+                ctx.shadowBlur = 10;
                 ctx.fill();
 
                 if (b.isItem) {
-                    ctx.strokeStyle = "#ffd700"; ctx.lineWidth = 3; ctx.stroke();
-                    ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif";
+                    ctx.strokeStyle = "#ffff00"; ctx.lineWidth = 3; ctx.stroke();
+                    ctx.fillStyle = "#ffffff"; ctx.font = "bold 14px sans-serif";
                     ctx.textAlign = "center"; ctx.textBaseline = "middle";
                     ctx.fillText("?", b.x, b.y);
                 }
                 ctx.closePath();
             });
+            ctx.shadowBlur = 0;
 
+            // 発射玉描画
             if (currentBall) {
                 if (currentBall.isMoving) {
                     currentBall.x += currentBall.vx;
@@ -744,8 +830,11 @@
                             currentBall.isMoving = false;
                             isPenetrateMode = false;
                             spawnBall();
-                            // アイドリングなしで直ちに次のターンへ
-                            nextTurn();
+
+                            // ターン交代信号を発信し即座にチェンジ
+                            let nextIdx = getNextTurnIndex();
+                            sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                            nextTurn(nextIdx);
                         }
                     } else {
                         let hit = (currentBall.y - radius <= 0);
@@ -760,8 +849,11 @@
                             currentBall.isMoving = false;
                             snapToGrid(currentBall);
                             spawnBall();
-                            // アイドリングなしで直ちに次のターンへ
-                            nextTurn();
+
+                            // ターン交代信号を発信し即座にチェンジ
+                            let nextIdx = getNextTurnIndex();
+                            sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                            nextTurn(nextIdx);
                         }
                     }
                 }
@@ -770,15 +862,20 @@
                     ctx.beginPath();
                     ctx.moveTo(currentBall.x, currentBall.y);
                     ctx.lineTo(currentBall.x + (dragStart.x - dragCurrent.x), currentBall.y + (dragStart.y - dragCurrent.y));
-                    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+                    ctx.strokeStyle = "rgba(0, 255, 255, 0.7)";
                     ctx.lineWidth = 3;
+                    ctx.shadowColor = "#00ffff"; ctx.shadowBlur = 8;
                     ctx.stroke();
+                    ctx.shadowBlur = 0;
                 }
 
                 ctx.beginPath();
                 ctx.arc(currentBall.x, currentBall.y, radius - 1, 0, Math.PI * 2);
-                ctx.fillStyle = currentBall.color; ctx.fill();
-                ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); ctx.closePath();
+                ctx.fillStyle = currentBall.color;
+                ctx.shadowColor = currentBall.color; ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke(); ctx.closePath();
+                ctx.shadowBlur = 0;
             }
 
             updateFallingBalls();
@@ -932,7 +1029,8 @@
                 fb.vy += 0.8; fb.x += fb.vx; fb.y += fb.vy;
                 ctx.beginPath();
                 ctx.arc(fb.x, fb.y, radius - 1, 0, Math.PI * 2);
-                ctx.fillStyle = fb.color; ctx.fill(); ctx.closePath();
+                ctx.fillStyle = fb.color; ctx.shadowColor = fb.color; ctx.shadowBlur = 6;
+                ctx.fill(); ctx.closePath(); ctx.shadowBlur = 0;
                 if (fb.y - radius > canvas.height) fallingBalls.splice(i, 1);
             }
         }
@@ -958,7 +1056,8 @@
                 
                 ctx.beginPath();
                 ctx.arc(fo.x, fo.y, radius - 1, 0, Math.PI * 2);
-                ctx.fillStyle = fo.color; ctx.fill(); ctx.closePath();
+                ctx.fillStyle = fo.color; ctx.shadowColor = fo.color; ctx.shadowBlur = 8;
+                ctx.fill(); ctx.closePath(); ctx.shadowBlur = 0;
 
                 if (fo.y <= canvas.height * 0.4) {
                     placeOjamaInGrid(fo.color);
@@ -1003,17 +1102,17 @@
             let totalStock = itemStocks.reduce((a, b) => a + b, 0);
             if (totalStock >= 5) return;
 
-            isTimerPaused = true;
+            stopLocalTurnTimer();
             const overlay = document.getElementById('overlay');
             const text = document.getElementById('overlay-text');
             const btn = document.getElementById('overlay-btn');
 
             overlay.style.display = 'flex';
-            text.innerText = "アイテムルーレット";
+            text.innerText = "ITEM ROULETTE";
             btn.style.display = 'block';
             btn.innerText = "STOP";
 
-            let items = ["2倍", "3倍", "スキップ", "貫通", "色替え", "ミステリー"];
+            let items = ["2倍", "3倍", "スキップ", "貫通", "色替え", "ターゲット"];
             let idx = 0;
             let timer = setInterval(() => {
                 idx = (idx + 1) % items.length;
@@ -1032,7 +1131,7 @@
                     itemStocks[idx]++;
                     updateItemUI();
                     overlay.style.display = 'none';
-                    isTimerPaused = false;
+                    if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
                 }, 500);
             };
         }
@@ -1051,7 +1150,7 @@
         }
 
         function useItem(type) {
-            if (currentTurnIndex !== myTurnIndex || itemStocks[type] <= 0 || isTimerPaused || !isGameStarted || isProcessingOjama) return;
+            if (currentTurnIndex !== myTurnIndex || itemStocks[type] <= 0 || !isGameStarted || isProcessingOjama) return;
             
             itemStocks[type]--;
             updateItemUI();
@@ -1065,12 +1164,12 @@
         }
 
         function openSkipModal() {
-            isTimerPaused = true;
+            stopLocalTurnTimer();
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
             
-            let html = `<h3>スキップする相手を選択</h3>`;
+            let html = `<h3 style="color:#00ffff;">SKIP TARGET</h3>`;
             playerList.forEach((p, i) => {
                 if (i !== myTurnIndex && p.active) {
                     html += `<div class="btn" onclick="applySkip('${p.name}')">${p.name}</div>`;
@@ -1081,17 +1180,17 @@
 
         function applySkip(targetName) {
             document.getElementById('item-modal').style.display = 'none';
-            isTimerPaused = false;
+            if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
             sendSignal({ type: 'SKIP_APPLIED', targetName: targetName });
         }
 
         function openColorChangeModal() {
-            isTimerPaused = true;
+            stopLocalTurnTimer();
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
 
-            let html = `<h3>【1】変更したい元玉の色</h3><div>`;
+            let html = `<h3 style="color:#00ffff;">【1】SELECT SOURCE COLOR</h3><div>`;
             COLORS.forEach(c => {
                 html += `<div class="color-btn" style="background:${c};" onclick="selectSourceColor('${c}')"></div>`;
             });
@@ -1102,7 +1201,7 @@
         function selectSourceColor(color) {
             selectedSrcColor = color;
             let content = document.getElementById('item-modal-content');
-            let html = `<h3>【2】変更後の新しい色</h3><div>`;
+            let html = `<h3 style="color:#00ffff;">【2】SELECT TARGET COLOR</h3><div>`;
             COLORS.forEach(c => {
                 html += `<div class="color-btn" style="background:${c};" onclick="applyColorChange('${c}')"></div>`;
             });
@@ -1111,14 +1210,14 @@
 
         function applyColorChange(targetColor) {
             document.getElementById('item-modal').style.display = 'none';
-            isTimerPaused = false;
+            if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
             Object.values(board).forEach(b => {
                 if (b.color === selectedSrcColor) b.color = targetColor;
             });
         }
 
         function openMysteryRouletteModal() {
-            isTimerPaused = true;
+            stopLocalTurnTimer();
             const overlay = document.getElementById('overlay');
             const text = document.getElementById('overlay-text');
             const btn = document.getElementById('overlay-btn');
@@ -1142,11 +1241,11 @@
 
                 let chosenTarget = targets[idx];
                 mysteryTargetIndex = playerList.findIndex(p => p.name === chosenTarget.name);
-                text.innerText = `${chosenTarget.name}\n集中攻撃対象！`;
+                text.innerText = `${chosenTarget.name}\n集中攻撃！`;
 
                 setTimeout(() => {
                     overlay.style.display = 'none';
-                    isTimerPaused = false;
+                    if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
                 }, 1200);
             };
         }
@@ -1154,12 +1253,14 @@
         function handlePlayerDefeat(defIdx) {
             playerList[defIdx].active = false;
             if (defIdx === myTurnIndex) {
+                stopLocalTurnTimer();
                 let overlay = document.getElementById('overlay');
                 let text = document.getElementById('overlay-text');
                 let sub = document.getElementById('overlay-sub');
                 overlay.style.display = 'flex';
-                text.innerText = "脱落...";
-                sub.innerText = "他プレイヤー対戦中...";
+                text.innerText = "SYSTEM OFFLINE\n(脱落)";
+                text.style.color = "#ff0055";
+                sub.innerText = "他プレイヤーの対戦を観戦中...";
                 sub.classList.add('blink');
             }
 
@@ -1171,14 +1272,15 @@
 
         function handleWin(winnerName) {
             isGameOver = true;
-            stopTurnTimer();
+            stopLocalTurnTimer();
             const overlay = document.getElementById('overlay');
             const text = document.getElementById('overlay-text');
             const sub = document.getElementById('overlay-sub');
             overlay.style.display = 'flex';
-            text.innerText = `${winnerName}\nWIN!`;
+            text.innerText = `${winnerName}\nVICTORY!`;
+            text.style.color = "#00ffff";
             sub.classList.remove('blink');
-            sub.innerHTML = `<div class="btn" onclick="reMatchFlow()">再戦 / 終了</div>`;
+            sub.innerHTML = `<div class="btn" onclick="reMatchFlow()">REMATCH / EXIT</div>`;
 
             startFireworks();
         }
@@ -1199,14 +1301,16 @@
 
         function animateFireworks() {
             if (!isGameOver) return;
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.fillStyle = 'rgba(3, 3, 8, 0.15)';
             ctx.fillRect(0,0,canvas.width, canvas.height);
 
             fireworks.forEach((f) => {
                 f.x += f.vx; f.y += f.vy; f.life--;
                 ctx.beginPath();
                 ctx.arc(f.x, f.y, 4, 0, Math.PI * 2);
-                ctx.fillStyle = f.color; ctx.fill(); ctx.closePath();
+                ctx.fillStyle = f.color; 
+                ctx.shadowColor = f.color; ctx.shadowBlur = 8;
+                ctx.fill(); ctx.closePath(); ctx.shadowBlur = 0;
             });
             fireworks = fireworks.filter(f => f.life > 0);
             if (Math.random() < 0.1) startFireworks();
@@ -1216,7 +1320,7 @@
         function reMatchFlow() {
             if (isHost) {
                 let activeCnt = playerList.length;
-                if (confirm(`現在の参加人数は ${activeCnt} 名です。この人数で再戦しますか？`)) {
+                if (confirm(`現在の参加人数は ${activeCnt} 名です。再戦しますか？`)) {
                     isGameOver = false;
                     isGameStarted = false;
                     startRouletteSequence();
