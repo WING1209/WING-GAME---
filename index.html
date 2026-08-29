@@ -624,6 +624,7 @@
 
             isTurnChanging = true;
             currentTurnIndex = targetTurnIndex;
+            remoteBalls = []; // ターン切替時に残骸玉をクリア
 
             if (skipTargetName === playerList[currentTurnIndex].name) {
                 skipTargetName = null;
@@ -631,7 +632,6 @@
                 return;
             }
 
-            // 修正：自分のターン開始時、30%の確率でアイテム玉生成
             if (currentTurnIndex === myTurnIndex && Math.random() < 0.30) {
                 spawnItemBallAnywhere();
             }
@@ -752,7 +752,6 @@
         }
 
         function prepareNextBall() {
-            // 修正：30%の確率でレインボー（アイテム）生成
             if (Math.random() < 0.30) {
                 nextColor = 'RAINBOW';
             } else {
@@ -912,7 +911,6 @@
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 修正：限界値の点線位置を発射位置（y: canvas.height * 0.88）より「1玉分（2 * radius）上」に設定
             let launcherY = canvas.height * 0.88;
             let limitY = launcherY - (radius * 2);
 
@@ -1210,7 +1208,8 @@
                 return;
             }
 
-            let ojamaCount = count * 2 * activeMultiplier;
+            // ③ お邪魔玉の倍率を2倍から1.5倍に変更
+            let ojamaCount = Math.round(count * 1.5 * activeMultiplier);
             activeMultiplier = 1;
 
             let targetIdx = -1;
@@ -1486,7 +1485,6 @@
             }
         }
 
-        /* 修正：再戦フローの完全修正 */
         function handleWin(winnerName) {
             isGameOver = true;
             stopLocalTurnTimer();
@@ -1583,7 +1581,10 @@
             broadcast({ type: 'PLAYER_LIST', list: playerList });
 
             document.getElementById('item-modal').style.display = 'none';
-            startRouletteSequence();
+            
+            // ② ゲスト側にもルーレット開始シグナルを送信するよう修正
+            broadcast({ type: 'START_ROULETTE' });
+            runRouletteUI();
         }
 
         function hostDisbandGroup() {
