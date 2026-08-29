@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING⚡パズル対戦〇 Ver 1.05</title>
+    <title>〇WING⚡パズル対戦〇 Ver 1.06</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -185,10 +185,10 @@
         <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
-    <!-- 1. タイトル画面 (Ver 1.05) -->
+    <!-- 1. タイトル画面 (Ver 1.06) -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇WING<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.05</div>
+        <div class="version-tag">Ver 1.06</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -274,12 +274,10 @@
         <div id="canvas-panel">
             <canvas id="gameCanvas"></canvas>
 
-            <!-- カウントダウン用：盤面が見える透明オーバーレイ -->
             <div id="countdown-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; flex-direction:column; justify-content:center; align-items:center; z-index:50; pointer-events:none;">
                 <div id="countdown-text" style="font-size:5rem; font-weight:bold; color:#ff0055; text-shadow:0 0 20px #ff0055, 0 0 40px #000; animation: pulseNum 0.5s infinite alternate;">5</div>
             </div>
 
-            <!-- ターンチェンジ演出用オーバーレイ（画面は暗くしない） -->
             <div id="turn-change-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; flex-direction:column; justify-content:center; align-items:center; z-index:60; pointer-events:none;">
                 <div id="turn-change-text" style="font-size:2.2rem; font-weight:bold; text-shadow:0 0 15px #000, 0 0 25px #000; animation: pulseTurn 0.4s infinite alternate;"></div>
             </div>
@@ -391,7 +389,6 @@
                 initPeerHost();
             } else {
                 let base = rawName || "ゲスト";
-                // ゲスト側仮ネーム（接続後にホスト側で一意な名前に割り振られる）
                 myName = base;
                 document.getElementById('room-display-title').style.display = 'none';
                 document.getElementById('host-start-btn').style.display = 'none';
@@ -434,7 +431,6 @@
                 if (playerList.length < maxPlayers) {
                     let uniqueName = getUniqueName(data.name, playerList);
                     playerList.push({ id: conn.peer, name: uniqueName, active: true });
-                    // ゲスト本人に確定した名前を通知
                     conn.send({ type: 'ASSIGN_NAME', name: uniqueName });
                     updatePlayerListUI();
                     broadcast({ type: 'PLAYER_LIST', list: playerList });
@@ -485,7 +481,6 @@
             document.getElementById('player-list').innerHTML = html;
         }
 
-        /* 順番決めルーレット処理 */
         function startRouletteSequence() {
             if (isGameStarted) return;
             broadcast({ type: 'START_ROULETTE' });
@@ -574,7 +569,6 @@
             sub.innerHTML = listHtml + `<div class="blink" style="color:#00ffff; margin-top:8px;">自動でゲームスタートします...</div>`;
             btn.style.display = 'none';
 
-            // ホスト・ゲストともに確認画面表示後、1.8秒後に自動でゲームスタート
             setTimeout(() => {
                 if (!isGameStarted) {
                     if (isHost) {
@@ -609,7 +603,6 @@
             updateTurnUI();
         }
 
-        // --- ターン＆タイマー管理 ---
         let turnTime = 10;
         let timerInterval = null;
         let turnChangeTimerId = null;
@@ -746,7 +739,6 @@
             }, 1400);
         }
 
-        // --- キャンバス・パズル物理 ---
         let canvas, ctx;
         const COLS = 7;
         let radius = 0;
@@ -888,7 +880,6 @@
             let rawDy = dragStart.y - (touch.clientY - rect.top);
             let dist = Math.hypot(rawDx, rawDy);
             
-            // 最大2センチ（約75px）制限
             const maxDist = 75;
             if (dist > maxDist) {
                 rawDx = (rawDx / dist) * maxDist;
@@ -907,7 +898,6 @@
             let dist = Math.hypot(dx, dy);
             
             if (dist > 10) {
-                // 制限値（最大75px = 2cm）を超えないようにスケール補正
                 const maxDist = 75;
                 if (dist > maxDist) {
                     dx = (dx / dist) * maxDist;
@@ -916,6 +906,13 @@
 
                 let vx = dx * 0.15;
                 let vy = dy * 0.15;
+
+                // 【バグ修正】発射する玉が発射位置より下部（下向き vy >= 0）に向かう場合は無効化する
+                if (vy >= 0) {
+                    dragStart = null;
+                    dragCurrent = null;
+                    return;
+                }
 
                 if (isPenetrateMode && checkBounceCountLimit(vx, vy) >= 2) {
                     alert("壁での反射が2回以上になるため発射できません！");
@@ -962,6 +959,7 @@
                 }
             }
             else if (data.type === 'SKIP_APPLIED') skipTargetName = data.targetName;
+            else if (data.type === 'APPLY_MYSTERY_EFFECT') executeMysteryEffect(data.targetName, data.effectType);
             else if (data.type === 'GAME_OVER') handlePlayerDefeat(data.playerIndex);
             else if (data.type === 'WINNER') handleWin(data.winnerName);
             else if (data.type === 'DISBAND') handleDisband();
@@ -1253,13 +1251,7 @@
             let ojamaCount = Math.round(count * 1.5 * activeMultiplier);
             activeMultiplier = 1;
 
-            let targetIdx = -1;
-            if (mysteryTargetIndex !== -1 && mysteryTargetIndex !== myTurnIndex && playerList[mysteryTargetIndex] && playerList[mysteryTargetIndex].active) {
-                targetIdx = mysteryTargetIndex;
-                mysteryTargetIndex = -1;
-            } else {
-                targetIdx = getOjamaTargetIndex();
-            }
+            let targetIdx = getOjamaTargetIndex();
 
             if (targetIdx !== -1 && targetIdx !== myTurnIndex) {
                 sendSignal({ type: 'OJAMA_ATTACK', count: ojamaCount, targetIndex: targetIdx, senderIndex: myTurnIndex });
@@ -1414,7 +1406,7 @@
             else if (type === 2) openSkipModal();
             else if (type === 3) isPenetrateMode = true;
             else if (type === 4) openColorChangeModal();
-            else if (type === 5) openMysteryRouletteModal();
+            else if (type === 5) openMysteryRouletteModal(); // 【仕様変更】ミステリー
         }
 
         function openSkipModal() {
@@ -1499,40 +1491,119 @@
             });
         }
 
+        /* 【仕様変更】ミステリーアイテムの処理 */
         function openMysteryRouletteModal() {
             stopLocalTurnTimer();
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
 
-            let targets = playerList.filter((p, i) => i !== myTurnIndex && p.active);
-            let idx = 0;
+            let targets = playerList.filter(p => p.active);
+            let pIdx = 0;
 
             content.innerHTML = `
-                <h3 style="color:#00ffff; font-size:1.0rem;">ターゲット選択</h3>
-                <div id="mystery-disp" style="font-size:1.8rem; font-weight:bold; color:#ff0055; margin:12px 0;">${targets[0] ? targets[0].name : '-'}</div>
+                <h3 style="color:#00ffff; font-size:1.1rem; margin-bottom:5px;">★ ミステリー効果 ★</h3>
+                <div style="font-size:0.8rem; color:#88aacc; margin-bottom:5px;">対象プレイヤー抽選中...</div>
+                <div id="mystery-player-disp" style="font-size:1.8rem; font-weight:bold; color:#ff0055; margin:10px 0;">${targets[0] ? targets[0].name : '-'}</div>
                 <div class="btn" id="mystery-stop-btn">ストップ</div>
             `;
 
             let timer = setInterval(() => {
                 if (targets.length === 0) return;
-                idx = (idx + 1) % targets.length;
-                let disp = document.getElementById('mystery-disp');
-                if (disp) disp.innerText = targets[idx].name;
-            }, 70);
+                pIdx = (pIdx + 1) % targets.length;
+                let disp = document.getElementById('mystery-player-disp');
+                if (disp) disp.innerText = targets[pIdx].name;
+            }, 60);
 
             document.getElementById('mystery-stop-btn').onclick = (e) => {
                 e.stopPropagation();
                 clearInterval(timer);
 
-                if (targets.length > 0) {
-                    let chosenTarget = targets[idx];
-                    mysteryTargetIndex = playerList.findIndex(p => p.name === chosenTarget.name);
+                if (targets.length === 0) {
+                    modal.style.display = 'none';
+                    if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
+                    return;
                 }
 
-                modal.style.display = 'none';
-                if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
+                let chosenPlayer = targets[pIdx];
+                let effectTypes = [1, 2, 3, 4];
+                let chosenEffect = effectTypes[Math.floor(Math.random() * effectTypes.length)];
+
+                let effectNames = {
+                    1: "効果1: スキップ（1ターン休み）",
+                    2: "効果2: 盤面の色変更（1色のみ）",
+                    3: "効果3: 盤面を同色で横列整列",
+                    4: "効果4: 盤面の玉がすべて消滅"
+                };
+
+                content.innerHTML = `
+                    <h3 style="color:#00ffff; font-size:1.1rem; margin-bottom:5px;">★ ミステリー結果 ★</h3>
+                    <div style="font-size:0.9rem; color:#ffff00; margin:5px 0;">対象: <b>${chosenPlayer.name}</b></div>
+                    <div style="font-size:1.0rem; font-weight:bold; color:#00ff00; margin:12px 0; padding:10px; background:rgba(0,255,0,0.1); border-radius:6px; border:1px solid #00ff00;">${effectNames[chosenEffect]}</div>
+                    <div class="btn" id="mystery-ok-btn">OK</div>
+                `;
+
+                document.getElementById('mystery-ok-btn').onclick = (ev) => {
+                    ev.stopPropagation();
+                    modal.style.display = 'none';
+                    
+                    sendSignal({
+                        type: 'APPLY_MYSTERY_EFFECT',
+                        targetName: chosenPlayer.name,
+                        effectType: chosenEffect
+                    });
+                    executeMysteryEffect(chosenPlayer.name, chosenEffect);
+
+                    if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
+                };
             };
+        }
+
+        function executeMysteryEffect(targetName, effectType) {
+            let isMe = (targetName === myName);
+
+            if (effectType === 1) {
+                // 効果1: スキップ（1ターン休み）
+                skipTargetName = targetName;
+            } 
+            else if (effectType === 2) {
+                // 効果2: 盤面の玉がランダムで色変更（1色のみ）
+                if (isMe) {
+                    let singleColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+                    Object.values(board).forEach(b => {
+                        b.color = singleColor;
+                    });
+                }
+            } 
+            else if (effectType === 3) {
+                // 効果3: 盤面の玉が綺麗に同色玉で横列に整列
+                if (isMe) {
+                    let currentBalls = Object.values(board);
+                    if (currentBalls.length > 0) {
+                        let alignColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+                        board = {};
+                        let count = 0;
+                        for (let r = 0; r < 20; r++) {
+                            for (let c = 0; c < COLS; c++) {
+                                if (count < currentBalls.length) {
+                                    let pos = getGridCoord(r, c);
+                                    board[`${r},${c}`] = { row: r, col: c, x: pos.x, y: pos.y, color: alignColor, isItem: false };
+                                    count++;
+                                }
+                            }
+                        }
+                    }
+                }
+            } 
+            else if (effectType === 4) {
+                // 効果4: 盤面の玉がすべて消滅する
+                if (isMe) {
+                    Object.keys(board).forEach(key => {
+                        createFallingBall(board[key]);
+                    });
+                    board = {};
+                }
+            }
         }
 
         function handlePlayerDefeat(defIdx) {
