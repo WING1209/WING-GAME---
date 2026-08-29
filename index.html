@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING🎵パズル対戦〇</title>
+    <title>〇WING⚡パズル対戦〇 Ver 1.01</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -67,7 +67,13 @@
             font-size: 2.2rem; color: #00ffff; 
             text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 40px #00ffff; 
             text-align: center; font-weight: 900; letter-spacing: 2px;
-            margin-bottom: 25px; line-height: 1.3;
+            margin-bottom: 5px; line-height: 1.3;
+        }
+
+        .version-tag {
+            font-size: 0.9rem; color: #ff0055; font-weight: bold;
+            letter-spacing: 3px; text-shadow: 0 0 8px #ff0055;
+            margin-bottom: 25px;
         }
 
         .btn { 
@@ -179,10 +185,11 @@
         <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
-    <!-- 1. タイトル画面 -->
+    <!-- 1. タイトル画面 (Ver 1.01表記追加) -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇WING<br>パズル対戦〇</h1>
-        <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:30px;">スタート</div>
+        <div class="version-tag">Ver 1.01</div>
+        <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
     <!-- 2. メニュー画面 -->
@@ -550,6 +557,7 @@
             myTurnIndex = playerList.findIndex(p => p.name === myName);
             currentTurnIndex = 0;
             myScore = 0;
+            remoteBalls = [];
             document.getElementById('gui-score').innerText = "0/500";
 
             generateInitialBoard();
@@ -619,7 +627,7 @@
                 return;
             }
 
-            // 【仕様変更】自分のターン開始時、20%の確率で「盤面 / 発射玉 / NEXT玉」のいずれか1箇所に？玉を生成
+            // 自分のターン開始時、20%の確率でアイテム玉生成
             if (currentTurnIndex === myTurnIndex && Math.random() < 0.20) {
                 spawnItemBallAnywhere();
             }
@@ -664,7 +672,7 @@
 
                 startLocalTurnTimer();
             } else {
-                let currentName = playerList[currentTurnIndex].name;
+                let currentName = playerList[currentTurnIndex] ? playerList[currentTurnIndex].name : "";
                 status.innerText = `${currentName}の番`;
                 status.style.color = "#ff0055";
                 status.style.textShadow = "0 0 5px #ff0055";
@@ -681,6 +689,7 @@
         const COLORS = ['#ff0055', '#00ff66', '#00ffff', '#ffff00', '#cc00ff'];
         let board = {};
         let currentBall, nextColor, isNextItem = false;
+        let remoteBalls = []; // 修正：他人の発射演出用アニメーション配列
         let dragStart = null, dragCurrent = null;
         let myScore = 0;
         let fallingBalls = [];
@@ -774,11 +783,10 @@
             prepareNextBall();
         }
 
-        /* 仕様に基づく？玉の抽選生成関数 */
         function spawnItemBallAnywhere() {
-            let candidates = [1, 2]; // 1:発射予定玉, 2:NEXT玉
+            let candidates = [1, 2]; 
             if (Object.keys(board).length > 0) {
-                candidates.push(0); // 0:盤面
+                candidates.push(0); 
             }
 
             let choice = candidates[Math.floor(Math.random() * candidates.length)];
@@ -869,10 +877,14 @@
             else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
             else if (data.type === 'START_GAME_ACTION') startGameAction(data.orderedList);
             else if (data.type === 'SHOOT_BALL') {
-                if (currentBall && data.shooterIndex !== myTurnIndex) {
-                    currentBall.vx = data.vx; currentBall.vy = data.vy;
-                    currentBall.color = data.color; currentBall.isItem = data.isItem; currentBall.isMoving = true;
-                    currentBall.shotByMe = false;
+                // 修正：他人の射撃は自分の発射台を上書きせず、リモート玉（遠隔視覚効果）として独立描画
+                if (data.shooterIndex !== myTurnIndex) {
+                    remoteBalls.push({
+                        x: canvas.width / 2,
+                        y: canvas.height * 0.88,
+                        vx: data.vx, vy: data.vy,
+                        color: data.color, isItem: data.isItem
+                    });
                 }
             }
             else if (data.type === 'SYNC_BOARD') {
@@ -924,6 +936,21 @@
             });
             ctx.shadowBlur = 0;
 
+            // 他人の玉の演出更新
+            for (let i = remoteBalls.length - 1; i >= 0; i--) {
+                let rb = remoteBalls[i];
+                rb.x += rb.vx; rb.y += rb.vy;
+                if (rb.x - radius < 0 || rb.x + radius > canvas.width) rb.vx *= -1;
+
+                ctx.beginPath();
+                ctx.arc(rb.x, rb.y, radius - 1, 0, Math.PI * 2);
+                ctx.fillStyle = rb.color === 'RAINBOW' ? '#ffffff' : rb.color;
+                ctx.shadowBlur = 6; ctx.fill(); ctx.closePath(); ctx.shadowBlur = 0;
+
+                if (rb.y < 0 || rb.y > canvas.height) remoteBalls.splice(i, 1);
+            }
+
+            // 自分の発射台の玉
             if (currentBall) {
                 if (currentBall.isMoving) {
                     currentBall.x += currentBall.vx;
@@ -1150,12 +1177,21 @@
             }
         }
 
+        /* 修正：絶対に自分（myTurnIndex）を選ばない安全ターゲット決定処理 */
         function getOjamaTargetIndex() {
+            if (playerList.length <= 1) return -1;
+            
             let targetIdx = (myTurnIndex + 1) % playerList.length;
-            while (targetIdx !== myTurnIndex && !playerList[targetIdx].active) {
+            let loopCount = 0;
+
+            while (loopCount < playerList.length) {
+                if (targetIdx !== myTurnIndex && playerList[targetIdx] && playerList[targetIdx].active) {
+                    return targetIdx;
+                }
                 targetIdx = (targetIdx + 1) % playerList.length;
+                loopCount++;
             }
-            return targetIdx !== myTurnIndex ? targetIdx : -1;
+            return -1;
         }
 
         function addScoreAndAttack(count) {
@@ -1172,7 +1208,7 @@
             activeMultiplier = 1;
 
             let targetIdx = -1;
-            if (mysteryTargetIndex !== -1) {
+            if (mysteryTargetIndex !== -1 && mysteryTargetIndex !== myTurnIndex && playerList[mysteryTargetIndex] && playerList[mysteryTargetIndex].active) {
                 targetIdx = mysteryTargetIndex;
                 mysteryTargetIndex = -1;
             } else {
