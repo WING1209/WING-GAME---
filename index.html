@@ -624,7 +624,7 @@
 
             isTurnChanging = true;
             currentTurnIndex = targetTurnIndex;
-            remoteBalls = []; // ターン切替時に残骸玉をクリア
+            remoteBalls = [];
 
             if (skipTargetName === playerList[currentTurnIndex].name) {
                 skipTargetName = null;
@@ -799,7 +799,6 @@
                 let keys = Object.keys(board);
                 let targetKey = keys[Math.floor(Math.random() * keys.length)];
                 board[targetKey].isItem = true;
-                syncBoardState();
             } else if (choice === 1) {
                 if (currentBall && !currentBall.isMoving) {
                     currentBall.isItem = true;
@@ -870,12 +869,6 @@
             return bounces;
         }
 
-        function syncBoardState() {
-            if (currentTurnIndex === myTurnIndex) {
-                sendSignal({ type: 'SYNC_BOARD', board: board, senderIndex: myTurnIndex });
-            }
-        }
-
         function processGameSignal(data) {
             if (data.type === 'START_ROULETTE') runRouletteUI();
             else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
@@ -888,12 +881,6 @@
                         vx: data.vx, vy: data.vy,
                         color: data.color, isItem: data.isItem
                     });
-                }
-            }
-            else if (data.type === 'SYNC_BOARD') {
-                if (data.senderIndex !== myTurnIndex) {
-                    board = data.board;
-                    resizeCanvas();
                 }
             }
             else if (data.type === 'TURN_CHANGE') nextTurn(data.nextTurnIndex);
@@ -981,7 +968,6 @@
                             spawnBall();
 
                             if (wasShotByMe) {
-                                syncBoardState();
                                 let nextIdx = getNextTurnIndex();
                                 sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
                                 nextTurn(nextIdx);
@@ -1010,7 +996,6 @@
                             spawnBall();
 
                             if (wasShotByMe) {
-                                syncBoardState();
                                 let nextIdx = getNextTurnIndex();
                                 sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
                                 nextTurn(nextIdx);
@@ -1208,7 +1193,6 @@
                 return;
             }
 
-            // ③ お邪魔玉の倍率を2倍から1.5倍に変更
             let ojamaCount = Math.round(count * 1.5 * activeMultiplier);
             activeMultiplier = 1;
 
@@ -1277,7 +1261,6 @@
 
             if (flyingOjama.length === 0 && isProcessingOjama) {
                 isProcessingOjama = false;
-                syncBoardState();
                 checkDefeatCondition();
             }
         }
@@ -1428,7 +1411,6 @@
             Object.values(board).forEach(b => {
                 if (b.color === selectedSrcColor) b.color = targetColor;
             });
-            syncBoardState();
         }
 
         function openMysteryRouletteModal() {
@@ -1581,8 +1563,6 @@
             broadcast({ type: 'PLAYER_LIST', list: playerList });
 
             document.getElementById('item-modal').style.display = 'none';
-            
-            // ② ゲスト側にもルーレット開始シグナルを送信するよう修正
             broadcast({ type: 'START_ROULETTE' });
             runRouletteUI();
         }
