@@ -883,7 +883,6 @@
             let rawDy = dragStart.y - (touch.clientY - rect.top);
             let dist = Math.hypot(rawDx, rawDy);
             
-            // ガイド最大長を3センチに拡大（75px -> 113px）
             const maxDist = 113;
             if (dist > maxDist) {
                 rawDx = (rawDx / dist) * maxDist;
@@ -932,7 +931,8 @@
 
                 sendSignal({ type: 'SHOOT_BALL', vx: vx, vy: vy, color: currentBall.color, isItem: currentBall.isItem, shooterIndex: myTurnIndex });
             }
-            dragStart = null; dragCurrent = null;
+            dragStart = null;
+            dragCurrent = null;
         }
 
         function checkBounceCountLimit(vx, vy) {
@@ -961,7 +961,11 @@
                 }
             }
             else if (data.type === 'SKIP_APPLIED') skipTargetName = data.targetName;
-            else if (data.type === 'APPLY_MYSTERY_EFFECT') executeMysteryEffect(data.targetName, data.effectType);
+            else if (data.type === 'APPLY_MYSTERY_EFFECT') {
+                // 【仕様変更】受信側でもポップアップを表示して実行する
+                showMysteryNoticePopup(data.targetName, data.effectType, data.effectName);
+                executeMysteryEffect(data.targetName, data.effectType);
+            }
             else if (data.type === 'GAME_OVER') handlePlayerDefeat(data.playerIndex);
             else if (data.type === 'WINNER') handleWin(data.winnerName);
             else if (data.type === 'DISBAND') handleDisband();
@@ -1063,7 +1067,6 @@
                             }
                         }
 
-                        // ガイド線を点線に変更 [6, 4]
                         if (dragStart && dragCurrent && currentTurnIndex === myTurnIndex && isGameStarted && !isTurnChanging) {
                             ctx.beginPath();
                             ctx.setLineDash([6, 4]);
@@ -1557,11 +1560,12 @@
                     3: "効果3: 盤面を同色で横列整列",
                     4: "効果4: 盤面の玉がすべて消滅"
                 };
+                let effectDesc = effectNames[chosenEffect];
 
                 content.innerHTML = `
                     <h3 style="color:#00ffff; font-size:1.1rem; margin-bottom:5px;">★ ミステリー結果 ★</h3>
                     <div style="font-size:0.9rem; color:#ffff00; margin:5px 0;">対象: <b>${chosenPlayer.name}</b></div>
-                    <div style="font-size:1.0rem; font-weight:bold; color:#00ff00; margin:12px 0; padding:10px; background:rgba(0,255,0,0.1); border-radius:6px; border:1px solid #00ff00;">${effectNames[chosenEffect]}</div>
+                    <div style="font-size:1.0rem; font-weight:bold; color:#00ff00; margin:12px 0; padding:10px; background:rgba(0,255,0,0.1); border-radius:6px; border:1px solid #00ff00;">${effectDesc}</div>
                     <div class="btn" id="mystery-ok-btn">OK</div>
                 `;
 
@@ -1570,15 +1574,42 @@
                     modal.style.display = 'none';
                     isModalActive = false;
                     
+                    // 【仕様変更】効果名（effectDesc）も含めて全員にシグナル送信
                     sendSignal({
                         type: 'APPLY_MYSTERY_EFFECT',
                         targetName: chosenPlayer.name,
-                        effectType: chosenEffect
+                        effectType: chosenEffect,
+                        effectName: effectDesc
                     });
                     executeMysteryEffect(chosenPlayer.name, chosenEffect);
 
                     if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
                 };
+            };
+        }
+
+        // 【仕様変更】全員の画面にミステリー効果のポップアップを表示する関数
+        function showMysteryNoticePopup(targetName, effectType, effectName) {
+            let modal = document.getElementById('item-modal');
+            let content = document.getElementById('item-modal-content');
+            modal.style.display = 'flex';
+            isModalActive = true;
+            stopLocalTurnTimer();
+
+            content.innerHTML = `
+                <h3 style="color:#ffff00; font-size:1.1rem; margin-bottom:5px;">⚡ ミステリー発動！ ⚡</h3>
+                <div style="font-size:0.9rem; color:#ffff00; margin:5px 0;">対象: <b>${targetName}</b></div>
+                <div style="font-size:1.0rem; font-weight:bold; color:#00ff00; margin:12px 0; padding:10px; background:rgba(0,255,0,0.1); border-radius:6px; border:1px solid #00ff00;">${effectName}</div>
+                <div class="btn" id="mystery-notice-ok">OK</div>
+            `;
+
+            document.getElementById('mystery-notice-ok').onclick = (ev) => {
+                ev.stopPropagation();
+                modal.style.display = 'none';
+                isModalActive = false;
+                if (currentTurnIndex === myTurnIndex && !isGameOver) {
+                    startLocalTurnTimer();
+                }
             };
         }
 
@@ -1746,6 +1777,8 @@
             broadcast({ type: 'PLAYER_LIST', list: playerList });
 
             document.getElementById('item-modal').style.display = 'none';
+            
+            // 【バグ修正】ホスト側だけでなく、全員にルーレット開始信号をブロードキャストする
             broadcast({ type: 'START_ROULETTE' });
             runRouletteUI();
         }
