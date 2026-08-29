@@ -128,7 +128,6 @@
 
         .gui-label { color: #88aacc; font-weight: bold; font-size: 0.6rem; letter-spacing: 0.5px; margin-bottom: 1px; }
 
-        /* 【仕様変更】アイテムボタンを少し大きく表示 */
         .item-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
         .item-row { 
             background: rgba(20, 25, 45, 0.9); padding: 10px 8px; border-radius: 4px; text-align: center; 
@@ -423,12 +422,24 @@
 
         const PEER_PREFIX = "cyber-wing-puzzle-2026-";
 
+        // 【修正②】4〜5人目の接続不良対策：定員制限の厳格化と重複・切断の確実な管理
         function initPeerHost() {
             peer = new Peer(PEER_PREFIX + roomCode);
             peer.on('connection', conn => {
-                connections.push(conn);
+                conn.on('open', () => {
+                    if (playerList.length >= maxPlayers) {
+                        conn.send({ type: 'ERROR', message: 'ルームの定員に達しています。' });
+                        setTimeout(() => conn.close(), 500);
+                        return;
+                    }
+                    if (!connections.includes(conn)) {
+                        connections.push(conn);
+                    }
+                });
+
                 conn.on('data', data => handleDataFromGuest(conn, data));
                 conn.on('close', () => {
+                    connections = connections.filter(c => c !== conn);
                     playerList = playerList.filter(p => p.id !== conn.peer);
                     delete rematchVotes[conn.peer];
                     updatePlayerListUI();
@@ -449,13 +460,17 @@
         }
 
         function handleDataFromGuest(conn, data) {
+            if (isGameStarted && data.type === 'JOIN') return;
+
             if (data.type === 'JOIN') {
                 if (playerList.length < maxPlayers) {
-                    let uniqueName = getUniqueName(data.name, playerList);
-                    playerList.push({ id: conn.peer, name: uniqueName, active: true });
-                    conn.send({ type: 'ASSIGN_NAME', name: uniqueName, ojamaMultiplier: ojamaMultiplier });
-                    updatePlayerListUI();
-                    broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier });
+                    if (!playerList.some(p => p.id === conn.peer)) {
+                        let uniqueName = getUniqueName(data.name, playerList);
+                        playerList.push({ id: conn.peer, name: uniqueName, active: true });
+                        conn.send({ type: 'ASSIGN_NAME', name: uniqueName, ojamaMultiplier: ojamaMultiplier });
+                        updatePlayerListUI();
+                        broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier });
+                    }
                     if (playerList.length === maxPlayers) {
                         document.getElementById('host-start-btn').style.display = 'block';
                         document.getElementById('lobby-status').innerText = "指定人数達成！ゲーム開始可能です";
@@ -483,6 +498,9 @@
             } else if (data.type === 'REMATCH_VOTE_SYNC') {
                 rematchVotes = data.votes;
                 updateGuestRematchUI();
+            } else if (data.type === 'ERROR') {
+                alert(data.message);
+                location.reload();
             } else {
                 processGameSignal(data);
             }
@@ -673,28 +691,45 @@
             document.getElementById('countdown-overlay').style.display = 'none';
         }
 
+        // 【修正①】無限ループ防止の安全装置付きインデックス取得
         function getNextTurnIndex() {
+            let activeCount = playerList.filter(p => p.active).length;
+            if (activeCount <= 0) return currentTurnIndex;
+
             let nextIdx = currentTurnIndex;
+            let safety = 0;
             do {
                 nextIdx = (nextIdx + 1) % playerList.length;
+                safety++;
+                if (safety > playerList.length * 2) break;
             } while (!playerList[nextIdx].active);
             return nextIdx;
         }
 
         function nextTurn(targetTurnIndex) {
-            if (isGameOver || isModalActive) return;
+            if (isGameOver) return;
             stopLocalTurnTimer();
 
             isTurnChanging = true;
             currentTurnIndex = targetTurnIndex;
 
-            if (skipTargetName === playerList[currentTurnIndex].name) {
+            // ターン対象者が既に脱落している場合はさらに次に飛ばす
+            if (playerList[currentTurnIndex] && !playerList[currentTurnIndex].active) {
+                let nextIdx = getNextTurnIndex();
+                if (isHost) {
+                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                }
+                nextTurn(nextIdx);
+                return;
+            }
+
+            if (skipTargetName && playerList[currentTurnIndex] && skipTargetName === playerList[currentTurnIndex].name) {
                 skipTargetName = null;
                 showSkipNoticeAndNext();
                 return;
             }
 
-            if (currentTurnIndex === myTurnIndex && Math.random() < 0.30) {
+            if (currentTurnIndex === myTurnIndex && Math.random() < 0.30 && !isModalActive) {
                 spawnItemBallAnywhere();
             }
 
@@ -781,7 +816,7 @@
         let activeMultiplier = 1;
         let isPenetrateMode = false;
         let itemStocks = [0, 0, 0, 0, 0, 0];
-        let launchedBallWasItem = false; // 発射した玉が？付きかどうか
+        let launchedBallWasItem = false;
 
         function resizeCanvas() {
             if (!canvas) return;
@@ -949,7 +984,6 @@
 
                 stopLocalTurnTimer();
 
-                // 発射時に？付きだったかを保持
                 launchedBallWasItem = currentBall.isItem;
 
                 currentBall.vx = vx;
@@ -977,7 +1011,7 @@
         }
 
         function processGameSignal(data) {
-            // 【バグ修正①】タイミングズレや予期せぬフリーズを防ぐため、主要な進行シグナル受信時にモーダルを強制閉鎖＆isModalActiveを解除
+            // 【修正①】タイミングズレや予期せぬフリーズを防ぐため主要シグナル受信時にモーダルを強制閉鎖＆isModalActiveを確実に解除
             if (data.type === 'TURN_CHANGE' || data.type === 'START_ROULETTE' || data.type === 'ROULETTE_RESULT' || data.type === 'START_GAME_ACTION') {
                 document.getElementById('item-modal').style.display = 'none';
                 isModalActive = false;
@@ -1165,7 +1199,6 @@
             let clearedCount = 0;
             let gotItem = false;
             
-            // 【バグ修正②】発射玉自体が？付きだった場合もアイテム獲得対象とする
             if (launchedBallWasItem) {
                 gotItem = true;
                 launchedBallWasItem = false;
@@ -1223,7 +1256,6 @@
             let matched = new Set([`${startBall.row},${startBall.col}`]);
             let gotItem = false;
 
-            // 【バグ修正②】発射玉自体が？付きだった場合、マッチが発生した時点でアイテム獲得とする
             if (launchedBallWasItem) {
                 gotItem = true;
                 launchedBallWasItem = false;
@@ -1725,9 +1757,13 @@
             }
         }
 
+        // 【修正①】脱落時の堅牢なターン進行と勝敗判定処理
         function handlePlayerDefeat(defIdx) {
             if (isGameOver) return;
-            playerList[defIdx].active = false;
+            if (playerList[defIdx]) {
+                playerList[defIdx].active = false;
+            }
+
             if (defIdx === myTurnIndex) {
                 stopLocalTurnTimer();
                 let overlay = document.getElementById('overlay');
@@ -1739,10 +1775,18 @@
             }
 
             let activePlayers = playerList.filter(p => p.active);
-            if (activePlayers.length === 1) {
+            if (activePlayers.length <= 1) {
                 if (isHost && !isGameOver) {
-                    sendSignal({ type: 'WINNER', winnerName: activePlayers[0].name });
-                    handleWin(activePlayers[0].name);
+                    let winner = activePlayers.length === 1 ? activePlayers[0].name : "引き分け";
+                    sendSignal({ type: 'WINNER', winnerName: winner });
+                    handleWin(winner);
+                }
+            } else {
+                // 現在のターンだったプレイヤーが脱落した場合、ホスト側から次の生存者へ確実にターンを回す
+                if (isHost && currentTurnIndex === defIdx) {
+                    let nextIdx = getNextTurnIndex();
+                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                    nextTurn(nextIdx);
                 }
             }
         }
