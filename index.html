@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING⚡パズル対戦〇 Ver 1.06</title>
+    <title>〇WING⚡パズル対戦〇 Ver 1.08</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -185,10 +185,10 @@
         <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
-    <!-- 1. タイトル画面 (Ver 1.06) -->
+    <!-- 1. タイトル画面 (Ver 1.08) -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇WING<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.06</div>
+        <div class="version-tag">Ver 1.08</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -332,9 +332,9 @@
         let currentTurnIndex = 0;
         let isGameOver = false;
         let isGameStarted = false; 
+        let isModalActive = false; 
         let rouletteTimer = null;
         let skipTargetName = null;
-        let mysteryTargetIndex = -1;
         let isTurnChanging = false;
         
         let rematchVotes = {};
@@ -489,6 +489,7 @@
 
         function runRouletteUI() {
             if (isGameStarted) return;
+            isModalActive = true;
             document.getElementById('item-modal').style.display = 'none';
             switchScreen('');
             document.getElementById('game-screen').style.display = 'flex';
@@ -582,6 +583,7 @@
         function startGameAction(finalOrderedList) {
             if (isGameStarted) return;
             isGameStarted = true;
+            isModalActive = false;
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('item-modal').style.display = 'none';
             document.getElementById('countdown-overlay').style.display = 'none';
@@ -609,11 +611,12 @@
 
         function startLocalTurnTimer() {
             stopLocalTurnTimer();
+            if (isGameOver || isModalActive) return;
             turnTime = 10;
             document.getElementById('gui-timer').innerText = turnTime;
 
             timerInterval = setInterval(() => {
-                if (isGameOver || isProcessingOjama) return;
+                if (isGameOver || isProcessingOjama || isModalActive) return;
                 turnTime--;
                 document.getElementById('gui-timer').innerText = turnTime;
 
@@ -655,7 +658,7 @@
         }
 
         function nextTurn(targetTurnIndex) {
-            if (isGameOver) return;
+            if (isGameOver || isModalActive) return;
             stopLocalTurnTimer();
 
             isTurnChanging = true;
@@ -862,7 +865,7 @@
 
         function handleTouchStart(e) {
             e.preventDefault();
-            if (currentTurnIndex !== myTurnIndex || isGameOver || !isGameStarted || isProcessingOjama || isTurnChanging) return;
+            if (currentTurnIndex !== myTurnIndex || isGameOver || !isGameStarted || isProcessingOjama || isTurnChanging || isModalActive) return;
             if (!currentBall || currentBall.isMoving) return;
             let touch = e.touches[0];
             let rect = canvas.getBoundingClientRect();
@@ -872,7 +875,7 @@
 
         function handleTouchMove(e) {
             e.preventDefault();
-            if (!dragStart || currentBall.isMoving) return;
+            if (!dragStart || currentBall.isMoving || isModalActive) return;
             let touch = e.touches[0];
             let rect = canvas.getBoundingClientRect();
             
@@ -880,7 +883,8 @@
             let rawDy = dragStart.y - (touch.clientY - rect.top);
             let dist = Math.hypot(rawDx, rawDy);
             
-            const maxDist = 75;
+            // ガイド最大長を3センチに拡大（75px -> 113px）
+            const maxDist = 113;
             if (dist > maxDist) {
                 rawDx = (rawDx / dist) * maxDist;
                 rawDy = (rawDy / dist) * maxDist;
@@ -891,14 +895,14 @@
 
         function handleTouchEnd(e) {
             e.preventDefault();
-            if (!dragStart || currentBall.isMoving) return;
+            if (!dragStart || currentBall.isMoving || isModalActive) return;
             
             let dx = dragStart.x - dragCurrent.x;
             let dy = dragStart.y - dragCurrent.y;
             let dist = Math.hypot(dx, dy);
             
             if (dist > 10) {
-                const maxDist = 75;
+                const maxDist = 113;
                 if (dist > maxDist) {
                     dx = (dx / dist) * maxDist;
                     dy = (dy / dist) * maxDist;
@@ -907,7 +911,6 @@
                 let vx = dx * 0.15;
                 let vy = dy * 0.15;
 
-                // 【バグ修正】発射する玉が発射位置より下部（下向き vy >= 0）に向かう場合は無効化する
                 if (vy >= 0) {
                     dragStart = null;
                     dragCurrent = null;
@@ -947,14 +950,13 @@
 
         function processGameSignal(data) {
             if (data.type === 'START_ROULETTE') {
-                document.getElementById('item-modal').style.display = 'none';
                 runRouletteUI();
             }
             else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
             else if (data.type === 'START_GAME_ACTION') startGameAction(data.orderedList);
             else if (data.type === 'TURN_CHANGE') nextTurn(data.nextTurnIndex);
             else if (data.type === 'OJAMA_ATTACK') {
-                if (data.targetIndex === myTurnIndex && data.senderIndex !== myTurnIndex) {
+                if (data.targetIndex === myTurnIndex && data.senderIndex !== myTurnIndex && !isGameOver) {
                     receiveOjama(data.count);
                 }
             }
@@ -966,138 +968,147 @@
         }
 
         function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!isGameOver) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            let launcherY = canvas.height * 0.88;
-            let limitY = launcherY - (radius * 2);
-
-            ctx.beginPath();
-            ctx.setLineDash([6, 6]);
-            ctx.moveTo(0, limitY); ctx.lineTo(canvas.width, limitY);
-            ctx.strokeStyle = "#ff0055"; ctx.lineWidth = 2; 
-            ctx.shadowColor = "#ff0055"; ctx.shadowBlur = 8;
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.shadowBlur = 0;
-
-            Object.values(board).forEach(b => {
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, radius - 1, 0, Math.PI * 2);
-                ctx.fillStyle = b.color;
-                ctx.shadowColor = b.color;
-                ctx.shadowBlur = 8;
-                ctx.fill();
-
-                if (b.isItem) {
-                    ctx.strokeStyle = "#ffff00"; ctx.lineWidth = 3; ctx.stroke();
-                    ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px sans-serif";
-                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                    ctx.fillText("?", b.x, b.y);
-                }
-                ctx.closePath();
-            });
-            ctx.shadowBlur = 0;
-
-            if (currentBall) {
-                if (currentBall.isMoving) {
-                    currentBall.x += currentBall.vx;
-                    currentBall.y += currentBall.vy;
-
-                    if (currentBall.x - radius < 0 || currentBall.x + radius > canvas.width) {
-                        currentBall.vx *= -1;
-                    }
-
-                    if (isPenetrateMode) {
-                        for (let key in board) {
-                            let b = board[key];
-                            if (Math.hypot(b.x - currentBall.x, b.y - currentBall.y) < radius * 1.8) {
-                                if (b.isItem && currentBall.shotByMe) triggerItemRoulette();
-                                createFallingBall(b);
-                                delete board[key];
-                            }
-                        }
-                        if (currentBall.y - radius <= 0) {
-                            currentBall.isMoving = false;
-                            isPenetrateMode = false;
-                            let wasShotByMe = currentBall.shotByMe;
-                            spawnBall();
-
-                            if (wasShotByMe) {
-                                let nextIdx = getNextTurnIndex();
-                                sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                                nextTurn(nextIdx);
-                            }
-                        }
-                    } else {
-                        let hit = (currentBall.y - radius <= 0);
-                        let hitKey = null;
-                        for (let key in board) {
-                            let b = board[key];
-                            if (Math.hypot(b.x - currentBall.x, b.y - currentBall.y) < radius * 1.8) {
-                                hit = true; hitKey = key; break;
-                            }
-                        }
-
-                        if (hit) {
-                            currentBall.isMoving = false;
-                            let wasShotByMe = currentBall.shotByMe;
-                            
-                            if (currentBall.color === 'RAINBOW' && hitKey && board[hitKey]) {
-                                if (wasShotByMe) handleRainbowHit(board[hitKey].color);
-                            } else {
-                                if (wasShotByMe) snapToGrid(currentBall);
-                            }
-                            
-                            spawnBall();
-
-                            if (wasShotByMe) {
-                                let nextIdx = getNextTurnIndex();
-                                sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                                nextTurn(nextIdx);
-                            }
-                        }
-                    }
-                }
-
-                if (dragStart && dragCurrent && currentTurnIndex === myTurnIndex && isGameStarted && !isTurnChanging) {
-                    ctx.beginPath();
-                    ctx.moveTo(currentBall.x, currentBall.y);
-                    ctx.lineTo(currentBall.x + (dragStart.x - dragCurrent.x), currentBall.y + (dragStart.y - dragCurrent.y));
-                    ctx.strokeStyle = "rgba(0, 255, 255, 0.8)";
-                    ctx.lineWidth = 3;
-                    ctx.shadowColor = "#00ffff"; ctx.shadowBlur = 8;
-                    ctx.stroke();
-                    ctx.shadowBlur = 0;
-                }
+                let launcherY = canvas.height * 0.88;
+                let limitY = launcherY - (radius * 2);
 
                 ctx.beginPath();
-                ctx.arc(currentBall.x, currentBall.y, radius - 1, 0, Math.PI * 2);
-                if (currentBall.color === 'RAINBOW') {
-                    let grad = ctx.createLinearGradient(currentBall.x - radius, currentBall.y - radius, currentBall.x + radius, currentBall.y + radius);
-                    grad.addColorStop(0, 'red'); grad.addColorStop(0.2, 'yellow'); grad.addColorStop(0.4, 'green'); 
-                    grad.addColorStop(0.6, 'cyan'); grad.addColorStop(0.8, 'blue'); grad.addColorStop(1, 'magenta');
-                    ctx.fillStyle = grad;
-                } else {
-                    ctx.fillStyle = currentBall.color;
-                }
-                ctx.shadowBlur = 10;
-                ctx.fill();
-                ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke(); 
-
-                if (currentBall.isItem) {
-                    ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px sans-serif";
-                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                    ctx.fillText("?", currentBall.x, currentBall.y);
-                }
-
-                ctx.closePath();
+                ctx.setLineDash([6, 6]);
+                ctx.moveTo(0, limitY); ctx.lineTo(canvas.width, limitY);
+                ctx.strokeStyle = "#ff0055"; ctx.lineWidth = 2; 
+                ctx.shadowColor = "#ff0055"; ctx.shadowBlur = 8;
+                ctx.stroke();
+                ctx.setLineDash([]);
                 ctx.shadowBlur = 0;
+
+                Object.values(board).forEach(b => {
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, radius - 1, 0, Math.PI * 2);
+                    ctx.fillStyle = b.color;
+                    ctx.shadowColor = b.color;
+                    ctx.shadowBlur = 8;
+                    ctx.fill();
+
+                    if (b.isItem) {
+                        ctx.strokeStyle = "#ffff00"; ctx.lineWidth = 3; ctx.stroke();
+                        ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px sans-serif";
+                        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                        ctx.fillText("?", b.x, b.y);
+                    }
+                    ctx.closePath();
+                });
+                ctx.shadowBlur = 0;
+
+                if (!isModalActive) {
+                    if (currentBall) {
+                        if (currentBall.isMoving) {
+                            currentBall.x += currentBall.vx;
+                            currentBall.y += currentBall.vy;
+
+                            if (currentBall.x - radius < 0 || currentBall.x + radius > canvas.width) {
+                                currentBall.vx *= -1;
+                            }
+
+                            if (isPenetrateMode) {
+                                for (let key in board) {
+                                    let b = board[key];
+                                    if (Math.hypot(b.x - currentBall.x, b.y - currentBall.y) < radius * 1.8) {
+                                        if (b.isItem && currentBall.shotByMe) triggerItemRoulette();
+                                        createFallingBall(b);
+                                        delete board[key];
+                                    }
+                                }
+                                if (currentBall.y - radius <= 0) {
+                                    currentBall.isMoving = false;
+                                    isPenetrateMode = false;
+                                    let wasShotByMe = currentBall.shotByMe;
+                                    spawnBall();
+
+                                    if (wasShotByMe) {
+                                        let nextIdx = getNextTurnIndex();
+                                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                                        nextTurn(nextIdx);
+                                    }
+                                }
+                            } else {
+                                let hit = (currentBall.y - radius <= 0);
+                                let hitKey = null;
+                                for (let key in board) {
+                                    let b = board[key];
+                                    if (Math.hypot(b.x - currentBall.x, b.y - currentBall.y) < radius * 1.8) {
+                                        hit = true; hitKey = key; break;
+                                    }
+                                }
+
+                                if (hit) {
+                                    currentBall.isMoving = false;
+                                    let wasShotByMe = currentBall.shotByMe;
+                                    
+                                    if (currentBall.color === 'RAINBOW' && hitKey && board[hitKey]) {
+                                        if (wasShotByMe) handleRainbowHit(board[hitKey].color);
+                                    } else {
+                                        if (wasShotByMe) snapToGrid(currentBall);
+                                    }
+                                    
+                                    spawnBall();
+
+                                    if (wasShotByMe) {
+                                        let nextIdx = getNextTurnIndex();
+                                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                                        nextTurn(nextIdx);
+                                    }
+                                }
+                            }
+                        }
+
+                        // ガイド線を点線に変更 [6, 4]
+                        if (dragStart && dragCurrent && currentTurnIndex === myTurnIndex && isGameStarted && !isTurnChanging) {
+                            ctx.beginPath();
+                            ctx.setLineDash([6, 4]);
+                            ctx.moveTo(currentBall.x, currentBall.y);
+                            ctx.lineTo(currentBall.x + (dragStart.x - dragCurrent.x), currentBall.y + (dragStart.y - dragCurrent.y));
+                            ctx.strokeStyle = "rgba(0, 255, 255, 0.8)";
+                            ctx.lineWidth = 3;
+                            ctx.shadowColor = "#00ffff"; ctx.shadowBlur = 8;
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                            ctx.shadowBlur = 0;
+                        }
+
+                        ctx.beginPath();
+                        ctx.arc(currentBall.x, currentBall.y, radius - 1, 0, Math.PI * 2);
+                        if (currentBall.color === 'RAINBOW') {
+                            let grad = ctx.createLinearGradient(currentBall.x - radius, currentBall.y - radius, currentBall.x + radius, currentBall.y + radius);
+                            grad.addColorStop(0, 'red'); grad.addColorStop(0.2, 'yellow'); grad.addColorStop(0.4, 'green'); 
+                            grad.addColorStop(0.6, 'cyan'); grad.addColorStop(0.8, 'blue'); grad.addColorStop(1, 'magenta');
+                            ctx.fillStyle = grad;
+                        } else {
+                            ctx.fillStyle = currentBall.color;
+                        }
+                        ctx.shadowBlur = 10;
+                        ctx.fill();
+                        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke(); 
+
+                        if (currentBall.isItem) {
+                            ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px sans-serif";
+                            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                            ctx.fillText("?", currentBall.x, currentBall.y);
+                        }
+
+                        ctx.closePath();
+                        ctx.shadowBlur = 0;
+                    }
+                }
+
+                updateFallingBalls();
+                updateFlyingOjama();
             }
 
-            updateFallingBalls();
-            updateFlyingOjama();
-
-            requestAnimationFrame(gameLoop);
+            if (!isGameOver) {
+                requestAnimationFrame(gameLoop);
+            }
         }
 
         function handleRainbowHit(targetColor) {
@@ -1239,10 +1250,11 @@
         }
 
         function addScoreAndAttack(count) {
+            if (isGameOver) return;
             myScore += count;
             document.getElementById('gui-score').innerText = `${myScore}/500`;
 
-            if (myScore >= 500) {
+            if (myScore >= 500 && !isGameOver) {
                 sendSignal({ type: 'WINNER', winnerName: myName });
                 handleWin(myName);
                 return;
@@ -1280,6 +1292,7 @@
         }
 
         function receiveOjama(count) {
+            if (isGameOver) return;
             isProcessingOjama = true; 
 
             for (let i = 0; i < count; i++) {
@@ -1315,6 +1328,7 @@
         }
 
         function placeOjamaInGrid(color) {
+            if (isGameOver) return;
             for (let r = 0; r < 20; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (!board[`${r},${c}`]) {
@@ -1343,10 +1357,12 @@
         }
 
         function triggerItemRoulette() {
+            if (isGameOver) return;
             let totalStock = itemStocks.reduce((a, b) => a + b, 0);
             if (totalStock >= 5) return;
 
             stopLocalTurnTimer();
+            isModalActive = true; 
             
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
@@ -1377,7 +1393,8 @@
                     itemStocks[idx]++;
                     updateItemUI();
                     modal.style.display = 'none';
-                    if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
+                    isModalActive = false; 
+                    if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
                 }, 400);
             };
         }
@@ -1396,7 +1413,7 @@
         }
 
         function useItem(type) {
-            if (currentTurnIndex !== myTurnIndex || itemStocks[type] <= 0 || !isGameStarted || isProcessingOjama || isTurnChanging) return;
+            if (currentTurnIndex !== myTurnIndex || itemStocks[type] <= 0 || !isGameStarted || isProcessingOjama || isTurnChanging || isModalActive || isGameOver) return;
             
             itemStocks[type]--;
             updateItemUI();
@@ -1406,11 +1423,12 @@
             else if (type === 2) openSkipModal();
             else if (type === 3) isPenetrateMode = true;
             else if (type === 4) openColorChangeModal();
-            else if (type === 5) openMysteryRouletteModal(); // 【仕様変更】ミステリー
+            else if (type === 5) openMysteryRouletteModal();
         }
 
         function openSkipModal() {
             stopLocalTurnTimer();
+            isModalActive = true;
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
@@ -1426,7 +1444,8 @@
 
         function applySkip(targetName) {
             document.getElementById('item-modal').style.display = 'none';
-            if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
+            isModalActive = false;
+            if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
             sendSignal({ type: 'SKIP_APPLIED', targetName: targetName });
         }
 
@@ -1435,6 +1454,7 @@
 
         function openColorChangeModal() {
             stopLocalTurnTimer();
+            isModalActive = true;
             selectedSrcColor = null;
             selectedDstColor = null;
             let modal = document.getElementById('item-modal');
@@ -1485,15 +1505,16 @@
 
         function executeColorChange() {
             document.getElementById('item-modal').style.display = 'none';
-            if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
+            isModalActive = false;
+            if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
             Object.values(board).forEach(b => {
                 if (b.color === selectedSrcColor) b.color = selectedDstColor;
             });
         }
 
-        /* 【仕様変更】ミステリーアイテムの処理 */
         function openMysteryRouletteModal() {
             stopLocalTurnTimer();
+            isModalActive = true;
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
@@ -1521,7 +1542,8 @@
 
                 if (targets.length === 0) {
                     modal.style.display = 'none';
-                    if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
+                    isModalActive = false;
+                    if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
                     return;
                 }
 
@@ -1546,6 +1568,7 @@
                 document.getElementById('mystery-ok-btn').onclick = (ev) => {
                     ev.stopPropagation();
                     modal.style.display = 'none';
+                    isModalActive = false;
                     
                     sendSignal({
                         type: 'APPLY_MYSTERY_EFFECT',
@@ -1554,7 +1577,7 @@
                     });
                     executeMysteryEffect(chosenPlayer.name, chosenEffect);
 
-                    if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
+                    if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
                 };
             };
         }
@@ -1563,11 +1586,9 @@
             let isMe = (targetName === myName);
 
             if (effectType === 1) {
-                // 効果1: スキップ（1ターン休み）
                 skipTargetName = targetName;
             } 
             else if (effectType === 2) {
-                // 効果2: 盤面の玉がランダムで色変更（1色のみ）
                 if (isMe) {
                     let singleColor = COLORS[Math.floor(Math.random() * COLORS.length)];
                     Object.values(board).forEach(b => {
@@ -1576,7 +1597,6 @@
                 }
             } 
             else if (effectType === 3) {
-                // 効果3: 盤面の玉が綺麗に同色玉で横列に整列
                 if (isMe) {
                     let currentBalls = Object.values(board);
                     if (currentBalls.length > 0) {
@@ -1596,7 +1616,6 @@
                 }
             } 
             else if (effectType === 4) {
-                // 効果4: 盤面の玉がすべて消滅する
                 if (isMe) {
                     Object.keys(board).forEach(key => {
                         createFallingBall(board[key]);
@@ -1607,6 +1626,7 @@
         }
 
         function handlePlayerDefeat(defIdx) {
+            if (isGameOver) return;
             playerList[defIdx].active = false;
             if (defIdx === myTurnIndex) {
                 stopLocalTurnTimer();
@@ -1620,7 +1640,7 @@
 
             let activePlayers = playerList.filter(p => p.active);
             if (activePlayers.length === 1) {
-                if (isHost) {
+                if (isHost && !isGameOver) {
                     sendSignal({ type: 'WINNER', winnerName: activePlayers[0].name });
                     handleWin(activePlayers[0].name);
                 }
@@ -1628,7 +1648,9 @@
         }
 
         function handleWin(winnerName) {
+            if (isGameOver) return;
             isGameOver = true;
+            isModalActive = true;
             stopLocalTurnTimer();
             document.getElementById('spectate-banner').style.display = 'none';
 
@@ -1719,6 +1741,7 @@
 
             isGameOver = false;
             isGameStarted = false;
+            isModalActive = false;
             playerList = nextPlayers;
             broadcast({ type: 'PLAYER_LIST', list: playerList });
 
