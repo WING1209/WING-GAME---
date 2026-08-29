@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING⚡パズル対戦〇 Ver 1.01</title>
+    <title>〇WING⚡パズル対戦〇 Ver 1.02</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -89,6 +89,9 @@
             background: #00ffff; color: #000; 
             box-shadow: 0 0 20px #00ffff;
         }
+        .btn-disabled {
+            opacity: 0.4; pointer-events: none; border-color: #555; color: #888; text-shadow: none; box-shadow: none;
+        }
         .btn-opt { width: 50px; height: 50px; line-height: 26px; padding: 10px 0; margin: 6px; font-weight: bold; font-size: 1.3rem; }
         .btn-sub { border-color: #ff0055; color: #ff0055; text-shadow: 0 0 5px #ff0055; }
         .btn-sub:active { background: #ff0055; color: #fff; }
@@ -101,14 +104,12 @@
             outline: none;
         }
 
-        /* 画面比率 7(右:パズル) : 3(左:GUI) */
         #game-screen { 
             display: none; flex-direction: row; 
             width: 100vw; height: 100dvh; position: absolute; top: 0; left: 0; z-index: 20;
             overflow: hidden;
         }
 
-        /* 3割：GUIパネル（左側） */
         #gui-panel { 
             width: 30vw; height: 100dvh; 
             background: rgba(5, 8, 20, 0.95); 
@@ -139,7 +140,6 @@
             text-shadow: 0 0 5px #00ff00;
         }
 
-        /* 7割：パズルエリア（右側） */
         #canvas-panel { 
             width: 70vw; height: 100dvh; position: relative; background: #020205; 
             overflow: hidden; touch-action: none;
@@ -185,10 +185,10 @@
         <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
-    <!-- 1. タイトル画面 (Ver 1.01表記追加) -->
+    <!-- 1. タイトル画面 (Ver 1.02) -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇WING<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.01</div>
+        <div class="version-tag">Ver 1.02</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -406,6 +406,7 @@
                 }
             } else if (data.type === 'REMATCH_VOTE') {
                 rematchVotes[data.name] = data.vote;
+                broadcast({ type: 'REMATCH_VOTE_SYNC', votes: rematchVotes });
                 updateHostRematchModal();
             } else {
                 broadcast(data, conn);
@@ -417,6 +418,9 @@
             if (data.type === 'PLAYER_LIST') {
                 playerList = data.list;
                 updatePlayerListUI();
+            } else if (data.type === 'REMATCH_VOTE_SYNC') {
+                rematchVotes = data.votes;
+                updateGuestRematchUI();
             } else {
                 processGameSignal(data);
             }
@@ -627,8 +631,8 @@
                 return;
             }
 
-            // 自分のターン開始時、20%の確率でアイテム玉生成
-            if (currentTurnIndex === myTurnIndex && Math.random() < 0.20) {
+            // 修正：自分のターン開始時、30%の確率でアイテム玉生成
+            if (currentTurnIndex === myTurnIndex && Math.random() < 0.30) {
                 spawnItemBallAnywhere();
             }
 
@@ -689,7 +693,7 @@
         const COLORS = ['#ff0055', '#00ff66', '#00ffff', '#ffff00', '#cc00ff'];
         let board = {};
         let currentBall, nextColor, isNextItem = false;
-        let remoteBalls = []; // 修正：他人の発射演出用アニメーション配列
+        let remoteBalls = [];
         let dragStart = null, dragCurrent = null;
         let myScore = 0;
         let fallingBalls = [];
@@ -748,7 +752,8 @@
         }
 
         function prepareNextBall() {
-            if (Math.random() < 0.20) {
+            // 修正：30%の確率でレインボー（アイテム）生成
+            if (Math.random() < 0.30) {
                 nextColor = 'RAINBOW';
             } else {
                 nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -877,7 +882,6 @@
             else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
             else if (data.type === 'START_GAME_ACTION') startGameAction(data.orderedList);
             else if (data.type === 'SHOOT_BALL') {
-                // 修正：他人の射撃は自分の発射台を上書きせず、リモート玉（遠隔視覚効果）として独立描画
                 if (data.shooterIndex !== myTurnIndex) {
                     remoteBalls.push({
                         x: canvas.width / 2,
@@ -908,7 +912,10 @@
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            let limitY = getGridCoord(10, 0).y;
+            // 修正：限界値の点線位置を発射位置（y: canvas.height * 0.88）より「1玉分（2 * radius）上」に設定
+            let launcherY = canvas.height * 0.88;
+            let limitY = launcherY - (radius * 2);
+
             ctx.beginPath();
             ctx.setLineDash([6, 6]);
             ctx.moveTo(0, limitY); ctx.lineTo(canvas.width, limitY);
@@ -1075,7 +1082,7 @@
 
         function snapToGrid(ball) {
             let bestRow = 0, bestCol = 0, minDist = Infinity;
-            for (let r = 0; r < 14; r++) {
+            for (let r = 0; r < 20; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (board[`${r},${c}`]) continue;
                     let pos = getGridCoord(r, c);
@@ -1177,7 +1184,6 @@
             }
         }
 
-        /* 修正：絶対に自分（myTurnIndex）を選ばない安全ターゲット決定処理 */
         function getOjamaTargetIndex() {
             if (playerList.length <= 1) return -1;
             
@@ -1278,7 +1284,7 @@
         }
 
         function placeOjamaInGrid(color) {
-            for (let r = 0; r < 14; r++) {
+            for (let r = 0; r < 20; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (!board[`${r},${c}`]) {
                         let pos = getGridCoord(r, c);
@@ -1291,10 +1297,11 @@
 
         function checkDefeatCondition() {
             if (isProcessingOjama || isGameOver) return;
-            let limitY = getGridCoord(10, 0).y;
+            let launcherY = canvas.height * 0.88;
+            let limitY = launcherY - (radius * 2);
             let lost = false;
             Object.values(board).forEach(b => {
-                if (b.y >= limitY) lost = true;
+                if (b.y + radius >= limitY) lost = true;
             });
 
             if (lost) {
@@ -1479,49 +1486,52 @@
             }
         }
 
+        /* 修正：再戦フローの完全修正 */
         function handleWin(winnerName) {
             isGameOver = true;
             stopLocalTurnTimer();
             document.getElementById('spectate-banner').style.display = 'none';
 
             let modal = document.getElementById('item-modal');
-            let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
 
             rematchVotes = {};
-            rematchVotes[myName] = 'REMATCH';
 
             if (isHost) {
                 updateHostRematchModal(winnerName);
             } else {
+                updateGuestRematchUI(winnerName);
+            }
+        }
+
+        function updateGuestRematchUI(winnerName = null) {
+            let content = document.getElementById('item-modal-content');
+            if (!content) return;
+
+            let currentVote = rematchVotes[myName];
+            let titleHtml = winnerName ? `<h2 class="win-glow" style="color:#00ffff; font-size:1.6rem; margin-bottom:10px;">勝者: ${winnerName}</h2>` : `<h2 style="color:#00ffff; font-size:1.4rem; margin-bottom:10px;">対戦結果</h2>`;
+
+            if (!currentVote) {
                 content.innerHTML = `
-                    <h2 class="win-glow" style="color:#00ffff; font-size:1.8rem; margin-bottom:10px;">勝者: ${winnerName}</h2>
-                    <p style="color:#88aacc; font-size:0.8rem; margin-bottom:15px;">再戦希望を選択してください</p>
-                    <div class="btn" id="guest-opt-rematch" onclick="setGuestVote('REMATCH')">⭕ 再戦希望</div>
-                    <div class="btn btn-sub" id="guest-opt-retire" onclick="setGuestVote('RETIRE')">❌ リタイア</div>
-                    <div id="guest-vote-status" style="margin-top:10px; color:#00ff00; font-size:0.8rem;">「再戦希望」を選択中</div>
+                    ${titleHtml}
+                    <p style="color:#88aacc; font-size:0.8rem; margin-bottom:15px;">再戦希望か退出かを選択してください</p>
+                    <div class="btn" onclick="setGuestVote('REMATCH')">⭕ 再戦希望</div>
+                    <div class="btn btn-sub" onclick="setGuestVote('RETIRE')">❌ 終了 (退出)</div>
+                `;
+            } else {
+                let stText = (currentVote === 'REMATCH') ? '⭕ 再戦希望' : '❌ 終了';
+                let stColor = (currentVote === 'REMATCH') ? '#00ff00' : '#ff0055';
+                content.innerHTML = `
+                    ${titleHtml}
+                    <div style="margin:15px 0; color:${stColor}; font-weight:bold; font-size:1.1rem;">あなたの選択: ${stText}</div>
+                    <p class="blink" style="color:#00ffff; font-size:0.85rem;">ホストの決定を待っています...</p>
                 `;
             }
         }
 
         function setGuestVote(vote) {
             rematchVotes[myName] = vote;
-            let status = document.getElementById('guest-vote-status');
-            let btnRematch = document.getElementById('guest-opt-rematch');
-            let btnRetire = document.getElementById('guest-opt-retire');
-
-            if (vote === 'REMATCH') {
-                status.innerText = "「再戦希望」を選択中";
-                status.style.color = "#00ff00";
-                btnRematch.style.background = "rgba(0,255,0,0.2)";
-                btnRetire.style.background = "rgba(10, 15, 30, 0.9)";
-            } else {
-                status.innerText = "「リタイア」を選択中（次ゲームから退出）";
-                status.style.color = "#ff0055";
-                btnRetire.style.background = "rgba(255,0,85,0.2)";
-                btnRematch.style.background = "rgba(10, 15, 30, 0.9)";
-            }
-
+            updateGuestRematchUI();
             if (hostConn) {
                 hostConn.send({ type: 'REMATCH_VOTE', name: myName, vote: vote });
             }
@@ -1531,27 +1541,39 @@
             let content = document.getElementById('item-modal-content');
             if (!content) return;
 
-            let html = `<h2 class="win-glow" style="color:#00ffff; font-size:1.6rem; margin-bottom:10px;">ゲーム終了</h2>`;
-            html += `<div style="text-align:left; width:100%; margin:10px 0; background:#050a15; padding:8px; border-radius:6px; font-size:0.8rem;">`;
+            let guests = playerList.filter(p => p.name !== myName);
+            let allGuestsVoted = guests.every(p => rematchVotes[p.name] !== undefined);
+
+            let html = winnerName ? `<h2 class="win-glow" style="color:#00ffff; font-size:1.6rem; margin-bottom:10px;">勝者: ${winnerName}</h2>` : `<h2 style="color:#00ffff; font-size:1.4rem; margin-bottom:10px;">ゲーム終了</h2>`;
             
-            playerList.forEach(p => {
-                let v = rematchVotes[p.name] || 'REMATCH';
-                let stColor = (v === 'REMATCH') ? '#00ff00' : '#ff0055';
-                let stText = (v === 'REMATCH') ? '⭕ 再戦' : '❌ リタイア';
+            html += `<div style="text-align:left; width:100%; margin:8px 0; background:#050a15; padding:8px; border-radius:6px; font-size:0.8rem;">`;
+            html += `<div style="color:#88aacc; font-size:0.75rem; margin-bottom:5px;">【 ゲストの再戦回答状況 】</div>`;
+            
+            guests.forEach(p => {
+                let v = rematchVotes[p.name];
+                let stColor = v === 'REMATCH' ? '#00ff00' : (v === 'RETIRE' ? '#ff0055' : '#888888');
+                let stText = v === 'REMATCH' ? '⭕ 再戦希望' : (v === 'RETIRE' ? '❌ 終了' : '⏳ 選択中...');
                 html += `<div style="display:flex; justify-content:space-between; margin:4px 0;"><span>${p.name}</span><span style="color:${stColor}; font-weight:bold;">${stText}</span></div>`;
             });
             html += `</div>`;
 
-            html += `<div class="btn" onclick="hostConfirmRematch()" style="margin-top:5px;">再戦スタート</div>`;
-            html += `<div class="btn btn-sub" onclick="hostDisbandGroup()" style="margin-top:5px;">ゲーム終了 (解散)</div>`;
+            if (allGuestsVoted) {
+                let rematchCount = playerList.filter(p => p.name === myName || rematchVotes[p.name] === 'REMATCH').length;
+                html += `<div class="btn" onclick="hostConfirmRematch()" style="margin-top:5px;">再戦スタート (${rematchCount}名)</div>`;
+                html += `<div class="btn btn-sub" onclick="hostDisbandGroup()" style="margin-top:5px;">全終了 (解散)</div>`;
+            } else {
+                html += `<p class="blink" style="color:#ffff00; font-size:0.8rem; margin:10px 0;">ゲスト全員の選択を待っています...</p>`;
+                html += `<div class="btn btn-disabled" style="margin-top:5px;">再戦スタート</div>`;
+                html += `<div class="btn btn-sub" onclick="hostDisbandGroup()" style="margin-top:5px;">全終了 (解散)</div>`;
+            }
 
             content.innerHTML = html;
         }
 
         function hostConfirmRematch() {
-            let nextPlayers = playerList.filter(p => (rematchVotes[p.name] || 'REMATCH') === 'REMATCH');
+            let nextPlayers = playerList.filter(p => p.name === myName || rematchVotes[p.name] === 'REMATCH');
             if (nextPlayers.length < 2) {
-                alert("再戦人数が2名未満のため開始できません。人数不足の場合は解散してください。");
+                alert("再戦人数が2名未満（参加者が不足）のため開始できません。解散してください。");
                 return;
             }
 
@@ -1570,7 +1592,7 @@
         }
 
         function handleDisband() {
-            alert("ホストによって解散されたか、ゲームが終了しました。タイトルへ戻ります。");
+            alert("ゲームが終了しました。タイトルへ戻ります。");
             location.reload();
         }
     </script>
