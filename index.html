@@ -128,10 +128,11 @@
 
         .gui-label { color: #88aacc; font-weight: bold; font-size: 0.6rem; letter-spacing: 0.5px; margin-bottom: 1px; }
 
-        .item-list { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+        /* 【仕様変更】アイテムボタンを少し大きく表示 */
+        .item-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
         .item-row { 
-            background: rgba(20, 25, 45, 0.9); padding: 7px 6px; border-radius: 4px; text-align: center; 
-            border: 1px solid #334466; font-size: 0.75rem; color: #556688; cursor: pointer;
+            background: rgba(20, 25, 45, 0.9); padding: 10px 8px; border-radius: 4px; text-align: center; 
+            border: 1px solid #334466; font-size: 0.85rem; color: #556688; cursor: pointer;
             display: flex; justify-content: space-between; align-items: center;
         }
         .item-active { 
@@ -780,6 +781,7 @@
         let activeMultiplier = 1;
         let isPenetrateMode = false;
         let itemStocks = [0, 0, 0, 0, 0, 0];
+        let launchedBallWasItem = false; // 発射した玉が？付きかどうか
 
         function resizeCanvas() {
             if (!canvas) return;
@@ -947,6 +949,9 @@
 
                 stopLocalTurnTimer();
 
+                // 発射時に？付きだったかを保持
+                launchedBallWasItem = currentBall.isItem;
+
                 currentBall.vx = vx;
                 currentBall.vy = vy;
                 currentBall.isMoving = true;
@@ -972,6 +977,12 @@
         }
 
         function processGameSignal(data) {
+            // 【バグ修正①】タイミングズレや予期せぬフリーズを防ぐため、主要な進行シグナル受信時にモーダルを強制閉鎖＆isModalActiveを解除
+            if (data.type === 'TURN_CHANGE' || data.type === 'START_ROULETTE' || data.type === 'ROULETTE_RESULT' || data.type === 'START_GAME_ACTION') {
+                document.getElementById('item-modal').style.display = 'none';
+                isModalActive = false;
+            }
+
             if (data.type === 'START_ROULETTE') {
                 if (data.ojamaMultiplier !== undefined) ojamaMultiplier = data.ojamaMultiplier;
                 document.getElementById('item-modal').style.display = 'none';
@@ -1030,7 +1041,6 @@
 
                     if (b.isItem) {
                         ctx.strokeStyle = "#ffff00"; ctx.lineWidth = 3; ctx.stroke();
-                        /* 【仕様変更】？の表示色を黒に変更 */
                         ctx.fillStyle = "#000000"; ctx.font = "bold 12px sans-serif";
                         ctx.textAlign = "center"; ctx.textBaseline = "middle";
                         ctx.fillText("?", b.x, b.y);
@@ -1053,7 +1063,10 @@
                                 for (let key in board) {
                                     let b = board[key];
                                     if (Math.hypot(b.x - currentBall.x, b.y - currentBall.y) < radius * 1.8) {
-                                        if (b.isItem && currentBall.shotByMe) triggerItemRoulette();
+                                        if ((b.isItem || launchedBallWasItem) && currentBall.shotByMe) {
+                                            launchedBallWasItem = false;
+                                            triggerItemRoulette();
+                                        }
                                         createFallingBall(b);
                                         delete board[key];
                                     }
@@ -1129,7 +1142,6 @@
                         ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke(); 
 
                         if (currentBall.isItem) {
-                            /* 【仕様変更】？の表示色を黒に変更 */
                             ctx.fillStyle = "#000000"; ctx.font = "bold 12px sans-serif";
                             ctx.textAlign = "center"; ctx.textBaseline = "middle";
                             ctx.fillText("?", currentBall.x, currentBall.y);
@@ -1152,6 +1164,13 @@
         function handleRainbowHit(targetColor) {
             let clearedCount = 0;
             let gotItem = false;
+            
+            // 【バグ修正②】発射玉自体が？付きだった場合もアイテム獲得対象とする
+            if (launchedBallWasItem) {
+                gotItem = true;
+                launchedBallWasItem = false;
+            }
+
             Object.keys(board).forEach(key => {
                 if (board[key].color === targetColor) {
                     if (board[key].isItem) gotItem = true;
@@ -1203,6 +1222,12 @@
             let queue = [startBall];
             let matched = new Set([`${startBall.row},${startBall.col}`]);
             let gotItem = false;
+
+            // 【バグ修正②】発射玉自体が？付きだった場合、マッチが発生した時点でアイテム獲得とする
+            if (launchedBallWasItem) {
+                gotItem = true;
+                launchedBallWasItem = false;
+            }
 
             while (queue.length > 0) {
                 let curr = queue.shift();
@@ -1653,7 +1678,6 @@
                 skipTargetName = targetName;
             } 
             else if (effectType === 2) {
-                // 【仕様変更】盤面にある色からランダムで1色だけを選び、別の色に置き換える（すべて同色にはしない）
                 if (isMe) {
                     let activeColors = Array.from(new Set(Object.values(board).map(b => b.color)));
                     if (activeColors.length > 0) {
