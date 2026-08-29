@@ -185,10 +185,10 @@
         <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
-    <!-- 1. タイトル画面 (Ver 1.09) -->
+    <!-- 1. タイトル画面 -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇六実<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 2.0</div>
+        <div class="version-tag">Ver 2.1</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -1030,7 +1030,8 @@
 
                     if (b.isItem) {
                         ctx.strokeStyle = "#ffff00"; ctx.lineWidth = 3; ctx.stroke();
-                        ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px sans-serif";
+                        /* 【仕様変更】？の表示色を黒に変更 */
+                        ctx.fillStyle = "#000000"; ctx.font = "bold 12px sans-serif";
                         ctx.textAlign = "center"; ctx.textBaseline = "middle";
                         ctx.fillText("?", b.x, b.y);
                     }
@@ -1128,7 +1129,8 @@
                         ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke(); 
 
                         if (currentBall.isItem) {
-                            ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px sans-serif";
+                            /* 【仕様変更】？の表示色を黒に変更 */
+                            ctx.fillStyle = "#000000"; ctx.font = "bold 12px sans-serif";
                             ctx.textAlign = "center"; ctx.textBaseline = "middle";
                             ctx.fillText("?", currentBall.x, currentBall.y);
                         }
@@ -1651,20 +1653,29 @@
                 skipTargetName = targetName;
             } 
             else if (effectType === 2) {
+                // 【仕様変更】盤面にある色からランダムで1色だけを選び、別の色に置き換える（すべて同色にはしない）
                 if (isMe) {
-                    let singleColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-                    Object.values(board).forEach(b => {
-                        b.color = singleColor;
-                    });
+                    let activeColors = Array.from(new Set(Object.values(board).map(b => b.color)));
+                    if (activeColors.length > 0) {
+                        let sourceColor = activeColors[Math.floor(Math.random() * activeColors.length)];
+                        let otherColors = COLORS.filter(c => c !== sourceColor);
+                        if (otherColors.length > 0) {
+                            let targetColor = otherColors[Math.floor(Math.random() * otherColors.length)];
+                            Object.values(board).forEach(b => {
+                                if (b.color === sourceColor) {
+                                    b.color = targetColor;
+                                }
+                            });
+                        }
+                    }
                 }
             } 
             else if (effectType === 3) {
-                // 【仕様変更】現在の色を維持したまま、同じ色が横にまとまるように整列する
                 if (isMe) {
                     let currentBalls = Object.values(board);
                     if (currentBalls.length > 0) {
                         let colors = currentBalls.map(b => b.color);
-                        colors.sort(); // 色ごとにまとめることで横並びに整列
+                        colors.sort();
                         
                         board = {};
                         let idx = 0;
@@ -1812,7 +1823,6 @@
 
             document.getElementById('item-modal').style.display = 'none';
             
-            // 【バグ修正】ホストから全クライアントに強制同期信号を送信
             broadcast({ type: 'START_ROULETTE', ojamaMultiplier: ojamaMultiplier });
             runRouletteUI();
         }
