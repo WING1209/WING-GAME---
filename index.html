@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING⚡パズル対戦〇 Ver 1.04</title>
+    <title>〇WING⚡パズル対戦〇 Ver 1.06</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -128,7 +128,6 @@
 
         .gui-label { color: #88aacc; font-weight: bold; font-size: 0.6rem; letter-spacing: 0.5px; margin-bottom: 1px; }
 
-        /* アイテムボタンを大きく改善 */
         .item-list { display: flex; flex-direction: column; gap: 3px; width: 100%; }
         .item-row { 
             background: rgba(20, 25, 45, 0.9); padding: 7px 6px; border-radius: 4px; text-align: center; 
@@ -164,7 +163,7 @@
             padding: 15px; display: flex; flex-direction: column; gap: 8px; width: 95%; max-width: 280px; 
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); align-items: center;
         }
-        .color-btn { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #fff; display: inline-block; margin: 3px; cursor: pointer; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
+        .color-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #fff; display: inline-block; margin: 3px; cursor: pointer; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
 
         .order-list { margin: 10px 0; text-align: left; background: #050a15; padding: 8px; border-radius: 6px; border: 1px solid #00ffff; width: 95%; max-height: 180px; overflow-y: auto; }
         .order-item { font-size: 0.85rem; margin: 3px 0; color: #fff; }
@@ -186,10 +185,10 @@
         <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
-    <!-- 1. タイトル画面 (Ver 1.03) -->
+    <!-- 1. タイトル画面 (Ver 1.04) -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇WING<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.03</div>
+        <div class="version-tag">Ver 1.04</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -280,6 +279,11 @@
                 <div id="countdown-text" style="font-size:5rem; font-weight:bold; color:#ff0055; text-shadow:0 0 20px #ff0055, 0 0 40px #000; animation: pulseNum 0.5s infinite alternate;">5</div>
             </div>
 
+            <!-- ターンチェンジ演出用オーバーレイ（画面は暗くしない） -->
+            <div id="turn-change-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; flex-direction:column; justify-content:center; align-items:center; z-index:60; pointer-events:none;">
+                <div id="turn-change-text" style="font-size:2.2rem; font-weight:bold; text-shadow:0 0 15px #000, 0 0 25px #000; animation: pulseTurn 0.4s infinite alternate;"></div>
+            </div>
+
             <div id="overlay" class="overlay">
                 <div id="overlay-text" class="big-text"></div>
                 <div id="overlay-sub" style="margin-top:8px; color:#88aacc; font-size:0.85rem; width:100%; display:flex; flex-direction:column; align-items:center;"></div>
@@ -300,6 +304,10 @@
         @keyframes pulseNum {
             0% { transform: scale(0.95); opacity: 0.8; }
             100% { transform: scale(1.1); opacity: 1; }
+        }
+        @keyframes pulseTurn {
+            0% { transform: scale(0.95); opacity: 0.85; }
+            100% { transform: scale(1.05); opacity: 1; }
         }
     </style>
 
@@ -465,6 +473,8 @@
 
         function runRouletteUI() {
             if (isGameStarted) return;
+            // 待機モーダルを閉じる
+            document.getElementById('item-modal').style.display = 'none';
             switchScreen('');
             document.getElementById('game-screen').style.display = 'flex';
             initCanvas();
@@ -564,6 +574,7 @@
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('item-modal').style.display = 'none';
             document.getElementById('countdown-overlay').style.display = 'none';
+            document.getElementById('turn-change-overlay').style.display = 'none';
 
             if (finalOrderedList) {
                 playerList = finalOrderedList;
@@ -584,6 +595,7 @@
         // --- ターン＆タイマー管理 ---
         let turnTime = 10;
         let timerInterval = null;
+        let turnChangeTimerId = null;
 
         function startLocalTurnTimer() {
             stopLocalTurnTimer();
@@ -677,10 +689,16 @@
 
         function updateTurnUI() {
             let isMyTurn = (currentTurnIndex === myTurnIndex);
+            let currentName = playerList[currentTurnIndex] ? playerList[currentTurnIndex].name : "";
             let status = document.getElementById('gui-turn-status');
 
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('countdown-overlay').style.display = 'none';
+
+            // ターンチェンジ時の演出（画面は暗くしない）
+            let tcOverlay = document.getElementById('turn-change-overlay');
+            let tcText = document.getElementById('turn-change-text');
+            tcOverlay.style.display = 'flex';
 
             if (isMyTurn) {
                 status.innerText = "★YOUR TURN";
@@ -688,16 +706,28 @@
                 status.style.textShadow = "0 0 5px #00ff00";
                 status.classList.add('blink');
 
+                tcText.innerText = `${currentName} のターン`;
+                tcText.style.color = "#00ff00";
+                tcText.style.textShadow = "0 0 15px #00ff00, 0 0 30px #000";
+
                 startLocalTurnTimer();
             } else {
-                let currentName = playerList[currentTurnIndex] ? playerList[currentTurnIndex].name : "";
                 status.innerText = `${currentName}の番`;
                 status.style.color = "#ff0055";
                 status.style.textShadow = "0 0 5px #ff0055";
                 status.classList.remove('blink');
 
+                tcText.innerText = "PLEASE WAIT";
+                tcText.style.color = "#ff0055";
+                tcText.style.textShadow = "0 0 15px #ff0055, 0 0 30px #000";
+
                 stopLocalTurnTimer();
             }
+
+            if (turnChangeTimerId) clearTimeout(turnChangeTimerId);
+            turnChangeTimerId = setTimeout(() => {
+                tcOverlay.style.display = 'none';
+            }, 1400);
         }
 
         // --- キャンバス・パズル物理 ---
@@ -770,7 +800,6 @@
             } else {
                 nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
             }
-            // ？玉（アイテム玉）の出現率を40%に変更
             isNextItem = Math.random() < 0.40;
             updateNextGui();
         }
@@ -884,10 +913,12 @@
         }
 
         function processGameSignal(data) {
-            if (data.type === 'START_ROULETTE') runRouletteUI();
+            if (data.type === 'START_ROULETTE') {
+                document.getElementById('item-modal').style.display = 'none';
+                runRouletteUI();
+            }
             else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
             else if (data.type === 'START_GAME_ACTION') startGameAction(data.orderedList);
-            // 他プレイヤーの発射シグナルによる「玉の描画」処理は完全に削除（自分の画面には表示させない）
             else if (data.type === 'TURN_CHANGE') nextTurn(data.nextTurnIndex);
             else if (data.type === 'OJAMA_ATTACK') {
                 if (data.targetIndex === myTurnIndex && data.senderIndex !== myTurnIndex) {
@@ -933,7 +964,6 @@
             });
             ctx.shadowBlur = 0;
 
-            // 自分の発射台の玉
             if (currentBall) {
                 if (currentBall.isMoving) {
                     currentBall.x += currentBall.vx;
@@ -1372,35 +1402,67 @@
             sendSignal({ type: 'SKIP_APPLIED', targetName: targetName });
         }
 
+        // --- 仕様変更①：色変更アイテム（上下表示UI） ---
+        let selectedSrcColor = null;
+        let selectedDstColor = null;
+
         function openColorChangeModal() {
             stopLocalTurnTimer();
+            selectedSrcColor = null;
+            selectedDstColor = null;
             let modal = document.getElementById('item-modal');
-            let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
-
-            let html = `<h3 style="color:#00ffff; font-size:0.9rem; margin-bottom:6px;">【1】変更元の色を選択</h3><div>`;
-            COLORS.forEach(c => {
-                html += `<div class="color-btn" style="background:${c};" onclick="selectSourceColor('${c}')"></div>`;
-            });
-            content.innerHTML = html + `</div>`;
+            updateColorChangeModalContent();
         }
 
-        let selectedSrcColor = null;
-        function selectSourceColor(color) {
-            selectedSrcColor = color;
+        function updateColorChangeModalContent() {
             let content = document.getElementById('item-modal-content');
-            let html = `<h3 style="color:#00ffff; font-size:0.9rem; margin-bottom:6px;">【2】変更先の色を選択</h3><div>`;
+            let html = `<h3 style="color:#00ffff; font-size:1.0rem; margin-bottom:6px;">★ 色変更アイテム ★</h3>`;
+            
+            // 上段：変えたい色
+            html += `<div style="margin-bottom:8px; text-align:left; width:100%;">`;
+            html += `<div style="font-size:0.75rem; color:#88aacc; margin-bottom:3px;">① 【上段】変えたい盤面の玉の色</div>`;
+            html += `<div style="display:flex; justify-content:center; gap:3px;">`;
             COLORS.forEach(c => {
-                html += `<div class="color-btn" style="background:${c};" onclick="applyColorChange('${c}')"></div>`;
+                let border = (selectedSrcColor === c) ? '3px solid #ffff00' : '2px solid #fff';
+                html += `<div class="color-btn" style="background:${c}; border:${border};" onclick="selectSourceColorDirect('${c}')"></div>`;
             });
-            content.innerHTML = html + `</div>`;
+            html += `</div></div>`;
+
+            // 下段：変更後の色
+            html += `<div style="margin-bottom:10px; text-align:left; width:100%;">`;
+            html += `<div style="font-size:0.75rem; color:#88aacc; margin-bottom:3px;">② 【下段】変更したい新しい色</div>`;
+            html += `<div style="display:flex; justify-content:center; gap:3px;">`;
+            COLORS.forEach(c => {
+                let border = (selectedDstColor === c) ? '3px solid #ffff00' : '2px solid #fff';
+                html += `<div class="color-btn" style="background:${c}; border:${border};" onclick="selectDestColorDirect('${c}')"></div>`;
+            });
+            html += `</div></div>`;
+
+            if (selectedSrcColor && selectedDstColor) {
+                html += `<div class="btn" style="padding:10px; margin:2px 0; width:100%; font-size:1rem;" onclick="executeColorChange()">色変更を実行</div>`;
+            } else {
+                html += `<div class="btn btn-disabled" style="padding:10px; margin:2px 0; width:100%; font-size:0.9rem;">上下の色を選んでください</div>`;
+            }
+
+            content.innerHTML = html;
         }
 
-        function applyColorChange(targetColor) {
+        function selectSourceColorDirect(c) {
+            selectedSrcColor = c;
+            updateColorChangeModalContent();
+        }
+
+        function selectDestColorDirect(c) {
+            selectedDstColor = c;
+            updateColorChangeModalContent();
+        }
+
+        function executeColorChange() {
             document.getElementById('item-modal').style.display = 'none';
             if (currentTurnIndex === myTurnIndex) startLocalTurnTimer();
             Object.values(board).forEach(b => {
-                if (b.color === selectedSrcColor) b.color = targetColor;
+                if (b.color === selectedSrcColor) b.color = selectedDstColor;
             });
         }
 
