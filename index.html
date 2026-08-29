@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING⚡パズル対戦〇 Ver 1.06</title>
+    <title>〇WING⚡パズル対戦〇 Ver 1.05</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -185,10 +185,10 @@
         <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
-    <!-- 1. タイトル画面 (Ver 1.04) -->
+    <!-- 1. タイトル画面 (Ver 1.05) -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇WING<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.04</div>
+        <div class="version-tag">Ver 1.05</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -228,7 +228,7 @@
     <div id="lobby-screen" class="screen">
         <h2 id="room-display-title">接続コード: <span id="display-code" style="color:#00ffff; text-shadow: 0 0 8px #00ffff;">----</span></h2>
         <div id="player-list" style="margin:20px 0; color:#00ff00; line-height: 1.8; font-size: 1.1rem; text-shadow:0 0 5px #00ff00;"></div>
-        <div id="lobby-status" class="blink" style="margin-bottom: 20px; color:#ff0055; font-weight:bold;">参加者を待ち待機中...</div>
+        <div id="lobby-status" class="blink" style="margin-bottom: 20px; color:#ff0055; font-weight:bold;">参加者を待機中...</div>
         <div id="host-start-btn" class="btn" style="display:none;" onclick="startRouletteSequence()">ゲーム開始</div>
     </div>
 
@@ -367,11 +367,22 @@
             switchScreen('name-screen');
         }
 
-        function submitName() {
-            myName = document.getElementById('player-name-input').value || (isHost ? "ホスト" : "ゲスト");
-            document.getElementById('gui-name').innerText = myName;
+        function getUniqueName(baseName, existingList) {
+            let name = baseName || "ゲスト";
+            let uniqueName = name;
+            let counter = 1;
+            while (existingList.some(p => p.name === uniqueName)) {
+                uniqueName = `${name}${counter}`;
+                counter++;
+            }
+            return uniqueName;
+        }
 
+        function submitName() {
+            let rawName = document.getElementById('player-name-input').value;
             if (isHost) {
+                let base = rawName || "ホスト";
+                myName = getUniqueName(base, []);
                 roomCode = Math.floor(1000 + Math.random() * 9000).toString();
                 document.getElementById('display-code').innerText = roomCode;
                 document.getElementById('room-display-title').style.display = 'block';
@@ -379,11 +390,15 @@
                 updatePlayerListUI();
                 initPeerHost();
             } else {
+                let base = rawName || "ゲスト";
+                // ゲスト側仮ネーム（接続後にホスト側で一意な名前に割り振られる）
+                myName = base;
                 document.getElementById('room-display-title').style.display = 'none';
                 document.getElementById('host-start-btn').style.display = 'none';
                 document.getElementById('lobby-status').innerText = "参加済、待機中...";
                 initPeerGuest();
             }
+            document.getElementById('gui-name').innerText = myName;
             switchScreen('lobby-screen');
         }
 
@@ -417,7 +432,10 @@
         function handleDataFromGuest(conn, data) {
             if (data.type === 'JOIN') {
                 if (playerList.length < maxPlayers) {
-                    playerList.push({ id: conn.peer, name: data.name, active: true });
+                    let uniqueName = getUniqueName(data.name, playerList);
+                    playerList.push({ id: conn.peer, name: uniqueName, active: true });
+                    // ゲスト本人に確定した名前を通知
+                    conn.send({ type: 'ASSIGN_NAME', name: uniqueName });
                     updatePlayerListUI();
                     broadcast({ type: 'PLAYER_LIST', list: playerList });
                     if (playerList.length === maxPlayers) {
@@ -436,7 +454,10 @@
         }
 
         function handleDataFromHost(data) {
-            if (data.type === 'PLAYER_LIST') {
+            if (data.type === 'ASSIGN_NAME') {
+                myName = data.name;
+                document.getElementById('gui-name').innerText = myName;
+            } else if (data.type === 'PLAYER_LIST') {
                 playerList = data.list;
                 updatePlayerListUI();
             } else if (data.type === 'REMATCH_VOTE_SYNC') {
@@ -473,7 +494,6 @@
 
         function runRouletteUI() {
             if (isGameStarted) return;
-            // 待機モーダルを閉じる
             document.getElementById('item-modal').style.display = 'none';
             switchScreen('');
             document.getElementById('game-screen').style.display = 'flex';
@@ -551,21 +571,18 @@
             });
             listHtml += `</div>`;
 
-            if (isHost) {
-                sub.innerHTML = listHtml;
-                btn.style.display = 'block';
-                btn.innerText = "対戦スタート";
-                btn.onclick = (e) => {
-                    e.stopPropagation();
-                    btn.onclick = null;
-                    btn.style.display = 'none';
-                    broadcast({ type: 'START_GAME_ACTION', orderedList: orderedPlayerList });
-                    startGameAction(orderedPlayerList);
-                };
-            } else {
-                sub.innerHTML = listHtml + `<div class="blink" style="color:#00ffff; margin-top:8px;">自動でゲームスタートします...</div>`;
-                btn.style.display = 'none';
-            }
+            sub.innerHTML = listHtml + `<div class="blink" style="color:#00ffff; margin-top:8px;">自動でゲームスタートします...</div>`;
+            btn.style.display = 'none';
+
+            // ホスト・ゲストともに確認画面表示後、1.8秒後に自動でゲームスタート
+            setTimeout(() => {
+                if (!isGameStarted) {
+                    if (isHost) {
+                        broadcast({ type: 'START_GAME_ACTION', orderedList: orderedPlayerList });
+                        startGameAction(orderedPlayerList);
+                    }
+                }
+            }, 1800);
         }
 
         function startGameAction(finalOrderedList) {
@@ -695,7 +712,6 @@
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('countdown-overlay').style.display = 'none';
 
-            // ターンチェンジ時の演出（画面は暗くしない）
             let tcOverlay = document.getElementById('turn-change-overlay');
             let tcText = document.getElementById('turn-change-text');
             tcOverlay.style.display = 'flex';
@@ -867,7 +883,19 @@
             if (!dragStart || currentBall.isMoving) return;
             let touch = e.touches[0];
             let rect = canvas.getBoundingClientRect();
-            dragCurrent = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+            
+            let rawDx = dragStart.x - (touch.clientX - rect.left);
+            let rawDy = dragStart.y - (touch.clientY - rect.top);
+            let dist = Math.hypot(rawDx, rawDy);
+            
+            // 最大2センチ（約75px）制限
+            const maxDist = 75;
+            if (dist > maxDist) {
+                rawDx = (rawDx / dist) * maxDist;
+                rawDy = (rawDy / dist) * maxDist;
+            }
+
+            dragCurrent = { x: dragStart.x - rawDx, y: dragStart.y - rawDy };
         }
 
         function handleTouchEnd(e) {
@@ -876,8 +904,16 @@
             
             let dx = dragStart.x - dragCurrent.x;
             let dy = dragStart.y - dragCurrent.y;
+            let dist = Math.hypot(dx, dy);
             
-            if (Math.hypot(dx, dy) > 10) {
+            if (dist > 10) {
+                // 制限値（最大75px = 2cm）を超えないようにスケール補正
+                const maxDist = 75;
+                if (dist > maxDist) {
+                    dx = (dx / dist) * maxDist;
+                    dy = (dy / dist) * maxDist;
+                }
+
                 let vx = dx * 0.15;
                 let vy = dy * 0.15;
 
@@ -1402,7 +1438,6 @@
             sendSignal({ type: 'SKIP_APPLIED', targetName: targetName });
         }
 
-        // --- 仕様変更①：色変更アイテム（上下表示UI） ---
         let selectedSrcColor = null;
         let selectedDstColor = null;
 
@@ -1419,7 +1454,6 @@
             let content = document.getElementById('item-modal-content');
             let html = `<h3 style="color:#00ffff; font-size:1.0rem; margin-bottom:6px;">★ 色変更アイテム ★</h3>`;
             
-            // 上段：変えたい色
             html += `<div style="margin-bottom:8px; text-align:left; width:100%;">`;
             html += `<div style="font-size:0.75rem; color:#88aacc; margin-bottom:3px;">① 【上段】変えたい盤面の玉の色</div>`;
             html += `<div style="display:flex; justify-content:center; gap:3px;">`;
@@ -1429,7 +1463,6 @@
             });
             html += `</div></div>`;
 
-            // 下段：変更後の色
             html += `<div style="margin-bottom:10px; text-align:left; width:100%;">`;
             html += `<div style="font-size:0.75rem; color:#88aacc; margin-bottom:3px;">② 【下段】変更したい新しい色</div>`;
             html += `<div style="display:flex; justify-content:center; gap:3px;">`;
@@ -1516,7 +1549,10 @@
 
             let activePlayers = playerList.filter(p => p.active);
             if (activePlayers.length === 1) {
-                handleWin(activePlayers[0].name);
+                if (isHost) {
+                    sendSignal({ type: 'WINNER', winnerName: activePlayers[0].name });
+                    handleWin(activePlayers[0].name);
+                }
             }
         }
 
