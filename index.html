@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING⚡パズル対戦〇 Ver 1.02</title>
+    <title>〇WING⚡パズル対戦〇 Ver 1.03</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -111,37 +111,38 @@
         }
 
         #gui-panel { 
-            width: 30vw; height: 100dvh; 
+            width: 32vw; height: 100dvh; 
             background: rgba(5, 8, 20, 0.95); 
             border-right: 2px solid #00ffff; 
             box-shadow: 5px 0 15px rgba(0, 255, 255, 0.2);
             display: flex; flex-direction: column; justify-content: space-between; 
-            padding: calc(env(safe-area-inset-top) + 6px) 4px calc(env(safe-area-inset-bottom) + 6px) 4px; 
+            padding: calc(env(safe-area-inset-top) + 4px) 4px calc(env(safe-area-inset-bottom) + 4px) 4px; 
             font-size: 0.75rem; z-index: 25; flex-shrink: 0;
         }
 
         .gui-box {
             width: 100%; text-align: center; margin-bottom: 2px;
-            background: rgba(15, 22, 40, 0.6); padding: 3px 2px; border-radius: 4px;
+            background: rgba(15, 22, 40, 0.6); padding: 4px 2px; border-radius: 4px;
             border: 1px solid rgba(0, 255, 255, 0.2);
         }
 
         .gui-label { color: #88aacc; font-weight: bold; font-size: 0.6rem; letter-spacing: 0.5px; margin-bottom: 1px; }
 
-        .item-list { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+        /* アイテムボタンを大きく改善 */
+        .item-list { display: flex; flex-direction: column; gap: 3px; width: 100%; }
         .item-row { 
-            background: rgba(20, 25, 45, 0.8); padding: 3px 4px; border-radius: 3px; text-align: center; 
-            border: 1px solid #334466; font-size: 0.6rem; color: #556688; cursor: pointer;
+            background: rgba(20, 25, 45, 0.9); padding: 7px 6px; border-radius: 4px; text-align: center; 
+            border: 1px solid #334466; font-size: 0.75rem; color: #556688; cursor: pointer;
             display: flex; justify-content: space-between; align-items: center;
         }
         .item-active { 
-            border-color: #00ff00; color: #00ff00; background: rgba(0, 255, 0, 0.15); 
-            font-weight: bold; box-shadow: 0 0 6px rgba(0, 255, 0, 0.4); 
+            border-color: #00ff00; color: #00ff00; background: rgba(0, 255, 0, 0.2); 
+            font-weight: bold; box-shadow: 0 0 8px rgba(0, 255, 0, 0.4); 
             text-shadow: 0 0 5px #00ff00;
         }
 
         #canvas-panel { 
-            width: 70vw; height: 100dvh; position: relative; background: #020205; 
+            width: 68vw; height: 100dvh; position: relative; background: #020205; 
             overflow: hidden; touch-action: none;
         }
         canvas { width: 100%; height: 100%; display: block; touch-action: none; }
@@ -185,10 +186,10 @@
         <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
-    <!-- 1. タイトル画面 (Ver 1.02) -->
+    <!-- 1. タイトル画面 (Ver 1.03) -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇WING<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.02</div>
+        <div class="version-tag">Ver 1.03</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -232,9 +233,9 @@
         <div id="host-start-btn" class="btn" style="display:none;" onclick="startRouletteSequence()">ゲーム開始</div>
     </div>
 
-    <!-- 3. スマホ対戦画面 (7:3 分割) -->
+    <!-- 3. スマホ対戦画面 -->
     <div id="game-screen">
-        <!-- 3割：GUIパネル (左側) -->
+        <!-- 左側：GUIパネル -->
         <div id="gui-panel">
             <div class="gui-box">
                 <div class="gui-label">PLAYER</div>
@@ -254,7 +255,7 @@
 
             <div class="gui-box">
                 <div class="gui-label">NEXT</div>
-                <div id="gui-next" style="width:18px; height:18px; border-radius:50%; background:#fff; margin:2px auto; border:1px solid #fff; box-shadow:0 0 6px #fff; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:10px; color:#000;"></div>
+                <div id="gui-next" style="width:20px; height:20px; border-radius:50%; background:#fff; margin:2px auto; border:1px solid #fff; box-shadow:0 0 6px #fff; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:11px; color:#000;"></div>
             </div>
 
             <div style="width:100%;">
@@ -270,9 +271,14 @@
             </div>
         </div>
 
-        <!-- 7割：パズルエリア (右側) -->
+        <!-- 右側：パズルエリア -->
         <div id="canvas-panel">
             <canvas id="gameCanvas"></canvas>
+
+            <!-- カウントダウン用：盤面が見える透明オーバーレイ -->
+            <div id="countdown-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; flex-direction:column; justify-content:center; align-items:center; z-index:50; pointer-events:none;">
+                <div id="countdown-text" style="font-size:5rem; font-weight:bold; color:#ff0055; text-shadow:0 0 20px #ff0055, 0 0 40px #000; animation: pulseNum 0.5s infinite alternate;">5</div>
+            </div>
 
             <div id="overlay" class="overlay">
                 <div id="overlay-text" class="big-text"></div>
@@ -289,6 +295,13 @@
             </div>
         </div>
     </div>
+
+    <style>
+        @keyframes pulseNum {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            100% { transform: scale(1.1); opacity: 1; }
+        }
+    </style>
 
     <script>
         function checkDevice() {
@@ -550,6 +563,7 @@
             isGameStarted = true;
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('item-modal').style.display = 'none';
+            document.getElementById('countdown-overlay').style.display = 'none';
 
             if (finalOrderedList) {
                 playerList = finalOrderedList;
@@ -561,7 +575,6 @@
             myTurnIndex = playerList.findIndex(p => p.name === myName);
             currentTurnIndex = 0;
             myScore = 0;
-            remoteBalls = [];
             document.getElementById('gui-score').innerText = "0/500";
 
             generateInitialBoard();
@@ -582,18 +595,19 @@
                 turnTime--;
                 document.getElementById('gui-timer').innerText = turnTime;
 
+                let cOverlay = document.getElementById('countdown-overlay');
+                let cText = document.getElementById('countdown-text');
+
                 if (turnTime <= 5 && turnTime > 0) {
-                    let overlay = document.getElementById('overlay');
-                    let text = document.getElementById('overlay-text');
-                    overlay.style.display = 'flex';
-                    text.innerText = turnTime;
-                    text.style.color = "#ff0055";
-                    text.style.fontSize = "4.0rem";
+                    cOverlay.style.display = 'flex';
+                    cText.innerText = turnTime;
+                } else {
+                    cOverlay.style.display = 'none';
                 }
 
                 if (turnTime <= 0) {
                     stopLocalTurnTimer();
-                    document.getElementById('overlay').style.display = 'none';
+                    cOverlay.style.display = 'none';
                     if (currentTurnIndex === myTurnIndex) {
                         let nextIdx = getNextTurnIndex();
                         sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
@@ -607,7 +621,7 @@
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = null;
             document.getElementById('gui-timer').innerText = "-";
-            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('countdown-overlay').style.display = 'none';
         }
 
         function getNextTurnIndex() {
@@ -624,7 +638,6 @@
 
             isTurnChanging = true;
             currentTurnIndex = targetTurnIndex;
-            remoteBalls = [];
 
             if (skipTargetName === playerList[currentTurnIndex].name) {
                 skipTargetName = null;
@@ -667,6 +680,7 @@
             let status = document.getElementById('gui-turn-status');
 
             document.getElementById('overlay').style.display = 'none';
+            document.getElementById('countdown-overlay').style.display = 'none';
 
             if (isMyTurn) {
                 status.innerText = "★YOUR TURN";
@@ -693,7 +707,6 @@
         const COLORS = ['#ff0055', '#00ff66', '#00ffff', '#ffff00', '#cc00ff'];
         let board = {};
         let currentBall, nextColor, isNextItem = false;
-        let remoteBalls = [];
         let dragStart = null, dragCurrent = null;
         let myScore = 0;
         let fallingBalls = [];
@@ -757,7 +770,8 @@
             } else {
                 nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
             }
-            isNextItem = false;
+            // ？玉（アイテム玉）の出現率を40%に変更
+            isNextItem = Math.random() < 0.40;
             updateNextGui();
         }
 
@@ -873,16 +887,7 @@
             if (data.type === 'START_ROULETTE') runRouletteUI();
             else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
             else if (data.type === 'START_GAME_ACTION') startGameAction(data.orderedList);
-            else if (data.type === 'SHOOT_BALL') {
-                if (data.shooterIndex !== myTurnIndex) {
-                    remoteBalls.push({
-                        x: canvas.width / 2,
-                        y: canvas.height * 0.88,
-                        vx: data.vx, vy: data.vy,
-                        color: data.color, isItem: data.isItem
-                    });
-                }
-            }
+            // 他プレイヤーの発射シグナルによる「玉の描画」処理は完全に削除（自分の画面には表示させない）
             else if (data.type === 'TURN_CHANGE') nextTurn(data.nextTurnIndex);
             else if (data.type === 'OJAMA_ATTACK') {
                 if (data.targetIndex === myTurnIndex && data.senderIndex !== myTurnIndex) {
@@ -927,20 +932,6 @@
                 ctx.closePath();
             });
             ctx.shadowBlur = 0;
-
-            // 他人の玉の演出更新
-            for (let i = remoteBalls.length - 1; i >= 0; i--) {
-                let rb = remoteBalls[i];
-                rb.x += rb.vx; rb.y += rb.vy;
-                if (rb.x - radius < 0 || rb.x + radius > canvas.width) rb.vx *= -1;
-
-                ctx.beginPath();
-                ctx.arc(rb.x, rb.y, radius - 1, 0, Math.PI * 2);
-                ctx.fillStyle = rb.color === 'RAINBOW' ? '#ffffff' : rb.color;
-                ctx.shadowBlur = 6; ctx.fill(); ctx.closePath(); ctx.shadowBlur = 0;
-
-                if (rb.y < 0 || rb.y > canvas.height) remoteBalls.splice(i, 1);
-            }
 
             // 自分の発射台の玉
             if (currentBall) {
