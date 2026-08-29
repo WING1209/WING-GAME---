@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇WING⚡パズル対戦〇</title>
+    <title>〇WING🌸パズル対戦〇</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -102,7 +102,7 @@
             overflow: hidden;
         }
 
-        /* 3割：GUIパネル（左側） - 1行1列構成 */
+        /* 3割：GUIパネル（左側） */
         #gui-panel { 
             width: 30vw; height: 100dvh; 
             background: rgba(5, 8, 20, 0.95); 
@@ -163,7 +163,6 @@
         .order-item { font-size: 0.85rem; margin: 3px 0; color: #fff; }
         .order-num { color: #00ffff; font-weight: bold; margin-right: 6px; text-shadow: 0 0 5px #00ffff; }
 
-        /* 軽量勝利ポップアップアニメーション */
         .win-glow {
             animation: winPulse 1.2s infinite alternate ease-in-out;
         }
@@ -268,19 +267,16 @@
         <div id="canvas-panel">
             <canvas id="gameCanvas"></canvas>
 
-            <!-- カウントダウン＆演出用オーバーレイ (z-index: 100) -->
             <div id="overlay" class="overlay">
                 <div id="overlay-text" class="big-text"></div>
                 <div id="overlay-sub" style="margin-top:8px; color:#88aacc; font-size:0.85rem; width:100%; display:flex; flex-direction:column; align-items:center;"></div>
                 <div id="overlay-btn" class="btn" style="display:none; margin-top:12px;">ストップ</div>
             </div>
 
-            <!-- 観戦中点滅表示 (脱落時) -->
             <div id="spectate-banner" class="blink" style="display:none; position:absolute; bottom:15px; left:50%; transform:translateX(-50%); color:#ff0055; font-weight:bold; font-size:0.85rem; z-index:40; text-shadow:0 0 5px #ff0055; white-space:nowrap;">
                 他プレイヤー対戦中...
             </div>
 
-            <!-- アイテム＆リトライ専用モーダル (z-index: 200) -->
             <div id="item-modal" class="overlay" style="z-index:200;">
                 <div class="select-box" id="item-modal-content"></div>
             </div>
@@ -314,10 +310,8 @@
         let skipTargetName = null;
         let mysteryTargetIndex = -1;
         
-        // 再戦状態管理
-        let rematchVotes = {}; // { 'peerId/name': 'REMATCH' | 'RETIRE' }
+        let rematchVotes = {};
 
-        // 名前入力自動制限
         document.getElementById('player-name-input').addEventListener('input', function(e) {
             let val = e.target.value;
             val = val.replace(/[A-Za-z0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
@@ -530,8 +524,8 @@
                     e.stopPropagation();
                     btn.onclick = null;
                     btn.style.display = 'none';
-                    broadcast({ type: 'START_GAME_ACTION' });
-                    startGameAction();
+                    broadcast({ type: 'START_GAME_ACTION', orderedList: orderedPlayerList });
+                    startGameAction(orderedPlayerList);
                 };
             } else {
                 sub.innerHTML = listHtml + `<div class="blink" style="color:#00ffff; margin-top:8px;">自動でゲームスタートします...</div>`;
@@ -539,25 +533,30 @@
             }
         }
 
-        function startGameAction() {
+        function startGameAction(finalOrderedList) {
             if (isGameStarted) return;
             isGameStarted = true;
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('item-modal').style.display = 'none';
 
-            playerList = orderedPlayerList;
+            // 決定した順番で全員のplayerListを完全固定
+            if (finalOrderedList) {
+                playerList = finalOrderedList;
+            } else if (orderedPlayerList.length > 0) {
+                playerList = orderedPlayerList;
+            }
+
             playerList.forEach(p => p.active = true);
             myTurnIndex = playerList.findIndex(p => p.name === myName);
             currentTurnIndex = 0;
             myScore = 0;
             document.getElementById('gui-score').innerText = "0/500";
 
-            // 各自で独立した初期盤面を生成（盤面共有のバグ解消）
             generateInitialBoard();
             updateTurnUI();
         }
 
-        // --- タイマー管理 ---
+        // --- 厳密なターン＆タイマー管理 ---
         let turnTime = 10;
         let timerInterval = null;
 
@@ -583,9 +582,11 @@
                 if (turnTime <= 0) {
                     stopLocalTurnTimer();
                     document.getElementById('overlay').style.display = 'none';
-                    let nextIdx = getNextTurnIndex();
-                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                    nextTurn(nextIdx);
+                    if (currentTurnIndex === myTurnIndex) {
+                        let nextIdx = getNextTurnIndex();
+                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                        nextTurn(nextIdx);
+                    }
                 }
             }, 1000);
         }
@@ -714,7 +715,6 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // 各プレイヤー独立した初期盤面（上部2列）を生成
         function generateInitialBoard() {
             board = {};
             for (let r = 0; r < 2; r++) {
@@ -746,7 +746,8 @@
                 y: canvas.height * 0.88,
                 color: nextColor,
                 vx: 0, vy: 0,
-                isMoving: false
+                isMoving: false,
+                shotByMe: false
             };
             prepareNextBall();
 
@@ -809,6 +810,7 @@
                 currentBall.vx = vx;
                 currentBall.vy = vy;
                 currentBall.isMoving = true;
+                currentBall.shotByMe = true;
 
                 sendSignal({ type: 'SHOOT_BALL', vx: vx, vy: vy, color: currentBall.color });
             }
@@ -831,16 +833,16 @@
         function processGameSignal(data) {
             if (data.type === 'START_ROULETTE') runRouletteUI();
             else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
-            else if (data.type === 'START_GAME_ACTION') startGameAction();
+            else if (data.type === 'START_GAME_ACTION') startGameAction(data.orderedList);
             else if (data.type === 'SHOOT_BALL') {
                 if (currentBall && currentTurnIndex !== myTurnIndex) {
                     currentBall.vx = data.vx; currentBall.vy = data.vy;
                     currentBall.color = data.color; currentBall.isMoving = true;
+                    currentBall.shotByMe = false;
                 }
             }
             else if (data.type === 'TURN_CHANGE') nextTurn(data.nextTurnIndex);
             else if (data.type === 'OJAMA_ATTACK') {
-                // 自分が対象プレイヤーのときのみ受ける
                 if (data.targetIndex === myTurnIndex) {
                     receiveOjama(data.count);
                 }
@@ -854,7 +856,6 @@
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 限界Line表示
             let limitY = getGridCoord(10, 0).y;
             ctx.beginPath();
             ctx.setLineDash([6, 6]);
@@ -865,7 +866,6 @@
             ctx.setLineDash([]);
             ctx.shadowBlur = 0;
 
-            // 盤面の玉描画
             Object.values(board).forEach(b => {
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, radius - 1, 0, Math.PI * 2);
@@ -884,7 +884,6 @@
             });
             ctx.shadowBlur = 0;
 
-            // 発射玉描画＆移動処理
             if (currentBall) {
                 if (currentBall.isMoving) {
                     currentBall.x += currentBall.vx;
@@ -905,9 +904,10 @@
                         if (currentBall.y - radius <= 0) {
                             currentBall.isMoving = false;
                             isPenetrateMode = false;
+                            let wasShotByMe = currentBall.shotByMe;
                             spawnBall();
 
-                            if (currentTurnIndex === myTurnIndex) {
+                            if (wasShotByMe) {
                                 let nextIdx = getNextTurnIndex();
                                 sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
                                 nextTurn(nextIdx);
@@ -925,6 +925,7 @@
 
                         if (hit) {
                             currentBall.isMoving = false;
+                            let wasShotByMe = currentBall.shotByMe;
                             
                             if (currentBall.color === 'RAINBOW' && hitKey && board[hitKey]) {
                                 handleRainbowHit(board[hitKey].color);
@@ -934,7 +935,7 @@
                             
                             spawnBall();
 
-                            if (currentTurnIndex === myTurnIndex) {
+                            if (wasShotByMe) {
                                 let nextIdx = getNextTurnIndex();
                                 sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
                                 nextTurn(nextIdx);
@@ -1090,7 +1091,15 @@
             if (droppedCount > 0) addScoreAndAttack(droppedCount);
         }
 
-        // お邪魔玉送信ロジック：順番通り次のプレイヤーのみへ攻撃
+        /* お邪魔玉の送付先（ターゲット）決定処理 */
+        function getOjamaTargetIndex() {
+            let targetIdx = (myTurnIndex + 1) % playerList.length;
+            while (targetIdx !== myTurnIndex && !playerList[targetIdx].active) {
+                targetIdx = (targetIdx + 1) % playerList.length;
+            }
+            return targetIdx !== myTurnIndex ? targetIdx : -1;
+        }
+
         function addScoreAndAttack(count) {
             myScore += count;
             document.getElementById('gui-score').innerText = `${myScore}/500`;
@@ -1109,14 +1118,7 @@
                 targetIdx = mysteryTargetIndex;
                 mysteryTargetIndex = -1;
             } else {
-                // 1番手→2番手、2番手→3番手、最後→1番手への順次ターゲット設定
-                let nextIdx = (myTurnIndex + 1) % playerList.length;
-                while (nextIdx !== myTurnIndex && !playerList[nextIdx].active) {
-                    nextIdx = (nextIdx + 1) % playerList.length;
-                }
-                if (nextIdx !== myTurnIndex) {
-                    targetIdx = nextIdx;
-                }
+                targetIdx = getOjamaTargetIndex();
             }
 
             if (targetIdx !== -1) {
@@ -1145,7 +1147,6 @@
             }
         }
 
-        /* お邪魔玉攻撃処理 */
         function receiveOjama(count) {
             isProcessingOjama = true; 
 
@@ -1208,7 +1209,6 @@
             }
         }
 
-        /* アイテムルーレット (専用モーダルで最前面表示) */
         function triggerItemRoulette() {
             let totalStock = itemStocks.reduce((a, b) => a + b, 0);
             if (totalStock >= 5) return;
@@ -1365,7 +1365,6 @@
             };
         }
 
-        /* 脱落・勝敗判定 */
         function handlePlayerDefeat(defIdx) {
             playerList[defIdx].active = false;
             if (defIdx === myTurnIndex) {
@@ -1384,7 +1383,6 @@
             }
         }
 
-        // 軽量演出付き勝敗処理＆選択UI表示
         function handleWin(winnerName) {
             isGameOver = true;
             stopLocalTurnTimer();
@@ -1395,7 +1393,7 @@
             modal.style.display = 'flex';
 
             rematchVotes = {};
-            rematchVotes[myName] = 'REMATCH'; // 自分はデフォルト再戦希望
+            rematchVotes[myName] = 'REMATCH';
 
             if (isHost) {
                 updateHostRematchModal(winnerName);
