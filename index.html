@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇六実パズル対戦〇 Ver 1.09</title>
+    <title>〇六実パズル対戦〇 Ver 2.0</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -185,10 +185,10 @@
         <p style="margin-top: 15px; color: #888; font-weight: normal; font-size: 0.9rem;">スマートフォンからアクセスしてお楽しみください。</p>
     </div>
 
-    <!-- 1. タイトル画面 (Ver 1.08) -->
+    <!-- 1. タイトル画面 (Ver 1.09) -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇WING<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.08</div>
+        <div class="version-tag">Ver 1.09</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -215,6 +215,17 @@
         <h3 style="color:#00ffff; text-shadow:0 0 5px #00ffff;">プレイヤーネーム入力</h3>
         <input type="text" id="player-name-input" maxlength="6" placeholder="なまえ">
         <div class="btn" onclick="submitName()">入力完了</div>
+    </div>
+
+    <!-- ホスト：お邪魔倍率選択画面 -->
+    <div id="ojama-rate-screen" class="screen">
+        <h3 style="color:#00ffff; text-shadow:0 0 5px #00ffff; margin-bottom:15px;">お邪魔玉の倍率選択</h3>
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; max-width:280px;">
+            <div class="btn btn-opt" style="width:110px; font-size:1rem;" onclick="setOjamaRate(1)">1倍</div>
+            <div class="btn btn-opt" style="width:110px; font-size:1rem;" onclick="setOjamaRate(1.2)">1.2倍</div>
+            <div class="btn btn-opt" style="width:110px; font-size:1rem;" onclick="setOjamaRate(1.5)">1.5倍</div>
+            <div class="btn btn-opt" style="width:110px; font-size:1rem;" onclick="setOjamaRate(2)">2倍</div>
+        </div>
     </div>
 
     <!-- ゲスト：4桁コード入力 -->
@@ -336,6 +347,7 @@
         let rouletteTimer = null;
         let skipTargetName = null;
         let isTurnChanging = false;
+        let ojamaMultiplier = 1.0;
         
         let rematchVotes = {};
 
@@ -376,27 +388,36 @@
             return uniqueName;
         }
 
+        let pendingName = "";
+
         function submitName() {
             let rawName = document.getElementById('player-name-input').value;
             if (isHost) {
-                let base = rawName || "ホスト";
-                myName = getUniqueName(base, []);
-                roomCode = Math.floor(1000 + Math.random() * 9000).toString();
-                document.getElementById('display-code').innerText = roomCode;
-                document.getElementById('room-display-title').style.display = 'block';
-                playerList = [{ id: 'host', name: myName, active: true }];
-                updatePlayerListUI();
-                initPeerHost();
+                pendingName = rawName || "ホスト";
+                switchScreen('ojama-rate-screen');
             } else {
                 let base = rawName || "ゲスト";
                 myName = base;
                 document.getElementById('room-display-title').style.display = 'none';
                 document.getElementById('host-start-btn').style.display = 'none';
                 document.getElementById('lobby-status').innerText = "参加済、待機中...";
+                document.getElementById('gui-name').innerText = myName;
+                switchScreen('lobby-screen');
                 initPeerGuest();
             }
+        }
+
+        function setOjamaRate(rate) {
+            ojamaMultiplier = rate;
+            myName = getUniqueName(pendingName, []);
+            roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+            document.getElementById('display-code').innerText = roomCode;
+            document.getElementById('room-display-title').style.display = 'block';
+            playerList = [{ id: 'host', name: myName, active: true }];
+            updatePlayerListUI();
             document.getElementById('gui-name').innerText = myName;
             switchScreen('lobby-screen');
+            initPeerHost();
         }
 
         const PEER_PREFIX = "cyber-wing-puzzle-2026-";
@@ -410,7 +431,7 @@
                     playerList = playerList.filter(p => p.id !== conn.peer);
                     delete rematchVotes[conn.peer];
                     updatePlayerListUI();
-                    broadcast({ type: 'PLAYER_LIST', list: playerList });
+                    broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier });
                 });
             });
         }
@@ -431,9 +452,9 @@
                 if (playerList.length < maxPlayers) {
                     let uniqueName = getUniqueName(data.name, playerList);
                     playerList.push({ id: conn.peer, name: uniqueName, active: true });
-                    conn.send({ type: 'ASSIGN_NAME', name: uniqueName });
+                    conn.send({ type: 'ASSIGN_NAME', name: uniqueName, ojamaMultiplier: ojamaMultiplier });
                     updatePlayerListUI();
-                    broadcast({ type: 'PLAYER_LIST', list: playerList });
+                    broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier });
                     if (playerList.length === maxPlayers) {
                         document.getElementById('host-start-btn').style.display = 'block';
                         document.getElementById('lobby-status').innerText = "指定人数達成！ゲーム開始可能です";
@@ -452,9 +473,11 @@
         function handleDataFromHost(data) {
             if (data.type === 'ASSIGN_NAME') {
                 myName = data.name;
+                ojamaMultiplier = data.ojamaMultiplier !== undefined ? data.ojamaMultiplier : 1.0;
                 document.getElementById('gui-name').innerText = myName;
             } else if (data.type === 'PLAYER_LIST') {
                 playerList = data.list;
+                if (data.ojamaMultiplier !== undefined) ojamaMultiplier = data.ojamaMultiplier;
                 updatePlayerListUI();
             } else if (data.type === 'REMATCH_VOTE_SYNC') {
                 rematchVotes = data.votes;
@@ -483,7 +506,7 @@
 
         function startRouletteSequence() {
             if (isGameStarted) return;
-            broadcast({ type: 'START_ROULETTE' });
+            broadcast({ type: 'START_ROULETTE', ojamaMultiplier: ojamaMultiplier });
             runRouletteUI();
         }
 
@@ -541,7 +564,7 @@
                                 orderedPlayerList.push(playerList[idx]);
                             }
 
-                            broadcast({ type: 'ROULETTE_RESULT', orderedList: orderedPlayerList });
+                            broadcast({ type: 'ROULETTE_RESULT', orderedList: orderedPlayerList, ojamaMultiplier: ojamaMultiplier });
                             showOrderConfirmationUI(orderedPlayerList);
                         }, 500);
                     }
@@ -573,7 +596,7 @@
             setTimeout(() => {
                 if (!isGameStarted) {
                     if (isHost) {
-                        broadcast({ type: 'START_GAME_ACTION', orderedList: orderedPlayerList });
+                        broadcast({ type: 'START_GAME_ACTION', orderedList: orderedPlayerList, ojamaMultiplier: ojamaMultiplier });
                         startGameAction(orderedPlayerList);
                     }
                 }
@@ -950,10 +973,21 @@
 
         function processGameSignal(data) {
             if (data.type === 'START_ROULETTE') {
+                if (data.ojamaMultiplier !== undefined) ojamaMultiplier = data.ojamaMultiplier;
+                document.getElementById('item-modal').style.display = 'none';
+                isModalActive = false;
+                isGameOver = false;
+                isGameStarted = false;
                 runRouletteUI();
             }
-            else if (data.type === 'ROULETTE_RESULT') showOrderConfirmationUI(data.orderedList);
-            else if (data.type === 'START_GAME_ACTION') startGameAction(data.orderedList);
+            else if (data.type === 'ROULETTE_RESULT') {
+                if (data.ojamaMultiplier !== undefined) ojamaMultiplier = data.ojamaMultiplier;
+                showOrderConfirmationUI(data.orderedList);
+            }
+            else if (data.type === 'START_GAME_ACTION') {
+                if (data.ojamaMultiplier !== undefined) ojamaMultiplier = data.ojamaMultiplier;
+                startGameAction(data.orderedList);
+            }
             else if (data.type === 'TURN_CHANGE') nextTurn(data.nextTurnIndex);
             else if (data.type === 'OJAMA_ATTACK') {
                 if (data.targetIndex === myTurnIndex && data.senderIndex !== myTurnIndex && !isGameOver) {
@@ -962,7 +996,6 @@
             }
             else if (data.type === 'SKIP_APPLIED') skipTargetName = data.targetName;
             else if (data.type === 'APPLY_MYSTERY_EFFECT') {
-                // 【仕様変更】受信側でもポップアップを表示して実行する
                 showMysteryNoticePopup(data.targetName, data.effectType, data.effectName);
                 executeMysteryEffect(data.targetName, data.effectType);
             }
@@ -1263,7 +1296,7 @@
                 return;
             }
 
-            let ojamaCount = Math.round(count * 1.5 * activeMultiplier);
+            let ojamaCount = Math.round(count * 1.5 * activeMultiplier * ojamaMultiplier);
             activeMultiplier = 1;
 
             let targetIdx = getOjamaTargetIndex();
@@ -1557,7 +1590,7 @@
                 let effectNames = {
                     1: "効果1: スキップ（1ターン休み）",
                     2: "効果2: 盤面の色変更（1色のみ）",
-                    3: "効果3: 盤面を同色で横列整列",
+                    3: "効果3: 同色の玉を横並びに整列",
                     4: "効果4: 盤面の玉がすべて消滅"
                 };
                 let effectDesc = effectNames[chosenEffect];
@@ -1574,7 +1607,6 @@
                     modal.style.display = 'none';
                     isModalActive = false;
                     
-                    // 【仕様変更】効果名（effectDesc）も含めて全員にシグナル送信
                     sendSignal({
                         type: 'APPLY_MYSTERY_EFFECT',
                         targetName: chosenPlayer.name,
@@ -1588,7 +1620,6 @@
             };
         }
 
-        // 【仕様変更】全員の画面にミステリー効果のポップアップを表示する関数
         function showMysteryNoticePopup(targetName, effectType, effectName) {
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
@@ -1628,18 +1659,21 @@
                 }
             } 
             else if (effectType === 3) {
+                // 【仕様変更】現在の色を維持したまま、同じ色が横にまとまるように整列する
                 if (isMe) {
                     let currentBalls = Object.values(board);
                     if (currentBalls.length > 0) {
-                        let alignColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+                        let colors = currentBalls.map(b => b.color);
+                        colors.sort(); // 色ごとにまとめることで横並びに整列
+                        
                         board = {};
-                        let count = 0;
+                        let idx = 0;
                         for (let r = 0; r < 20; r++) {
                             for (let c = 0; c < COLS; c++) {
-                                if (count < currentBalls.length) {
+                                if (idx < colors.length) {
                                     let pos = getGridCoord(r, c);
-                                    board[`${r},${c}`] = { row: r, col: c, x: pos.x, y: pos.y, color: alignColor, isItem: false };
-                                    count++;
+                                    board[`${r},${c}`] = { row: r, col: c, x: pos.x, y: pos.y, color: colors[idx], isItem: false };
+                                    idx++;
                                 }
                             }
                         }
@@ -1774,12 +1808,12 @@
             isGameStarted = false;
             isModalActive = false;
             playerList = nextPlayers;
-            broadcast({ type: 'PLAYER_LIST', list: playerList });
+            broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier });
 
             document.getElementById('item-modal').style.display = 'none';
             
-            // 【バグ修正】ホスト側だけでなく、全員にルーレット開始信号をブロードキャストする
-            broadcast({ type: 'START_ROULETTE' });
+            // 【バグ修正】ホストから全クライアントに強制同期信号を送信
+            broadcast({ type: 'START_ROULETTE', ojamaMultiplier: ojamaMultiplier });
             runRouletteUI();
         }
 
