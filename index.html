@@ -330,6 +330,68 @@
     </style>
 
     <script>
+        // ==========================================
+        // 音声管理（BGM・効果音用定義）
+        // ==========================================
+        const audioAssets = {
+            bgm: [
+                new Audio('audio/bgm/bgm_battle_1.mp3'),
+                new Audio('audio/bgm/bgm_battle_2.mp3'),
+                new Audio('audio/bgm/bgm_battle_3.mp3'),
+                new Audio('audio/bgm/bgm_battle_4.mp3'),
+                new Audio('audio/bgm/bgm_battle_5.mp3')
+            ],
+            ui: new Audio('audio/se/se_ui.mp3'),
+            shoot: new Audio('audio/se/se_shoot.mp3'),
+            settle: new Audio('audio/se/se_settle.mp3'),
+            clear: new Audio('audio/se/se_clear.mp3'),
+            rainbow: new Audio('audio/se/se_rainbow.mp3'),
+            roulette: new Audio('audio/se/se_roulette.mp3'),
+            itemGet: new Audio('audio/se/se_item_get.mp3'),
+            itemUse: new Audio('audio/se/se_item_use.mp3'),
+            gameover: new Audio('audio/se/se_gameover.mp3')
+        };
+
+        // BGM設定
+        audioAssets.bgm.forEach(b => { b.loop = true; b.volume = 0.5; });
+        let currentBGM = null;
+
+        function playRandomBGM() {
+            stopBGM();
+            let idx = Math.floor(Math.random() * audioAssets.bgm.length);
+            currentBGM = audioAssets.bgm[idx];
+            currentBGM.currentTime = 0;
+            currentBGM.play().catch(e => console.log("BGM play error:", e));
+        }
+
+        function stopBGM() {
+            if (currentBGM) {
+                currentBGM.pause();
+                currentBGM.currentTime = 0;
+                currentBGM = null;
+            }
+        }
+
+        function playSE(name) {
+            let audio = audioAssets[name];
+            if (audio) {
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log("SE play error:", e));
+            }
+        }
+
+        let rouletteAudio = audioAssets.roulette;
+        rouletteAudio.loop = true;
+        function startRouletteSE() {
+            rouletteAudio.currentTime = 0;
+            rouletteAudio.play().catch(e => {});
+        }
+        function stopRouletteSE() {
+            rouletteAudio.pause();
+            rouletteAudio.currentTime = 0;
+        }
+        // ==========================================
+
         function checkDevice() {
             const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
             const isMobileWidth = window.innerWidth <= 1024;
@@ -382,12 +444,28 @@
             }
         }
 
-        function showGameMenu() { switchScreen('menu-screen'); }
-        function selectHost() { isHost = true; switchScreen('host-count-screen'); }
-        function selectGuest() { isHost = false; switchScreen('guest-code-screen'); }
-        function setPlayerCount(cnt) { maxPlayers = cnt; switchScreen('name-screen'); }
+        function showGameMenu() { 
+            playSE('ui'); // ① UI決定音
+            switchScreen('menu-screen'); 
+        }
+        function selectHost() { 
+            playSE('ui'); // ① UI決定音
+            isHost = true; 
+            switchScreen('host-count-screen'); 
+        }
+        function selectGuest() { 
+            playSE('ui'); // ① UI決定音
+            isHost = false; 
+            switchScreen('guest-code-screen'); 
+        }
+        function setPlayerCount(cnt) { 
+            playSE('ui'); // ① UI決定音
+            maxPlayers = cnt; 
+            switchScreen('name-screen'); 
+        }
 
         function submitGuestCode() {
+            playSE('ui'); // ① UI決定音
             roomCode = document.getElementById('room-code-input').value;
             if(roomCode.length !== 4) { alert("4桁の数字を入力してください"); return; }
             switchScreen('name-screen');
@@ -407,6 +485,7 @@
         let pendingName = "";
 
         function submitName() {
+            playSE('ui'); // ① UI決定音
             let rawName = document.getElementById('player-name-input').value;
             if (isHost) {
                 pendingName = rawName || "ホスト";
@@ -424,6 +503,7 @@
         }
 
         function setOjamaRate(rate) {
+            playSE('ui'); // ① UI決定音
             ojamaMultiplier = rate;
             myName = getUniqueName(pendingName, []);
             roomCode = Math.floor(1000 + Math.random() * 9000).toString();
@@ -539,6 +619,7 @@
         }
 
         function startRouletteSequence() {
+            playSE('ui'); // ① UI決定音
             if (isGameStarted) return;
             broadcast({ type: 'START_ROULETTE', ojamaMultiplier: ojamaMultiplier });
             runRouletteUI();
@@ -566,6 +647,8 @@
                 btn.style.display = 'none';
             }
 
+            startRouletteSE(); // ⑥ ルーレット回転音スタート
+
             let rIdx = 0;
             if (rouletteTimer) clearInterval(rouletteTimer);
             rouletteTimer = setInterval(() => {
@@ -577,6 +660,9 @@
                 e.stopPropagation();
                 if (!isHost) return;
                 
+                playSE('ui'); // ① 順番決めストップボタン音
+                stopRouletteSE(); // ⑥ ルーレット回転音停止
+
                 clearInterval(rouletteTimer);
                 btn.style.display = 'none';
                 
@@ -608,6 +694,7 @@
 
         function showOrderConfirmationUI(ordList) {
             if (rouletteTimer) clearInterval(rouletteTimer);
+            stopRouletteSE(); // ⑥ 保険としてルーレット音停止
             orderedPlayerList = ordList;
             
             const overlay = document.getElementById('overlay');
@@ -645,6 +732,8 @@
             document.getElementById('item-modal').style.display = 'none';
             document.getElementById('countdown-overlay').style.display = 'none';
             document.getElementById('turn-change-overlay').style.display = 'none';
+
+            playRandomBGM(); // 【BGM】対戦開始時に5種類からランダム再生＆ループ
 
             if (finalOrderedList) {
                 playerList = finalOrderedList;
@@ -709,6 +798,7 @@
                         if (currentBall && !currentBall.isMoving) {
                             let vx = 0;
                             let vy = -10;
+                            playSE('shoot'); // ② 発射した玉の音
                             launchedBallWasItem = currentBall.isItem;
                             currentBall.vx = vx;
                             currentBall.vy = vy;
@@ -912,6 +1002,7 @@
         function prepareNextBall() {
             if (Math.random() < 0.30) {
                 nextColor = 'RAINBOW';
+                playSE('rainbow'); // ⑤ 虹色玉発生音
             } else {
                 nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
             }
@@ -1028,6 +1119,7 @@
 
                 stopLocalTurnTimer();
 
+                playSE('shoot'); // ② 発射した玉の音
                 launchedBallWasItem = currentBall.isItem;
                 shotGotItem = false; // ショット開始時にリセット
 
@@ -1169,6 +1261,7 @@
                                     }
                                 }
                                 if (clearedCount > 0 && currentBall.shotByMe) {
+                                    playSE('clear'); // ④ 玉が消える音
                                     addScoreAndAttack(clearedCount);
                                     if (gotItem) shotGotItem = true;
                                 }
@@ -1178,7 +1271,6 @@
                                     isPenetrateMode = false;
                                     let wasShotByMe = currentBall.shotByMe;
                                     
-                                    // 【バグ修正】アイテムルーレット完了後にターン交代するようにコールバック経由で処理
                                     if (wasShotByMe) {
                                         finishShotTurn(shotGotItem);
                                     } else {
@@ -1205,7 +1297,6 @@
                                         if (wasShotByMe) snapToGrid(currentBall);
                                     }
                                     
-                                    // 【バグ修正】アイテムルーレット完了後にターン交代するようにコールバック経由で処理
                                     if (wasShotByMe) {
                                         finishShotTurn(shotGotItem);
                                     } else {
@@ -1262,10 +1353,10 @@
             }
         }
 
-        // 【バグ修正】ショット完了時のルーレットチェックおよびターン移行関数
         function finishShotTurn(hasItem) {
             spawnBall();
             if (hasItem) {
+                playSE('itemGet'); // ⑦ アイテム獲得音
                 triggerItemRoulette(() => {
                     let nextIdx = getNextTurnIndex();
                     sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
@@ -1279,6 +1370,7 @@
         }
 
         function handleRainbowHit(targetColor) {
+            playSE('clear'); // ④ 玉が消える音
             let clearedCount = 0;
             let gotItem = false;
             
@@ -1304,6 +1396,7 @@
         }
 
         function snapToGrid(ball) {
+            playSE('settle'); // ③ 玉定着音
             let bestRow = 0, bestCol = 0, minDist = Infinity;
             for (let r = 0; r < 20; r++) {
                 for (let c = 0; c < COLS; c++) {
@@ -1357,6 +1450,7 @@
             }
 
             if (matched.size >= 3) {
+                playSE('clear'); // ④ 玉が消える音
                 matched.forEach(key => {
                     let b = board[key];
                     if (b) {
@@ -1407,6 +1501,7 @@
             });
 
             if (droppedCount > 0) {
+                playSE('clear'); // ④ 玉が落下する音
                 addScoreAndAttack(droppedCount);
                 if (gotItem) shotGotItem = true;
             }
@@ -1476,7 +1571,6 @@
             container.innerHTML = html;
         }
 
-        // 【仕様変更①】勝利数GUI更新関数
         function updateWinsUI() {
             let container = document.getElementById('gui-wins-container');
             if (!container) return;
@@ -1578,7 +1672,6 @@
             }
         }
 
-        // 【バグ修正】コールバックを受け取り、ルーレット完了後に実行できるように修正
         function triggerItemRoulette(onComplete) {
             if (isGameOver) {
                 if (onComplete) onComplete();
@@ -1607,6 +1700,8 @@
                 <div class="btn" id="roulette-stop-btn">ストップ</div>
             `;
 
+            startRouletteSE(); // ⑥ ルーレット回転音
+
             let timer = setInterval(() => {
                 idx = (idx + 1) % items.length;
                 let disp = document.getElementById('roulette-disp');
@@ -1615,6 +1710,8 @@
 
             document.getElementById('roulette-stop-btn').onclick = (e) => {
                 e.stopPropagation();
+                playSE('ui'); // ① ストップボタン音
+                stopRouletteSE(); // ⑥ 回転音停止
                 clearInterval(timer);
 
                 document.body.classList.add('shake');
@@ -1647,8 +1744,8 @@
             };
         }
 
-        // 【バグ修正】ストック上限ポップアップ完了時にもコールバックを実行
         function showItemLimitModal(onComplete) {
+            playSE('ui'); // ① UI音
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1663,6 +1760,7 @@
 
             document.getElementById('limit-ok-btn').onclick = (ev) => {
                 ev.stopPropagation();
+                playSE('ui'); // ① UI音
                 modal.style.display = 'none';
                 isModalActive = false;
 
@@ -1690,6 +1788,7 @@
         function useItem(type) {
             if (currentTurnIndex !== myTurnIndex || itemStocks[type] <= 0 || !isGameStarted || isProcessingOjama || isTurnChanging || isModalActive || isGameOver) return;
             
+            playSE('itemUse'); // ⑧ アイテム使用音
             itemStocks[type]--;
             updateItemUI();
 
@@ -1704,6 +1803,7 @@
         }
 
         function openSkipModal() {
+            playSE('ui'); // ① UI音
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1720,6 +1820,7 @@
         }
 
         function applySkip(targetName) {
+            playSE('ui'); // ① UI音
             document.getElementById('item-modal').style.display = 'none';
             isModalActive = false;
             if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
@@ -1746,6 +1847,7 @@
         }
 
         function openGuardModal() {
+            playSE('ui'); // ① UI音
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1763,6 +1865,7 @@
         }
 
         function applyGuard(targetName) {
+            playSE('ui'); // ① UI音
             document.getElementById('item-modal').style.display = 'none';
             isModalActive = false;
             if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
@@ -1781,6 +1884,7 @@
         }
 
         function showGuardNoticePopup(casterName, targetName) {
+            playSE('ui'); // ① UI音
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
@@ -1799,6 +1903,7 @@
 
             document.getElementById('guard-notice-ok').onclick = (ev) => {
                 ev.stopPropagation();
+                playSE('ui'); // ① UI音
                 modal.style.display = 'none';
                 isModalActive = false;
                 if (currentTurnIndex === myTurnIndex && !isGameOver) {
@@ -1811,6 +1916,7 @@
         let selectedDstColor = null;
 
         function openColorChangeModal() {
+            playSE('ui'); // ① UI音
             stopLocalTurnTimer();
             isModalActive = true;
             selectedSrcColor = null;
@@ -1852,16 +1958,19 @@
         }
 
         function selectSourceColorDirect(c) {
+            playSE('ui'); // ① UI音
             selectedSrcColor = c;
             updateColorChangeModalContent();
         }
 
         function selectDestColorDirect(c) {
+            playSE('ui'); // ① UI音
             selectedDstColor = c;
             updateColorChangeModalContent();
         }
 
         function executeColorChange() {
+            playSE('ui'); // ① UI音
             document.getElementById('item-modal').style.display = 'none';
             isModalActive = false;
             if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
@@ -1871,6 +1980,7 @@
         }
 
         function openMysteryRouletteModal() {
+            playSE('ui'); // ① UI音
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1887,6 +1997,8 @@
                 <div class="btn" id="mystery-stop-btn">ストップ</div>
             `;
 
+            startRouletteSE(); // ⑥ ルーレット回転音
+
             let timer = setInterval(() => {
                 if (targets.length === 0) return;
                 pIdx = (pIdx + 1) % targets.length;
@@ -1896,6 +2008,8 @@
 
             document.getElementById('mystery-stop-btn').onclick = (e) => {
                 e.stopPropagation();
+                playSE('ui'); // ① ストップ音
+                stopRouletteSE(); // ⑥ 回転音停止
                 clearInterval(timer);
 
                 if (targets.length === 0) {
@@ -1926,6 +2040,7 @@
 
                 document.getElementById('mystery-ok-btn').onclick = (ev) => {
                     ev.stopPropagation();
+                    playSE('ui'); // ① UI音
                     modal.style.display = 'none';
                     isModalActive = false;
                     
@@ -1943,6 +2058,7 @@
         }
 
         function showMysteryNoticePopup(targetName, effectType, effectName) {
+            playSE('ui'); // ① UI音
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
@@ -1958,6 +2074,7 @@
 
             document.getElementById('mystery-notice-ok').onclick = (ev) => {
                 ev.stopPropagation();
+                playSE('ui'); // ① UI音
                 modal.style.display = 'none';
                 isModalActive = false;
                 if (currentTurnIndex === myTurnIndex && !isGameOver) {
@@ -2027,6 +2144,8 @@
             }
 
             if (defIdx === myTurnIndex) {
+                playSE('gameover'); // ⑨ 脱落音
+                stopBGM(); // BGM停止
                 stopLocalTurnTimer();
                 let overlay = document.getElementById('overlay');
                 let text = document.getElementById('overlay-text');
@@ -2057,6 +2176,8 @@
             isGameOver = true;
             isModalActive = true;
             stopLocalTurnTimer();
+            stopBGM(); // BGM停止
+            playSE('gameover'); // ⑨ 勝敗決定音
             document.getElementById('spectate-banner').style.display = 'none';
 
             // 【仕様変更①】勝者が決まったら勝利数を加算（タイトル画面に戻るまでリセットされない）
@@ -2103,6 +2224,7 @@
         }
 
         function setGuestVote(vote) {
+            playSE('ui'); // ① UI音
             rematchVotes[myName] = vote;
             updateGuestRematchUI();
             if (hostConn) {
@@ -2144,6 +2266,7 @@
         }
 
         function hostConfirmRematch() {
+            playSE('ui'); // ① UI音
             let nextPlayers = playerList.filter(p => p.name === myName || rematchVotes[p.name] === 'REMATCH');
             if (nextPlayers.length < 2) {
                 alert("再戦人数が2名未満（参加者が不足）のため開始できません。解散してください。");
@@ -2163,6 +2286,7 @@
         }
 
         function hostDisbandGroup() {
+            playSE('ui'); // ① UI音
             broadcast({ type: 'DISBAND' });
             handleDisband();
         }
