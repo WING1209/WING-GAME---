@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇六実パズル対戦〇 Ver 2.0</title>
+    <title>〇六実パズル対戦〇 Ver 3.1</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -118,6 +118,7 @@
             display: flex; flex-direction: column; justify-content: space-between; 
             padding: calc(env(safe-area-inset-top) + 4px) 4px calc(env(safe-area-inset-bottom) + 4px) 4px; 
             font-size: 0.75rem; z-index: 25; flex-shrink: 0;
+            overflow-y: auto;
         }
 
         .gui-box {
@@ -128,16 +129,16 @@
 
         .gui-label { color: #88aacc; font-weight: bold; font-size: 0.6rem; letter-spacing: 0.5px; margin-bottom: 1px; }
 
-        .item-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+        .item-list { display: flex; flex-direction: column; gap: 3px; width: 100%; }
         .item-row { 
-            background: rgba(20, 25, 45, 0.9); padding: 10px 8px; border-radius: 4px; text-align: center; 
-            border: 1px solid #334466; font-size: 0.85rem; color: #556688; cursor: pointer;
+            background: rgba(20, 25, 45, 0.9); padding: 6px 8px; border-radius: 4px; text-align: center; 
+            border: 1px solid #334466; font-size: 0.75rem; color: #556688; cursor: pointer;
             display: flex; justify-content: space-between; align-items: center;
         }
         .item-active { 
             border-color: #00ff00; color: #00ff00; background: rgba(0, 255, 0, 0.2); 
-            font-weight: bold; box-shadow: 0 0 8px rgba(0, 255, 0, 0.4); 
-            text-shadow: 0 0 5px #00ff00;
+            font-weight: bold; box-shadow: 0 0 6px rgba(0, 255, 0, 0.4); 
+            text-shadow: 0 0 4px #00ff00;
         }
 
         #canvas-panel { 
@@ -188,7 +189,7 @@
     <!-- 1. タイトル画面 -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇六実<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 3.0</div>
+        <div class="version-tag">Ver 3.1</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -252,20 +253,18 @@
                 <div id="gui-name" style="color:#00ffff; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-shadow:0 0 5px #00ffff;">-</div>
                 <div id="gui-turn-status" style="color:#ff0055; font-weight:bold; margin-top:1px; font-size:0.65rem;">-</div>
             </div>
-            
-            <div class="gui-box">
-                <div class="gui-label">TIME</div>
-                <div id="gui-timer" style="color:#ffff00; font-size:1.1rem; font-weight:bold; text-shadow:0 0 8px #ffff00;">10</div>
-            </div>
 
+            <!-- 全員分のスコア表示エリア -->
             <div class="gui-box">
-                <div class="gui-label">SCORE</div>
-                <div id="gui-score" style="color:#ffff00; font-weight:bold; font-size:0.7rem; text-shadow:0 0 5px #ffff00;">0/500</div>
+                <div class="gui-label">SCORE (GOAL: 500)</div>
+                <div id="gui-scores-container" style="display:flex; flex-direction:column; gap:2px; margin-top:2px;">
+                    <!-- 動的生成 -->
+                </div>
             </div>
 
             <div class="gui-box">
                 <div class="gui-label">NEXT</div>
-                <div id="gui-next" style="width:20px; height:20px; border-radius:50%; background:#fff; margin:2px auto; border:1px solid #fff; box-shadow:0 0 6px #fff; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:11px; color:#000;"></div>
+                <div id="gui-next" style="width:18px; height:18px; border-radius:50%; background:#fff; margin:2px auto; border:1px solid #fff; box-shadow:0 0 6px #fff; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:10px; color:#000;"></div>
             </div>
 
             <div style="width:100%;">
@@ -277,6 +276,8 @@
                     <div class="item-row" id="item-btn-3" onclick="useItem(3)"><span>貫通</span><span id="stock-3">0</span></div>
                     <div class="item-row" id="item-btn-4" onclick="useItem(4)"><span>色変更</span><span id="stock-4">0</span></div>
                     <div class="item-row" id="item-btn-5" onclick="useItem(5)"><span>ミステリー</span><span id="stock-5">0</span></div>
+                    <div class="item-row" id="item-btn-6" onclick="useItem(6)"><span>順番反転</span><span id="stock-6">0</span></div>
+                    <div class="item-row" id="item-btn-7" onclick="useItem(7)"><span>ガード</span><span id="stock-7">0</span></div>
                 </div>
             </div>
         </div>
@@ -349,7 +350,13 @@
         let isTurnChanging = false;
         let ojamaMultiplier = 1.0;
         
+        let playerScores = {};
         let rematchVotes = {};
+
+        // ガードおよび順番反転関連の状態
+        let guardActiveTarget = null;
+        let guardCasterIndex = -1;
+        let guardStartTurnIndex = -1;
 
         document.getElementById('player-name-input').addEventListener('input', function(e) {
             let val = e.target.value;
@@ -422,7 +429,6 @@
 
         const PEER_PREFIX = "cyber-wing-puzzle-2026-";
 
-        // 【修正②】4〜5人目の接続不良対策：定員制限の厳格化と重複・切断の確実な管理
         function initPeerHost() {
             peer = new Peer(PEER_PREFIX + roomCode);
             peer.on('connection', conn => {
@@ -640,8 +646,10 @@
             playerList.forEach(p => p.active = true);
             myTurnIndex = playerList.findIndex(p => p.name === myName);
             currentTurnIndex = 0;
-            myScore = 0;
-            document.getElementById('gui-score').innerText = "0/500";
+            
+            playerScores = {};
+            playerList.forEach(p => playerScores[p.name] = 0);
+            updateScoresUI();
 
             generateInitialBoard();
             updateTurnUI();
@@ -655,12 +663,10 @@
             stopLocalTurnTimer();
             if (isGameOver || isModalActive) return;
             turnTime = 10;
-            document.getElementById('gui-timer').innerText = turnTime;
 
             timerInterval = setInterval(() => {
                 if (isGameOver || isProcessingOjama || isModalActive) return;
                 turnTime--;
-                document.getElementById('gui-timer').innerText = turnTime;
 
                 let cOverlay = document.getElementById('countdown-overlay');
                 let cText = document.getElementById('countdown-text');
@@ -676,9 +682,21 @@
                     stopLocalTurnTimer();
                     cOverlay.style.display = 'none';
                     if (currentTurnIndex === myTurnIndex) {
-                        let nextIdx = getNextTurnIndex();
-                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                        nextTurn(nextIdx);
+                        // タイムアウト時の自動発射仕様
+                        if (currentBall && !currentBall.isMoving) {
+                            let vx = 0;
+                            let vy = -10;
+                            launchedBallWasItem = currentBall.isItem;
+                            currentBall.vx = vx;
+                            currentBall.vy = vy;
+                            currentBall.isMoving = true;
+                            currentBall.shotByMe = true;
+                            sendSignal({ type: 'SHOOT_BALL', vx: vx, vy: vy, color: currentBall.color, isItem: currentBall.isItem, shooterIndex: myTurnIndex });
+                        } else {
+                            let nextIdx = getNextTurnIndex();
+                            sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                            nextTurn(nextIdx);
+                        }
                     }
                 }
             }, 1000);
@@ -687,11 +705,9 @@
         function stopLocalTurnTimer() {
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = null;
-            document.getElementById('gui-timer').innerText = "-";
             document.getElementById('countdown-overlay').style.display = 'none';
         }
 
-        // 【修正①】無限ループ防止の安全装置付きインデックス取得
         function getNextTurnIndex() {
             let activeCount = playerList.filter(p => p.active).length;
             if (activeCount <= 0) return currentTurnIndex;
@@ -710,10 +726,16 @@
             if (isGameOver) return;
             stopLocalTurnTimer();
 
+            // ガード効果の解除判定（ガード発動者の番が次回ってくるとき＝1巡終了）
+            if (guardActiveTarget !== null && guardStartTurnIndex === targetTurnIndex) {
+                guardActiveTarget = null;
+                guardCasterIndex = -1;
+                guardStartTurnIndex = -1;
+            }
+
             isTurnChanging = true;
             currentTurnIndex = targetTurnIndex;
 
-            // ターン対象者が既に脱落している場合はさらに次に飛ばす
             if (playerList[currentTurnIndex] && !playerList[currentTurnIndex].active) {
                 let nextIdx = getNextTurnIndex();
                 if (isHost) {
@@ -815,7 +837,7 @@
 
         let activeMultiplier = 1;
         let isPenetrateMode = false;
-        let itemStocks = [0, 0, 0, 0, 0, 0];
+        let itemStocks = [0, 0, 0, 0, 0, 0, 0, 0];
         let launchedBallWasItem = false;
 
         function resizeCanvas() {
@@ -1011,7 +1033,6 @@
         }
 
         function processGameSignal(data) {
-            // 【修正①】タイミングズレや予期せぬフリーズを防ぐため主要シグナル受信時にモーダルを強制閉鎖＆isModalActiveを確実に解除
             if (data.type === 'TURN_CHANGE' || data.type === 'START_ROULETTE' || data.type === 'ROULETTE_RESULT' || data.type === 'START_GAME_ACTION') {
                 document.getElementById('item-modal').style.display = 'none';
                 isModalActive = false;
@@ -1040,6 +1061,19 @@
                 }
             }
             else if (data.type === 'SKIP_APPLIED') skipTargetName = data.targetName;
+            else if (data.type === 'REVERSE_ORDER_APPLIED') {
+                applyReverseOrderSync();
+            }
+            else if (data.type === 'GUARD_APPLIED') {
+                guardActiveTarget = data.targetName;
+                guardCasterIndex = data.casterIndex;
+                guardStartTurnIndex = data.casterIndex;
+                showGuardNoticePopup(data.casterName, data.targetName);
+            }
+            else if (data.type === 'UPDATE_SCORE') {
+                playerScores[data.name] = data.score;
+                updateScoresUI();
+            }
             else if (data.type === 'APPLY_MYSTERY_EFFECT') {
                 showMysteryNoticePopup(data.targetName, data.effectType, data.effectName);
                 executeMysteryEffect(data.targetName, data.effectType);
@@ -1094,17 +1128,28 @@
                             }
 
                             if (isPenetrateMode) {
+                                let clearedCount = 0;
+                                let gotItem = false;
+                                if (launchedBallWasItem || currentBall.isItem) {
+                                    gotItem = true;
+                                    launchedBallWasItem = false;
+                                    currentBall.isItem = false;
+                                }
+
                                 for (let key in board) {
                                     let b = board[key];
                                     if (Math.hypot(b.x - currentBall.x, b.y - currentBall.y) < radius * 1.8) {
-                                        if ((b.isItem || launchedBallWasItem) && currentBall.shotByMe) {
-                                            launchedBallWasItem = false;
-                                            triggerItemRoulette();
-                                        }
+                                        if (b.isItem) gotItem = true;
                                         createFallingBall(b);
                                         delete board[key];
+                                        clearedCount++;
                                     }
                                 }
+                                if (clearedCount > 0 && currentBall.shotByMe) {
+                                    addScoreAndAttack(clearedCount);
+                                    if (gotItem) triggerItemRoulette();
+                                }
+
                                 if (currentBall.y - radius <= 0) {
                                     currentBall.isMoving = false;
                                     isPenetrateMode = false;
@@ -1199,9 +1244,10 @@
             let clearedCount = 0;
             let gotItem = false;
             
-            if (launchedBallWasItem) {
+            if (launchedBallWasItem || currentBall.isItem) {
                 gotItem = true;
                 launchedBallWasItem = false;
+                currentBall.isItem = false;
             }
 
             Object.keys(board).forEach(key => {
@@ -1256,7 +1302,7 @@
             let matched = new Set([`${startBall.row},${startBall.col}`]);
             let gotItem = false;
 
-            if (launchedBallWasItem) {
+            if (launchedBallWasItem || startBall.isItem) {
                 gotItem = true;
                 launchedBallWasItem = false;
             }
@@ -1331,6 +1377,14 @@
         function getOjamaTargetIndex() {
             if (playerList.length <= 1) return -1;
             
+            // ガード有効時の判定：ガード対象プレイヤーが指定されていて生存していれば、全員の攻撃がその人に集中する
+            if (guardActiveTarget !== null) {
+                let targetIdx = playerList.findIndex(p => p.name === guardActiveTarget && p.active);
+                if (targetIdx !== -1) {
+                    return targetIdx;
+                }
+            }
+            
             let targetIdx = (myTurnIndex + 1) % playerList.length;
             let loopCount = 0;
 
@@ -1347,7 +1401,9 @@
         function addScoreAndAttack(count) {
             if (isGameOver) return;
             myScore += count;
-            document.getElementById('gui-score').innerText = `${myScore}/500`;
+            playerScores[myName] = myScore;
+            updateScoresUI();
+            sendSignal({ type: 'UPDATE_SCORE', name: myName, score: myScore });
 
             if (myScore >= 500 && !isGameOver) {
                 sendSignal({ type: 'WINNER', winnerName: myName });
@@ -1355,14 +1411,34 @@
                 return;
             }
 
-            let ojamaCount = Math.round(count * 1.5 * activeMultiplier * ojamaMultiplier);
-            activeMultiplier = 1;
+            // バグ修正①：貫通使用時はホストのお邪魔倍率を1倍とする。ただし2倍・3倍アイテム（activeMultiplier）は準ずる。
+            // 仕様変更②：ガード中は2倍3倍アイテムが無効となるので activeMultiplier = 1 とする。
+            let effectiveActiveMultiplier = (guardActiveTarget !== null) ? 1 : activeMultiplier;
+            let effectiveOjamaRate = isPenetrateMode ? 1 : ojamaMultiplier;
+
+            let ojamaCount = Math.round(count * 1.5 * effectiveActiveMultiplier * effectiveOjamaRate);
+            activeMultiplier = 1; // 使用後はリセット
 
             let targetIdx = getOjamaTargetIndex();
 
             if (targetIdx !== -1 && targetIdx !== myTurnIndex) {
                 sendSignal({ type: 'OJAMA_ATTACK', count: ojamaCount, targetIndex: targetIdx, senderIndex: myTurnIndex });
             }
+        }
+
+        function updateScoresUI() {
+            let container = document.getElementById('gui-scores-container');
+            if (!container) return;
+            let html = '';
+            playerList.forEach(p => {
+                let score = playerScores[p.name] || 0;
+                let color = (p.name === myName) ? '#00ffff' : '#ffff00';
+                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:2px 4px; border-radius:3px; margin-bottom:1px;">`;
+                html += `<span style="color:${color}; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:65%; font-size:0.7rem;">${p.name}</span>`;
+                html += `<span style="color:#ffff00; font-weight:bold; font-size:0.7rem;">${score}/500</span>`;
+                html += `</div>`;
+            });
+            container.innerHTML = html;
         }
 
         function createFallingBall(b) {
@@ -1463,7 +1539,7 @@
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
 
-            let items = ["2倍", "3倍", "スキップ", "貫通", "色変更", "ミステリー"];
+            let items = ["2倍", "3倍", "スキップ", "貫通", "色変更", "ミステリー", "順番反転", "ガード"];
             let idx = 0;
 
             content.innerHTML = `
@@ -1496,7 +1572,7 @@
 
         function updateItemUI() {
             let total = 0;
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < 8; i++) {
                 let stock = itemStocks[i];
                 total += stock;
                 document.getElementById(`stock-${i}`).innerText = stock;
@@ -1519,6 +1595,8 @@
             else if (type === 3) isPenetrateMode = true;
             else if (type === 4) openColorChangeModal();
             else if (type === 5) openMysteryRouletteModal();
+            else if (type === 6) applyReverseOrder();
+            else if (type === 7) openGuardModal();
         }
 
         function openSkipModal() {
@@ -1542,6 +1620,88 @@
             isModalActive = false;
             if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
             sendSignal({ type: 'SKIP_APPLIED', targetName: targetName });
+        }
+
+        // 新仕様①：順番反転の実装
+        function applyReverseOrder() {
+            if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
+            sendSignal({ type: 'REVERSE_ORDER_APPLIED' });
+            applyReverseOrderSync();
+        }
+
+        function applyReverseOrderSync() {
+            let currentName = playerList[currentTurnIndex] ? playerList[currentTurnIndex].name : "";
+            playerList.reverse();
+            myTurnIndex = playerList.findIndex(p => p.name === myName);
+            if (currentName) {
+                currentTurnIndex = playerList.findIndex(p => p.name === currentName);
+                if (currentTurnIndex === -1) currentTurnIndex = 0;
+            }
+            updatePlayerListUI();
+            updateScoresUI();
+        }
+
+        // 新仕様②：ガードの実装
+        function openGuardModal() {
+            stopLocalTurnTimer();
+            isModalActive = true;
+            let modal = document.getElementById('item-modal');
+            let content = document.getElementById('item-modal-content');
+            modal.style.display = 'flex';
+            
+            let html = `<h3 style="color:#00ffff; font-size:1.0rem; margin-bottom:8px;">ガード対象選択</h3>`;
+            html += `<p style="font-size:0.75rem; color:#88aacc; margin-bottom:8px;">選んだプレイヤーに全員のお邪魔玉が集中します（2倍3倍は無効）</p>`;
+            playerList.forEach((p, i) => {
+                if (i !== myTurnIndex && p.active) {
+                    html += `<div class="btn" style="width:100%; padding:8px; margin:4px 0;" onclick="applyGuard('${p.name}')">${p.name}</div>`;
+                }
+            });
+            content.innerHTML = html;
+        }
+
+        function applyGuard(targetName) {
+            document.getElementById('item-modal').style.display = 'none';
+            isModalActive = false;
+            if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
+
+            sendSignal({
+                type: 'GUARD_APPLIED',
+                targetName: targetName,
+                casterName: myName,
+                casterIndex: myTurnIndex
+            });
+            guardActiveTarget = targetName;
+            guardCasterIndex = myTurnIndex;
+            guardStartTurnIndex = myTurnIndex;
+
+            showGuardNoticePopup(myName, targetName);
+        }
+
+        function showGuardNoticePopup(casterName, targetName) {
+            let modal = document.getElementById('item-modal');
+            let content = document.getElementById('item-modal-content');
+            modal.style.display = 'flex';
+            isModalActive = true;
+            stopLocalTurnTimer();
+
+            content.innerHTML = `
+                <h3 style="color:#ff0055; font-size:1.1rem; margin-bottom:5px;">🛡️ ガード発動！ 🛡️</h3>
+                <div style="font-size:0.9rem; color:#ffff00; margin:5px 0;">発動者: <b>${casterName}</b></div>
+                <div style="font-size:0.9rem; color:#00ff00; margin:5px 0;">対象者: <b>${targetName}</b></div>
+                <div style="font-size:0.75rem; color:#ffcc00; margin:10px 0; padding:8px; background:rgba(255,0,85,0.1); border-radius:6px; border:1px solid #ff0055; text-align:left;">
+                    ※全員のお邪魔玉がこのプレイヤーに集中します。<br>※ゲームバランス調整として2倍・3倍アイテムの効果はこの間無効となります。
+                </div>
+                <div class="btn" id="guard-notice-ok">OK</div>
+            `;
+
+            document.getElementById('guard-notice-ok').onclick = (ev) => {
+                ev.stopPropagation();
+                modal.style.display = 'none';
+                isModalActive = false;
+                if (currentTurnIndex === myTurnIndex && !isGameOver) {
+                    startLocalTurnTimer();
+                }
+            };
         }
 
         let selectedSrcColor = null;
@@ -1757,7 +1917,6 @@
             }
         }
 
-        // 【修正①】脱落時の堅牢なターン進行と勝敗判定処理
         function handlePlayerDefeat(defIdx) {
             if (isGameOver) return;
             if (playerList[defIdx]) {
@@ -1782,7 +1941,6 @@
                     handleWin(winner);
                 }
             } else {
-                // 現在のターンだったプレイヤーが脱落した場合、ホスト側から次の生存者へ確実にターンを回す
                 if (isHost && currentTurnIndex === defIdx) {
                     let nextIdx = getNextTurnIndex();
                     sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
