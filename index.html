@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇六実パズル対戦〇 Ver 1.5</title>
+    <title>〇六実パズル対戦〇 Ver 1.6</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -187,10 +187,10 @@
     </div>
 
     <!-- 1. タイトル画面 -->
-    <div id="title-screen" class="screen active" onclick="showGameMenu()">
+    <div id="title-screen" class="screen active" onclick="handleFirstTouch()">
         <h1 class="main-title">〇六実<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.5</div>
-        <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
+        <div class="version-tag">Ver 1.6</div>
+        <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">タッチしてスタート</div>
     </div>
 
     <!-- 2. メニュー画面 -->
@@ -331,7 +331,7 @@
 
     <script>
         // ==========================================
-        // 音声管理（.mp3 / .wav 両対応フォールバック関数）
+        // 音声管理（.mp3 / .wav 両対応 ＆ モバイル制限対策）
         // ==========================================
         function createFlexibleAudio(basePath) {
             let audio = new Audio();
@@ -348,25 +348,42 @@
 
         const audioAssets = {
             bgm: [
-                createFlexibleAudio('audio/bgm/bgm_battle_1'),
-                createFlexibleAudio('audio/bgm/bgm_battle_2'),
-                createFlexibleAudio('audio/bgm/bgm_battle_3'),
-                createFlexibleAudio('audio/bgm/bgm_battle_4'),
-                createFlexibleAudio('audio/bgm/bgm_battle_5')
+                createFlexibleAudio('./audio/bgm/bgm_battle_1'),
+                createFlexibleAudio('./audio/bgm/bgm_battle_2'),
+                createFlexibleAudio('./audio/bgm/bgm_battle_3'),
+                createFlexibleAudio('./audio/bgm/bgm_battle_4'),
+                createFlexibleAudio('./audio/bgm/bgm_battle_5')
             ],
-            ui: createFlexibleAudio('audio/se/se_ui'),
-            shoot: createFlexibleAudio('audio/se/se_shoot'),
-            settle: createFlexibleAudio('audio/se/se_settle'),
-            clear: createFlexibleAudio('audio/se/se_clear'),
-            rainbow: createFlexibleAudio('audio/se/se_rainbow'),
-            roulette: createFlexibleAudio('audio/se/se_roulette'),
-            itemGet: createFlexibleAudio('audio/se/se_item_get'),
-            itemUse: createFlexibleAudio('audio/se/se_item_use'),
-            gameover: createFlexibleAudio('audio/se/se_gameover')
+            ui: createFlexibleAudio('./audio/se/se_ui'),
+            shoot: createFlexibleAudio('./audio/se/se_shoot'),
+            settle: createFlexibleAudio('./audio/se/se_settle'),
+            clear: createFlexibleAudio('./audio/se/se_clear'),
+            rainbow: createFlexibleAudio('./audio/se/se_rainbow'),
+            roulette: createFlexibleAudio('./audio/se/se_roulette'),
+            itemGet: createFlexibleAudio('./audio/se/se_item_get'),
+            itemUse: createFlexibleAudio('./audio/se/se_item_use'),
+            gameover: createFlexibleAudio('./audio/se/se_gameover')
         };
 
         audioAssets.bgm.forEach(b => { b.loop = true; b.volume = 0.5; });
         let currentBGM = null;
+        let audioUnlocked = false;
+
+        // スマホの自動再生ブロックを解除するための初回タップ処理
+        function handleFirstTouch() {
+            if (!audioUnlocked) {
+                audioUnlocked = true;
+                // 全ての音声を無音で一度再生してすぐ止めることで、モバイルブラウザの音声制限を解除
+                try {
+                    audioAssets.ui.play().then(() => { audioAssets.ui.pause(); audioAssets.ui.currentTime = 0; }).catch(e => {});
+                    audioAssets.shoot.play().then(() => { audioAssets.shoot.pause(); audioAssets.shoot.currentTime = 0; }).catch(e => {});
+                    audioAssets.bgm.forEach(b => {
+                        b.play().then(() => { b.pause(); b.currentTime = 0; }).catch(e => {});
+                    });
+                } catch(err) {}
+            }
+            showGameMenu();
+        }
 
         function playRandomBGM() {
             stopBGM();
