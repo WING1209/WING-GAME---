@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇六実パズル対戦〇 Ver 3.2</title>
+    <title>〇六実パズル対戦〇 Ver 3.3</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -189,7 +189,7 @@
     <!-- 1. タイトル画面 -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇六実<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 3.2</div>
+        <div class="version-tag">Ver 3.3</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -254,9 +254,9 @@
                 <div id="gui-turn-status" style="color:#ff0055; font-weight:bold; margin-top:1px; font-size:0.65rem;">-</div>
             </div>
 
-            <!-- 全員分のスコア表示エリア -->
+            <!-- 全員分のスコアおよび勝利数表示エリア -->
             <div class="gui-box">
-                <div class="gui-label">SCORE (GOAL: 500)</div>
+                <div class="gui-label">SCORE & WINS (GOAL: 500)</div>
                 <div id="gui-scores-container" style="display:flex; flex-direction:column; gap:2px; margin-top:2px;">
                     <!-- 動的生成 -->
                 </div>
@@ -351,6 +351,7 @@
         let ojamaMultiplier = 1.0;
         
         let playerScores = {};
+        let playerWins = {}; // 再戦を続けてもリセットされない勝利数管理用
         let rematchVotes = {};
 
         // ガードおよび順番反転関連の状態
@@ -538,6 +539,7 @@
         function runRouletteUI() {
             if (isGameStarted) return;
             isModalActive = true;
+            stopLocalTurnTimer();
             document.getElementById('item-modal').style.display = 'none';
             switchScreen('');
             document.getElementById('game-screen').style.display = 'flex';
@@ -647,7 +649,6 @@
             myTurnIndex = playerList.findIndex(p => p.name === myName);
             currentTurnIndex = 0;
             
-            // 【バグ修正①】再戦時（初戦以降）にすべてのステータスを確実にリセット
             myScore = 0;
             playerScores = {};
             playerList.forEach(p => playerScores[p.name] = 0);
@@ -719,7 +720,8 @@
         function stopLocalTurnTimer() {
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = null;
-            document.getElementById('countdown-overlay').style.display = 'none';
+            let cOverlay = document.getElementById('countdown-overlay');
+            if (cOverlay) cOverlay.style.display = 'none';
         }
 
         function getNextTurnIndex() {
@@ -1159,7 +1161,6 @@
                                 }
                                 if (clearedCount > 0 && currentBall.shotByMe) {
                                     addScoreAndAttack(clearedCount);
-                                    if (gotItem) triggerItemRoulette();
                                 }
 
                                 if (currentBall.y - radius <= 0) {
@@ -1169,9 +1170,17 @@
                                     spawnBall();
 
                                     if (wasShotByMe) {
-                                        let nextIdx = getNextTurnIndex();
-                                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                                        nextTurn(nextIdx);
+                                        if (gotItem) {
+                                            triggerItemRoulette(() => {
+                                                let nextIdx = getNextTurnIndex();
+                                                sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                                                nextTurn(nextIdx);
+                                            });
+                                        } else {
+                                            let nextIdx = getNextTurnIndex();
+                                            sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                                            nextTurn(nextIdx);
+                                        }
                                     }
                                 }
                             } else {
@@ -1188,19 +1197,19 @@
                                     currentBall.isMoving = false;
                                     let wasShotByMe = currentBall.shotByMe;
                                     
+                                    let gotItem = false;
+                                    if (launchedBallWasItem || (hitKey && board[hitKey] && board[hitKey].isItem)) {
+                                        gotItem = true;
+                                        launchedBallWasItem = false;
+                                    }
+
                                     if (currentBall.color === 'RAINBOW' && hitKey && board[hitKey]) {
-                                        if (wasShotByMe) handleRainbowHit(board[hitKey].color);
+                                        if (wasShotByMe) handleRainbowHit(board[hitKey].color, gotItem);
                                     } else {
-                                        if (wasShotByMe) snapToGrid(currentBall);
+                                        if (wasShotByMe) snapToGrid(currentBall, gotItem);
                                     }
                                     
                                     spawnBall();
-
-                                    if (wasShotByMe) {
-                                        let nextIdx = getNextTurnIndex();
-                                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                                        nextTurn(nextIdx);
-                                    }
                                 }
                             }
                         }
@@ -1252,9 +1261,9 @@
             }
         }
 
-        function handleRainbowHit(targetColor) {
+        function handleRainbowHit(targetColor, hasItemFromHit) {
             let clearedCount = 0;
-            let gotItem = false;
+            let gotItem = hasItemFromHit;
             
             if (launchedBallWasItem || currentBall.isItem) {
                 gotItem = true;
@@ -1273,11 +1282,24 @@
             if (clearedCount > 0) {
                 addScoreAndAttack(clearedCount);
                 dropFloatingBalls();
-                if (gotItem) triggerItemRoulette();
+            }
+
+            if (currentBall && currentBall.shotByMe) {
+                if (gotItem) {
+                    triggerItemRoulette(() => {
+                        let nextIdx = getNextTurnIndex();
+                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                        nextTurn(nextIdx);
+                    });
+                } else {
+                    let nextIdx = getNextTurnIndex();
+                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                    nextTurn(nextIdx);
+                }
             }
         }
 
-        function snapToGrid(ball) {
+        function snapToGrid(ball, hasItemFromHit) {
             let bestRow = 0, bestCol = 0, minDist = Infinity;
             for (let r = 0; r < 20; r++) {
                 for (let c = 0; c < COLS; c++) {
@@ -1294,7 +1316,7 @@
             let newBall = { row: bestRow, col: bestCol, x: pos.x, y: pos.y, color: ball.color, isItem: ball.isItem };
             board[`${bestRow},${bestCol}`] = newBall;
 
-            checkMatches(newBall);
+            checkMatches(newBall, hasItemFromHit);
             if (!isProcessingOjama) checkDefeatCondition();
         }
 
@@ -1308,11 +1330,11 @@
             return neighbors;
         }
 
-        function checkMatches(startBall) {
+        function checkMatches(startBall, hasItemFromHit) {
             let matchColor = startBall.color;
             let queue = [startBall];
             let matched = new Set([`${startBall.row},${startBall.col}`]);
-            let gotItem = false;
+            let gotItem = hasItemFromHit;
 
             if (launchedBallWasItem || startBall.isItem) {
                 gotItem = true;
@@ -1342,8 +1364,20 @@
 
                 addScoreAndAttack(matched.size);
                 dropFloatingBalls();
+            }
 
-                if (gotItem) triggerItemRoulette();
+            if (currentBall && currentBall.shotByMe) {
+                if (gotItem) {
+                    triggerItemRoulette(() => {
+                        let nextIdx = getNextTurnIndex();
+                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                        nextTurn(nextIdx);
+                    });
+                } else {
+                    let nextIdx = getNextTurnIndex();
+                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                    nextTurn(nextIdx);
+                }
             }
         }
 
@@ -1382,7 +1416,6 @@
 
             if (droppedCount > 0) {
                 addScoreAndAttack(droppedCount);
-                if (gotItem) triggerItemRoulette();
             }
         }
 
@@ -1441,10 +1474,12 @@
             let html = '';
             playerList.forEach(p => {
                 let score = playerScores[p.name] || 0;
+                let wins = playerWins[p.name] || 0;
                 let color = (p.name === myName) ? '#00ffff' : '#ffff00';
-                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:2px 4px; border-radius:3px; margin-bottom:1px;">`;
-                html += `<span style="color:${color}; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:65%; font-size:0.7rem;">${p.name}</span>`;
-                html += `<span style="color:#ffff00; font-weight:bold; font-size:0.7rem;">${score}/500</span>`;
+                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:2px 4px; border-radius:3px; margin-bottom:1px; font-size:0.65rem;">`;
+                html += `<span style="color:${color}; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:40%;">${p.name}</span>`;
+                html += `<span style="color:#00ff00; font-weight:bold;">W:${wins}</span>`;
+                html += `<span style="color:#ffff00; font-weight:bold;">${score}/500</span>`;
                 html += `</div>`;
             });
             container.innerHTML = html;
@@ -1536,17 +1571,17 @@
             }
         }
 
-        function triggerItemRoulette() {
+        function triggerItemRoulette(onComplete) {
             if (isGameOver) return;
             
-            // 【仕様変更②】すべてのアイテム（8種類すべて）が上限の5個に達しているかチェック
+            stopLocalTurnTimer(); // ポップアップ中は制限時間タイマーをストップ
+            
             let allFull = itemStocks.every(stock => stock >= 5);
             if (allFull) {
-                showItemLimitModal();
+                showItemLimitModal(onComplete);
                 return;
             }
 
-            stopLocalTurnTimer();
             isModalActive = true; 
             
             let modal = document.getElementById('item-modal');
@@ -1576,9 +1611,7 @@
                 setTimeout(() => {
                     document.body.classList.remove('shake');
                     
-                    // 【仕様変更②】もし選ばれたアイテムがすでに5個に達していたら再抽選または獲得不可の処理にする
                     if (itemStocks[idx] >= 5) {
-                        // 空きのあるアイテムを探すか、あるいはポップアップを出して終了する
                         let availableIndices = [];
                         itemStocks.forEach((st, i) => { if (st < 5) availableIndices.push(i); });
                         
@@ -1594,13 +1627,17 @@
                     updateItemUI();
                     modal.style.display = 'none';
                     isModalActive = false; 
-                    if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
+
+                    if (onComplete) {
+                        onComplete();
+                    } else {
+                        if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
+                    }
                 }, 400);
             };
         }
 
-        // 【仕様変更②】アイテムストック上限のポップアップ表示用関数
-        function showItemLimitModal() {
+        function showItemLimitModal(onComplete) {
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1617,8 +1654,13 @@
                 ev.stopPropagation();
                 modal.style.display = 'none';
                 isModalActive = false;
-                if (currentTurnIndex === myTurnIndex && !isGameOver) {
-                    startLocalTurnTimer();
+                
+                if (onComplete) {
+                    onComplete();
+                } else {
+                    if (currentTurnIndex === myTurnIndex && !isGameOver) {
+                        startLocalTurnTimer();
+                    }
                 }
             };
         }
@@ -2006,6 +2048,11 @@
             isModalActive = true;
             stopLocalTurnTimer();
             document.getElementById('spectate-banner').style.display = 'none';
+
+            if (winnerName && winnerName !== "引き分け") {
+                playerWins[winnerName] = (playerWins[winnerName] || 0) + 1;
+            }
+            updateScoresUI();
 
             let modal = document.getElementById('item-modal');
             modal.style.display = 'flex';
