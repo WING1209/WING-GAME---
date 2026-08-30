@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇六実パズル対戦〇 Ver 3.3</title>
+    <title>〇六実パズル対戦〇 Ver 3.4</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -189,7 +189,7 @@
     <!-- 1. タイトル画面 -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇六実<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 3.3</div>
+        <div class="version-tag">Ver 3.4</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -254,7 +254,7 @@
                 <div id="gui-turn-status" style="color:#ff0055; font-weight:bold; margin-top:1px; font-size:0.65rem;">-</div>
             </div>
 
-            <!-- 全員分のスコアおよび勝利数表示エリア -->
+            <!-- 全員分のスコア＆勝利数表示エリア -->
             <div class="gui-box">
                 <div class="gui-label">SCORE & WINS (GOAL: 500)</div>
                 <div id="gui-scores-container" style="display:flex; flex-direction:column; gap:2px; margin-top:2px;">
@@ -351,8 +351,11 @@
         let ojamaMultiplier = 1.0;
         
         let playerScores = {};
-        let playerWins = {}; // 再戦を続けてもリセットされない勝利数管理用
+        let playerWins = {}; // 【仕様変更①】勝利数保持用（タイトル画面・EXIT以外の再戦・途中抜けではリセットされない）
         let rematchVotes = {};
+
+        // アイテムルーレット発生時のターン移行保留用フラグ
+        let hasTriggeredRoulette = false;
 
         // ガードおよび順番反転関連の状態
         let guardActiveTarget = null;
@@ -450,7 +453,7 @@
                     playerList = playerList.filter(p => p.id !== conn.peer);
                     delete rematchVotes[conn.peer];
                     updatePlayerListUI();
-                    broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier });
+                    broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier, playerWins: playerWins });
                 });
             });
         }
@@ -474,9 +477,9 @@
                     if (!playerList.some(p => p.id === conn.peer)) {
                         let uniqueName = getUniqueName(data.name, playerList);
                         playerList.push({ id: conn.peer, name: uniqueName, active: true });
-                        conn.send({ type: 'ASSIGN_NAME', name: uniqueName, ojamaMultiplier: ojamaMultiplier });
+                        conn.send({ type: 'ASSIGN_NAME', name: uniqueName, ojamaMultiplier: ojamaMultiplier, playerWins: playerWins });
                         updatePlayerListUI();
-                        broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier });
+                        broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier, playerWins: playerWins });
                     }
                     if (playerList.length === maxPlayers) {
                         document.getElementById('host-start-btn').style.display = 'block';
@@ -497,11 +500,14 @@
             if (data.type === 'ASSIGN_NAME') {
                 myName = data.name;
                 ojamaMultiplier = data.ojamaMultiplier !== undefined ? data.ojamaMultiplier : 1.0;
+                if (data.playerWins) playerWins = data.playerWins;
                 document.getElementById('gui-name').innerText = myName;
             } else if (data.type === 'PLAYER_LIST') {
                 playerList = data.list;
                 if (data.ojamaMultiplier !== undefined) ojamaMultiplier = data.ojamaMultiplier;
+                if (data.playerWins) playerWins = data.playerWins;
                 updatePlayerListUI();
+                updateScoresUI();
             } else if (data.type === 'REMATCH_VOTE_SYNC') {
                 rematchVotes = data.votes;
                 updateGuestRematchUI();
@@ -532,7 +538,7 @@
 
         function startRouletteSequence() {
             if (isGameStarted) return;
-            broadcast({ type: 'START_ROULETTE', ojamaMultiplier: ojamaMultiplier });
+            broadcast({ type: 'START_ROULETTE', ojamaMultiplier: ojamaMultiplier, playerWins: playerWins });
             runRouletteUI();
         }
 
@@ -591,7 +597,7 @@
                                 orderedPlayerList.push(playerList[idx]);
                             }
 
-                            broadcast({ type: 'ROULETTE_RESULT', orderedList: orderedPlayerList, ojamaMultiplier: ojamaMultiplier });
+                            broadcast({ type: 'ROULETTE_RESULT', orderedList: orderedPlayerList, ojamaMultiplier: ojamaMultiplier, playerWins: playerWins });
                             showOrderConfirmationUI(orderedPlayerList);
                         }, 500);
                     }
@@ -602,6 +608,8 @@
         function showOrderConfirmationUI(ordList) {
             if (rouletteTimer) clearInterval(rouletteTimer);
             orderedPlayerList = ordList;
+            isModalActive = true;
+            stopLocalTurnTimer();
             
             const overlay = document.getElementById('overlay');
             const text = document.getElementById('overlay-text');
@@ -623,7 +631,7 @@
             setTimeout(() => {
                 if (!isGameStarted) {
                     if (isHost) {
-                        broadcast({ type: 'START_GAME_ACTION', orderedList: orderedPlayerList, ojamaMultiplier: ojamaMultiplier });
+                        broadcast({ type: 'START_GAME_ACTION', orderedList: orderedPlayerList, ojamaMultiplier: ojamaMultiplier, playerWins: playerWins });
                         startGameAction(orderedPlayerList);
                     }
                 }
@@ -652,13 +660,14 @@
             myScore = 0;
             playerScores = {};
             playerList.forEach(p => playerScores[p.name] = 0);
-            updateScoresUI();
+            updateScoresUI(); // 勝利数を含めたGUIを更新
 
             itemStocks = [0, 0, 0, 0, 0, 0, 0, 0];
             updateItemUI();
 
             activeMultiplier = 1;
             isPenetrateMode = false;
+            hasTriggeredRoulette = false;
             guardActiveTarget = null;
             guardCasterIndex = -1;
             guardStartTurnIndex = -1;
@@ -702,6 +711,7 @@
                             let vx = 0;
                             let vy = -10;
                             launchedBallWasItem = currentBall.isItem;
+                            hasTriggeredRoulette = false;
                             currentBall.vx = vx;
                             currentBall.vy = vy;
                             currentBall.isMoving = true;
@@ -720,8 +730,7 @@
         function stopLocalTurnTimer() {
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = null;
-            let cOverlay = document.getElementById('countdown-overlay');
-            if (cOverlay) cOverlay.style.display = 'none';
+            document.getElementById('countdown-overlay').style.display = 'none';
         }
 
         function getNextTurnIndex() {
@@ -781,11 +790,14 @@
             if (playerList[currentTurnIndex].name === myName) {
                 const overlay = document.getElementById('overlay');
                 const text = document.getElementById('overlay-text');
+                isModalActive = true;
+                stopLocalTurnTimer();
                 overlay.style.display = 'flex';
                 text.innerText = "1回休み";
                 text.style.fontSize = "2.0rem";
                 setTimeout(() => {
                     overlay.style.display = 'none';
+                    isModalActive = false;
                     let nextIdx = getNextTurnIndex();
                     sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
                     nextTurn(nextIdx);
@@ -934,6 +946,7 @@
                 isMoving: false,
                 shotByMe: false
             };
+            hasTriggeredRoulette = false;
             prepareNextBall();
         }
 
@@ -1021,6 +1034,7 @@
                 stopLocalTurnTimer();
 
                 launchedBallWasItem = currentBall.isItem;
+                hasTriggeredRoulette = false;
 
                 currentBall.vx = vx;
                 currentBall.vy = vy;
@@ -1054,6 +1068,7 @@
 
             if (data.type === 'START_ROULETTE') {
                 if (data.ojamaMultiplier !== undefined) ojamaMultiplier = data.ojamaMultiplier;
+                if (data.playerWins) playerWins = data.playerWins;
                 document.getElementById('item-modal').style.display = 'none';
                 isModalActive = false;
                 isGameOver = false;
@@ -1062,10 +1077,12 @@
             }
             else if (data.type === 'ROULETTE_RESULT') {
                 if (data.ojamaMultiplier !== undefined) ojamaMultiplier = data.ojamaMultiplier;
+                if (data.playerWins) playerWins = data.playerWins;
                 showOrderConfirmationUI(data.orderedList);
             }
             else if (data.type === 'START_GAME_ACTION') {
                 if (data.ojamaMultiplier !== undefined) ojamaMultiplier = data.ojamaMultiplier;
+                if (data.playerWins) playerWins = data.playerWins;
                 startGameAction(data.orderedList);
             }
             else if (data.type === 'TURN_CHANGE') nextTurn(data.nextTurnIndex);
@@ -1093,7 +1110,10 @@
                 executeMysteryEffect(data.targetName, data.effectType);
             }
             else if (data.type === 'GAME_OVER') handlePlayerDefeat(data.playerIndex);
-            else if (data.type === 'WINNER') handleWin(data.winnerName);
+            else if (data.type === 'WINNER') {
+                if (data.playerWins) playerWins = data.playerWins;
+                handleWin(data.winnerName);
+            }
             else if (data.type === 'DISBAND') handleDisband();
         }
 
@@ -1161,6 +1181,7 @@
                                 }
                                 if (clearedCount > 0 && currentBall.shotByMe) {
                                     addScoreAndAttack(clearedCount);
+                                    if (gotItem) triggerItemRoulette();
                                 }
 
                                 if (currentBall.y - radius <= 0) {
@@ -1170,12 +1191,8 @@
                                     spawnBall();
 
                                     if (wasShotByMe) {
-                                        if (gotItem) {
-                                            triggerItemRoulette(() => {
-                                                let nextIdx = getNextTurnIndex();
-                                                sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                                                nextTurn(nextIdx);
-                                            });
+                                        if (hasTriggeredRoulette) {
+                                            // ルーレット終了時にターン移行するためここでは保留
                                         } else {
                                             let nextIdx = getNextTurnIndex();
                                             sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
@@ -1197,19 +1214,23 @@
                                     currentBall.isMoving = false;
                                     let wasShotByMe = currentBall.shotByMe;
                                     
-                                    let gotItem = false;
-                                    if (launchedBallWasItem || (hitKey && board[hitKey] && board[hitKey].isItem)) {
-                                        gotItem = true;
-                                        launchedBallWasItem = false;
-                                    }
-
                                     if (currentBall.color === 'RAINBOW' && hitKey && board[hitKey]) {
-                                        if (wasShotByMe) handleRainbowHit(board[hitKey].color, gotItem);
+                                        if (wasShotByMe) handleRainbowHit(board[hitKey].color);
                                     } else {
-                                        if (wasShotByMe) snapToGrid(currentBall, gotItem);
+                                        if (wasShotByMe) snapToGrid(currentBall);
                                     }
                                     
                                     spawnBall();
+
+                                    if (wasShotByMe) {
+                                        if (hasTriggeredRoulette) {
+                                            // ルーレット終了時にターン移行するためここでは保留
+                                        } else {
+                                            let nextIdx = getNextTurnIndex();
+                                            sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                                            nextTurn(nextIdx);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1261,9 +1282,9 @@
             }
         }
 
-        function handleRainbowHit(targetColor, hasItemFromHit) {
+        function handleRainbowHit(targetColor) {
             let clearedCount = 0;
-            let gotItem = hasItemFromHit;
+            let gotItem = false;
             
             if (launchedBallWasItem || currentBall.isItem) {
                 gotItem = true;
@@ -1282,24 +1303,11 @@
             if (clearedCount > 0) {
                 addScoreAndAttack(clearedCount);
                 dropFloatingBalls();
-            }
-
-            if (currentBall && currentBall.shotByMe) {
-                if (gotItem) {
-                    triggerItemRoulette(() => {
-                        let nextIdx = getNextTurnIndex();
-                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                        nextTurn(nextIdx);
-                    });
-                } else {
-                    let nextIdx = getNextTurnIndex();
-                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                    nextTurn(nextIdx);
-                }
+                if (gotItem) triggerItemRoulette();
             }
         }
 
-        function snapToGrid(ball, hasItemFromHit) {
+        function snapToGrid(ball) {
             let bestRow = 0, bestCol = 0, minDist = Infinity;
             for (let r = 0; r < 20; r++) {
                 for (let c = 0; c < COLS; c++) {
@@ -1316,7 +1324,7 @@
             let newBall = { row: bestRow, col: bestCol, x: pos.x, y: pos.y, color: ball.color, isItem: ball.isItem };
             board[`${bestRow},${bestCol}`] = newBall;
 
-            checkMatches(newBall, hasItemFromHit);
+            checkMatches(newBall);
             if (!isProcessingOjama) checkDefeatCondition();
         }
 
@@ -1330,11 +1338,11 @@
             return neighbors;
         }
 
-        function checkMatches(startBall, hasItemFromHit) {
+        function checkMatches(startBall) {
             let matchColor = startBall.color;
             let queue = [startBall];
             let matched = new Set([`${startBall.row},${startBall.col}`]);
-            let gotItem = hasItemFromHit;
+            let gotItem = false;
 
             if (launchedBallWasItem || startBall.isItem) {
                 gotItem = true;
@@ -1364,20 +1372,8 @@
 
                 addScoreAndAttack(matched.size);
                 dropFloatingBalls();
-            }
 
-            if (currentBall && currentBall.shotByMe) {
-                if (gotItem) {
-                    triggerItemRoulette(() => {
-                        let nextIdx = getNextTurnIndex();
-                        sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                        nextTurn(nextIdx);
-                    });
-                } else {
-                    let nextIdx = getNextTurnIndex();
-                    sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
-                    nextTurn(nextIdx);
-                }
+                if (gotItem) triggerItemRoulette();
             }
         }
 
@@ -1416,6 +1412,7 @@
 
             if (droppedCount > 0) {
                 addScoreAndAttack(droppedCount);
+                if (gotItem) triggerItemRoulette();
             }
         }
 
@@ -1450,7 +1447,7 @@
             sendSignal({ type: 'UPDATE_SCORE', name: myName, score: myScore });
 
             if (myScore >= 500 && !isGameOver) {
-                sendSignal({ type: 'WINNER', winnerName: myName });
+                sendSignal({ type: 'WINNER', winnerName: myName, playerWins: playerWins });
                 handleWin(myName);
                 return;
             }
@@ -1474,12 +1471,12 @@
             let html = '';
             playerList.forEach(p => {
                 let score = playerScores[p.name] || 0;
-                let wins = playerWins[p.name] || 0;
+                let wins = playerWins[p.name] || 0; // 【仕様変更①】勝利数取得
                 let color = (p.name === myName) ? '#00ffff' : '#ffff00';
-                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:2px 4px; border-radius:3px; margin-bottom:1px; font-size:0.65rem;">`;
-                html += `<span style="color:${color}; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:40%;">${p.name}</span>`;
-                html += `<span style="color:#00ff00; font-weight:bold;">W:${wins}</span>`;
-                html += `<span style="color:#ffff00; font-weight:bold;">${score}/500</span>`;
+                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:2px 4px; border-radius:3px; margin-bottom:1px;">`;
+                html += `<span style="color:${color}; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:40%; font-size:0.7rem;">${p.name}</span>`;
+                html += `<span style="color:#00ff00; font-weight:bold; font-size:0.7rem;">勝:${wins}</span>`;
+                html += `<span style="color:#ffff00; font-weight:bold; font-size:0.7rem;">${score}/500</span>`;
                 html += `</div>`;
             });
             container.innerHTML = html;
@@ -1571,17 +1568,31 @@
             }
         }
 
-        function triggerItemRoulette(onComplete) {
+        // アイテムルーレット完了（決定後）にターンを移行させるためのヘルパー関数
+        function checkAndProceedTurnAfterRoulette() {
+            if (hasTriggeredRoulette && currentTurnIndex === myTurnIndex && !isGameOver) {
+                hasTriggeredRoulette = false;
+                let nextIdx = getNextTurnIndex();
+                sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
+                nextTurn(nextIdx);
+            } else {
+                if (currentTurnIndex === myTurnIndex && !isGameOver) {
+                    startLocalTurnTimer();
+                }
+            }
+        }
+
+        function triggerItemRoulette() {
             if (isGameOver) return;
-            
-            stopLocalTurnTimer(); // ポップアップ中は制限時間タイマーをストップ
+            hasTriggeredRoulette = true; // ルーレット発生フラグON
             
             let allFull = itemStocks.every(stock => stock >= 5);
             if (allFull) {
-                showItemLimitModal(onComplete);
+                showItemLimitModal();
                 return;
             }
 
+            stopLocalTurnTimer();
             isModalActive = true; 
             
             let modal = document.getElementById('item-modal');
@@ -1628,16 +1639,13 @@
                     modal.style.display = 'none';
                     isModalActive = false; 
 
-                    if (onComplete) {
-                        onComplete();
-                    } else {
-                        if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
-                    }
+                    // ルーレット完了後に次のターンへ移行
+                    checkAndProceedTurnAfterRoulette();
                 }, 400);
             };
         }
 
-        function showItemLimitModal(onComplete) {
+        function showItemLimitModal() {
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1655,13 +1663,8 @@
                 modal.style.display = 'none';
                 isModalActive = false;
                 
-                if (onComplete) {
-                    onComplete();
-                } else {
-                    if (currentTurnIndex === myTurnIndex && !isGameOver) {
-                        startLocalTurnTimer();
-                    }
-                }
+                // 上限確認ポップアップ完了後に次のターンへ移行
+                checkAndProceedTurnAfterRoulette();
             };
         }
 
@@ -2020,6 +2023,7 @@
                 stopLocalTurnTimer();
                 let overlay = document.getElementById('overlay');
                 let text = document.getElementById('overlay-text');
+                isModalActive = true;
                 overlay.style.display = 'flex';
                 text.innerText = "脱落";
                 text.style.color = "#ff0055";
@@ -2030,7 +2034,10 @@
             if (activePlayers.length <= 1) {
                 if (isHost && !isGameOver) {
                     let winner = activePlayers.length === 1 ? activePlayers[0].name : "引き分け";
-                    sendSignal({ type: 'WINNER', winnerName: winner });
+                    if (winner !== "引き分け" && playerList.some(p => p.name === winner)) {
+                        playerWins[winner] = (playerWins[winner] || 0) + 1;
+                    }
+                    sendSignal({ type: 'WINNER', winnerName: winner, playerWins: playerWins });
                     handleWin(winner);
                 }
             } else {
@@ -2049,7 +2056,8 @@
             stopLocalTurnTimer();
             document.getElementById('spectate-banner').style.display = 'none';
 
-            if (winnerName && winnerName !== "引き分け") {
+            // 勝利数が未加算の場合はここで加算（ゲスト受信時等）
+            if (winnerName && winnerName !== "引き分け" && playerList.some(p => p.name === winnerName)) {
                 playerWins[winnerName] = (playerWins[winnerName] || 0) + 1;
             }
             updateScoresUI();
@@ -2143,11 +2151,11 @@
             isGameStarted = false;
             isModalActive = false;
             playerList = nextPlayers;
-            broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier });
+            broadcast({ type: 'PLAYER_LIST', list: playerList, ojamaMultiplier: ojamaMultiplier, playerWins: playerWins });
 
             document.getElementById('item-modal').style.display = 'none';
             
-            broadcast({ type: 'START_ROULETTE', ojamaMultiplier: ojamaMultiplier });
+            broadcast({ type: 'START_ROULETTE', ojamaMultiplier: ojamaMultiplier, playerWins: playerWins });
             runRouletteUI();
         }
 
