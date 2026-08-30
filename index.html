@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇六実パズル対戦〇 Ver 3.1</title>
+    <title>〇六実パズル対戦〇 Ver 3.2</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -189,7 +189,7 @@
     <!-- 1. タイトル画面 -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇六実<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 3.1</div>
+        <div class="version-tag">Ver 3.2</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -268,7 +268,7 @@
             </div>
 
             <div style="width:100%;">
-                <div class="gui-label" style="text-align:center;">ITEMS (<span id="item-total-count">0</span>/5)</div>
+                <div class="gui-label" style="text-align:center;">ITEMS (<span id="item-total-count">0</span>/40)</div>
                 <div class="item-list" style="margin-top:2px;">
                     <div class="item-row" id="item-btn-0" onclick="useItem(0)"><span>2倍</span><span id="stock-0">0</span></div>
                     <div class="item-row" id="item-btn-1" onclick="useItem(1)"><span>3倍</span><span id="stock-1">0</span></div>
@@ -647,9 +647,24 @@
             myTurnIndex = playerList.findIndex(p => p.name === myName);
             currentTurnIndex = 0;
             
+            // 【バグ修正①】再戦時（初戦以降）にすべてのステータスを確実にリセット
+            myScore = 0;
             playerScores = {};
             playerList.forEach(p => playerScores[p.name] = 0);
             updateScoresUI();
+
+            itemStocks = [0, 0, 0, 0, 0, 0, 0, 0];
+            updateItemUI();
+
+            activeMultiplier = 1;
+            isPenetrateMode = false;
+            guardActiveTarget = null;
+            guardCasterIndex = -1;
+            guardStartTurnIndex = -1;
+            skipTargetName = null;
+            fallingBalls = [];
+            flyingOjama = [];
+            isProcessingOjama = false;
 
             generateInitialBoard();
             updateTurnUI();
@@ -682,7 +697,6 @@
                     stopLocalTurnTimer();
                     cOverlay.style.display = 'none';
                     if (currentTurnIndex === myTurnIndex) {
-                        // タイムアウト時の自動発射仕様
                         if (currentBall && !currentBall.isMoving) {
                             let vx = 0;
                             let vy = -10;
@@ -726,7 +740,6 @@
             if (isGameOver) return;
             stopLocalTurnTimer();
 
-            // ガード効果の解除判定（ガード発動者の番が次回ってくるとき＝1巡終了）
             if (guardActiveTarget !== null && guardStartTurnIndex === targetTurnIndex) {
                 guardActiveTarget = null;
                 guardCasterIndex = -1;
@@ -830,7 +843,6 @@
         let board = {};
         let currentBall, nextColor, isNextItem = false;
         let dragStart = null, dragCurrent = null;
-        let myScore = 0;
         let fallingBalls = [];
         let flyingOjama = [];
         let isProcessingOjama = false;
@@ -1377,7 +1389,6 @@
         function getOjamaTargetIndex() {
             if (playerList.length <= 1) return -1;
             
-            // ガード有効時の判定：ガード対象プレイヤーが指定されていて生存していれば、全員の攻撃がその人に集中する
             if (guardActiveTarget !== null) {
                 let targetIdx = playerList.findIndex(p => p.name === guardActiveTarget && p.active);
                 if (targetIdx !== -1) {
@@ -1411,13 +1422,11 @@
                 return;
             }
 
-            // バグ修正①：貫通使用時はホストのお邪魔倍率を1倍とする。ただし2倍・3倍アイテム（activeMultiplier）は準ずる。
-            // 仕様変更②：ガード中は2倍3倍アイテムが無効となるので activeMultiplier = 1 とする。
             let effectiveActiveMultiplier = (guardActiveTarget !== null) ? 1 : activeMultiplier;
             let effectiveOjamaRate = isPenetrateMode ? 1 : ojamaMultiplier;
 
             let ojamaCount = Math.round(count * 1.5 * effectiveActiveMultiplier * effectiveOjamaRate);
-            activeMultiplier = 1; // 使用後はリセット
+            activeMultiplier = 1;
 
             let targetIdx = getOjamaTargetIndex();
 
@@ -1529,8 +1538,13 @@
 
         function triggerItemRoulette() {
             if (isGameOver) return;
-            let totalStock = itemStocks.reduce((a, b) => a + b, 0);
-            if (totalStock >= 5) return;
+            
+            // 【仕様変更②】すべてのアイテム（8種類すべて）が上限の5個に達しているかチェック
+            let allFull = itemStocks.every(stock => stock >= 5);
+            if (allFull) {
+                showItemLimitModal();
+                return;
+            }
 
             stopLocalTurnTimer();
             isModalActive = true; 
@@ -1561,12 +1575,51 @@
                 document.body.classList.add('shake');
                 setTimeout(() => {
                     document.body.classList.remove('shake');
-                    itemStocks[idx]++;
+                    
+                    // 【仕様変更②】もし選ばれたアイテムがすでに5個に達していたら再抽選または獲得不可の処理にする
+                    if (itemStocks[idx] >= 5) {
+                        // 空きのあるアイテムを探すか、あるいはポップアップを出して終了する
+                        let availableIndices = [];
+                        itemStocks.forEach((st, i) => { if (st < 5) availableIndices.push(i); });
+                        
+                        if (availableIndices.length > 0) {
+                            idx = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+                        }
+                    }
+
+                    if (itemStocks[idx] < 5) {
+                        itemStocks[idx]++;
+                    }
+                    
                     updateItemUI();
                     modal.style.display = 'none';
                     isModalActive = false; 
                     if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
                 }, 400);
+            };
+        }
+
+        // 【仕様変更②】アイテムストック上限のポップアップ表示用関数
+        function showItemLimitModal() {
+            stopLocalTurnTimer();
+            isModalActive = true;
+            let modal = document.getElementById('item-modal');
+            let content = document.getElementById('item-modal-content');
+            modal.style.display = 'flex';
+
+            content.innerHTML = `
+                <h3 style="color:#ff0055; font-size:1.2rem; text-shadow:0 0 10px #ff0055;">⚠️ ストック上限 ⚠️</h3>
+                <div style="font-size:0.95rem; color:#ffff00; margin:12px 0; line-height:1.5;">すべてのアイテムストックが<br>上限の5個に達しています</div>
+                <div class="btn" id="limit-ok-btn">OK</div>
+            `;
+
+            document.getElementById('limit-ok-btn').onclick = (ev) => {
+                ev.stopPropagation();
+                modal.style.display = 'none';
+                isModalActive = false;
+                if (currentTurnIndex === myTurnIndex && !isGameOver) {
+                    startLocalTurnTimer();
+                }
             };
         }
 
@@ -1622,7 +1675,6 @@
             sendSignal({ type: 'SKIP_APPLIED', targetName: targetName });
         }
 
-        // 新仕様①：順番反転の実装
         function applyReverseOrder() {
             if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
             sendSignal({ type: 'REVERSE_ORDER_APPLIED' });
@@ -1641,7 +1693,6 @@
             updateScoresUI();
         }
 
-        // 新仕様②：ガードの実装
         function openGuardModal() {
             stopLocalTurnTimer();
             isModalActive = true;
