@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇六実パズル対戦〇 Ver 1.2</title>
+    <title>〇六実パズル対戦〇 Ver 1.1</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -189,7 +189,7 @@
     <!-- 1. タイトル画面 -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇六実<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.2</div>
+        <div class="version-tag">Ver 1.1</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -331,25 +331,40 @@
 
     <script>
         // ==========================================
-        // 音声管理（BGM・効果音用定義）
+        // 音声管理（.mp3 / .wav 両対応フォールバック関数）
         // ==========================================
+        function createFlexibleAudio(basePath) {
+            let audio = new Audio();
+            // まず .mp3 の読み込みを試みる
+            audio.src = basePath + '.mp3';
+            
+            audio.onerror = function() {
+                // mp3でエラー（ファイルがない等）が発生した場合、自動的に .wav に切り替える
+                if (!audio.src.endsWith('.wav')) {
+                    audio.src = basePath + '.wav';
+                    audio.load();
+                }
+            };
+            return audio;
+        }
+
         const audioAssets = {
             bgm: [
-                new Audio('audio/bgm/bgm_battle_1.mp3'),
-                new Audio('audio/bgm/bgm_battle_2.mp3'),
-                new Audio('audio/bgm/bgm_battle_3.mp3'),
-                new Audio('audio/bgm/bgm_battle_4.mp3'),
-                new Audio('audio/bgm/bgm_battle_5.mp3')
+                createFlexibleAudio('audio/bgm/bgm_battle_1'),
+                createFlexibleAudio('audio/bgm/bgm_battle_2'),
+                createFlexibleAudio('audio/bgm/bgm_battle_3'),
+                createFlexibleAudio('audio/bgm/bgm_battle_4'),
+                createFlexibleAudio('audio/bgm/bgm_battle_5')
             ],
-            ui: new Audio('audio/se/se_ui.mp3'),
-            shoot: new Audio('audio/se/se_shoot.mp3'),
-            settle: new Audio('audio/se/se_settle.mp3'),
-            clear: new Audio('audio/se/se_clear.mp3'),
-            rainbow: new Audio('audio/se/se_rainbow.mp3'),
-            roulette: new Audio('audio/se/se_roulette.mp3'),
-            itemGet: new Audio('audio/se/se_item_get.mp3'),
-            itemUse: new Audio('audio/se/se_item_use.mp3'),
-            gameover: new Audio('audio/se/se_gameover.mp3')
+            ui: createFlexibleAudio('audio/se/se_ui'),
+            shoot: createFlexibleAudio('audio/se/se_shoot'),
+            settle: createFlexibleAudio('audio/se/se_settle'),
+            clear: createFlexibleAudio('audio/se/se_clear'),
+            rainbow: createFlexibleAudio('audio/se/se_rainbow'),
+            roulette: createFlexibleAudio('audio/se/se_roulette'),
+            itemGet: createFlexibleAudio('audio/se/se_item_get'),
+            itemUse: createFlexibleAudio('audio/se/se_item_use'),
+            gameover: createFlexibleAudio('audio/se/se_gameover')
         };
 
         // BGM設定
@@ -421,7 +436,7 @@
         let ojamaMultiplier = 1.0;
         
         let playerScores = {};
-        let playerWins = {}; // 【仕様変更①】勝利数管理（タイトル画面リロード時のみリセット）
+        let playerWins = {}; 
         let rematchVotes = {};
 
         // ガードおよび順番反転関連の状態
@@ -445,27 +460,27 @@
         }
 
         function showGameMenu() { 
-            playSE('ui'); // ① UI決定音
+            playSE('ui'); 
             switchScreen('menu-screen'); 
         }
         function selectHost() { 
-            playSE('ui'); // ① UI決定音
+            playSE('ui'); 
             isHost = true; 
             switchScreen('host-count-screen'); 
         }
         function selectGuest() { 
-            playSE('ui'); // ① UI決定音
+            playSE('ui'); 
             isHost = false; 
             switchScreen('guest-code-screen'); 
         }
         function setPlayerCount(cnt) { 
-            playSE('ui'); // ① UI決定音
+            playSE('ui'); 
             maxPlayers = cnt; 
             switchScreen('name-screen'); 
         }
 
         function submitGuestCode() {
-            playSE('ui'); // ① UI決定音
+            playSE('ui'); 
             roomCode = document.getElementById('room-code-input').value;
             if(roomCode.length !== 4) { alert("4桁の数字を入力してください"); return; }
             switchScreen('name-screen');
@@ -485,7 +500,7 @@
         let pendingName = "";
 
         function submitName() {
-            playSE('ui'); // ① UI決定音
+            playSE('ui'); 
             let rawName = document.getElementById('player-name-input').value;
             if (isHost) {
                 pendingName = rawName || "ホスト";
@@ -503,7 +518,7 @@
         }
 
         function setOjamaRate(rate) {
-            playSE('ui'); // ① UI決定音
+            playSE('ui'); 
             ojamaMultiplier = rate;
             myName = getUniqueName(pendingName, []);
             roomCode = Math.floor(1000 + Math.random() * 9000).toString();
@@ -619,7 +634,7 @@
         }
 
         function startRouletteSequence() {
-            playSE('ui'); // ① UI決定音
+            playSE('ui'); 
             if (isGameStarted) return;
             broadcast({ type: 'START_ROULETTE', ojamaMultiplier: ojamaMultiplier });
             runRouletteUI();
@@ -647,7 +662,7 @@
                 btn.style.display = 'none';
             }
 
-            startRouletteSE(); // ⑥ ルーレット回転音スタート
+            startRouletteSE(); 
 
             let rIdx = 0;
             if (rouletteTimer) clearInterval(rouletteTimer);
@@ -660,8 +675,8 @@
                 e.stopPropagation();
                 if (!isHost) return;
                 
-                playSE('ui'); // ① 順番決めストップボタン音
-                stopRouletteSE(); // ⑥ ルーレット回転音停止
+                playSE('ui'); 
+                stopRouletteSE(); 
 
                 clearInterval(rouletteTimer);
                 btn.style.display = 'none';
@@ -694,7 +709,7 @@
 
         function showOrderConfirmationUI(ordList) {
             if (rouletteTimer) clearInterval(rouletteTimer);
-            stopRouletteSE(); // ⑥ 保険としてルーレット音停止
+            stopRouletteSE(); 
             orderedPlayerList = ordList;
             
             const overlay = document.getElementById('overlay');
@@ -733,7 +748,7 @@
             document.getElementById('countdown-overlay').style.display = 'none';
             document.getElementById('turn-change-overlay').style.display = 'none';
 
-            playRandomBGM(); // 【BGM】対戦開始時に5種類からランダム再生＆ループ
+            playRandomBGM(); 
 
             if (finalOrderedList) {
                 playerList = finalOrderedList;
@@ -749,7 +764,7 @@
             playerScores = {};
             playerList.forEach(p => playerScores[p.name] = 0);
             updateScoresUI();
-            updateWinsUI(); // 【仕様変更①】勝利数UI更新
+            updateWinsUI(); 
 
             itemStocks = [0, 0, 0, 0, 0, 0, 0, 0];
             updateItemUI();
@@ -798,7 +813,7 @@
                         if (currentBall && !currentBall.isMoving) {
                             let vx = 0;
                             let vy = -10;
-                            playSE('shoot'); // ② 発射した玉の音
+                            playSE('shoot'); 
                             launchedBallWasItem = currentBall.isItem;
                             currentBall.vx = vx;
                             currentBall.vy = vy;
@@ -950,7 +965,7 @@
         let isPenetrateMode = false;
         let itemStocks = [0, 0, 0, 0, 0, 0, 0, 0];
         let launchedBallWasItem = false;
-        let shotGotItem = false; // ショットごとのアイテム獲得有無フラグ
+        let shotGotItem = false; 
 
         function resizeCanvas() {
             if (!canvas) return;
@@ -1002,7 +1017,7 @@
         function prepareNextBall() {
             if (Math.random() < 0.30) {
                 nextColor = 'RAINBOW';
-                playSE('rainbow'); // ⑤ 虹色玉発生音
+                playSE('rainbow'); 
             } else {
                 nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
             }
@@ -1119,9 +1134,9 @@
 
                 stopLocalTurnTimer();
 
-                playSE('shoot'); // ② 発射した玉の音
+                playSE('shoot'); 
                 launchedBallWasItem = currentBall.isItem;
-                shotGotItem = false; // ショット開始時にリセット
+                shotGotItem = false; 
 
                 currentBall.vx = vx;
                 currentBall.vy = vy;
@@ -1261,7 +1276,7 @@
                                     }
                                 }
                                 if (clearedCount > 0 && currentBall.shotByMe) {
-                                    playSE('clear'); // ④ 玉が消える音
+                                    playSE('clear'); 
                                     addScoreAndAttack(clearedCount);
                                     if (gotItem) shotGotItem = true;
                                 }
@@ -1356,7 +1371,7 @@
         function finishShotTurn(hasItem) {
             spawnBall();
             if (hasItem) {
-                playSE('itemGet'); // ⑦ アイテム獲得音
+                playSE('itemGet'); 
                 triggerItemRoulette(() => {
                     let nextIdx = getNextTurnIndex();
                     sendSignal({ type: 'TURN_CHANGE', nextTurnIndex: nextIdx });
@@ -1370,7 +1385,7 @@
         }
 
         function handleRainbowHit(targetColor) {
-            playSE('clear'); // ④ 玉が消える音
+            playSE('clear'); 
             let clearedCount = 0;
             let gotItem = false;
             
@@ -1396,7 +1411,7 @@
         }
 
         function snapToGrid(ball) {
-            playSE('settle'); // ③ 玉定着音
+            playSE('settle'); 
             let bestRow = 0, bestCol = 0, minDist = Infinity;
             for (let r = 0; r < 20; r++) {
                 for (let c = 0; c < COLS; c++) {
@@ -1450,7 +1465,7 @@
             }
 
             if (matched.size >= 3) {
-                playSE('clear'); // ④ 玉が消える音
+                playSE('clear'); 
                 matched.forEach(key => {
                     let b = board[key];
                     if (b) {
@@ -1501,7 +1516,7 @@
             });
 
             if (droppedCount > 0) {
-                playSE('clear'); // ④ 玉が落下する音
+                playSE('clear'); 
                 addScoreAndAttack(droppedCount);
                 if (gotItem) shotGotItem = true;
             }
@@ -1700,7 +1715,7 @@
                 <div class="btn" id="roulette-stop-btn">ストップ</div>
             `;
 
-            startRouletteSE(); // ⑥ ルーレット回転音
+            startRouletteSE(); 
 
             let timer = setInterval(() => {
                 idx = (idx + 1) % items.length;
@@ -1710,8 +1725,8 @@
 
             document.getElementById('roulette-stop-btn').onclick = (e) => {
                 e.stopPropagation();
-                playSE('ui'); // ① ストップボタン音
-                stopRouletteSE(); // ⑥ 回転音停止
+                playSE('ui'); 
+                stopRouletteSE(); 
                 clearInterval(timer);
 
                 document.body.classList.add('shake');
@@ -1745,7 +1760,7 @@
         }
 
         function showItemLimitModal(onComplete) {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1760,7 +1775,7 @@
 
             document.getElementById('limit-ok-btn').onclick = (ev) => {
                 ev.stopPropagation();
-                playSE('ui'); // ① UI音
+                playSE('ui'); 
                 modal.style.display = 'none';
                 isModalActive = false;
 
@@ -1788,7 +1803,7 @@
         function useItem(type) {
             if (currentTurnIndex !== myTurnIndex || itemStocks[type] <= 0 || !isGameStarted || isProcessingOjama || isTurnChanging || isModalActive || isGameOver) return;
             
-            playSE('itemUse'); // ⑧ アイテム使用音
+            playSE('itemUse'); 
             itemStocks[type]--;
             updateItemUI();
 
@@ -1803,7 +1818,7 @@
         }
 
         function openSkipModal() {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1820,7 +1835,7 @@
         }
 
         function applySkip(targetName) {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             document.getElementById('item-modal').style.display = 'none';
             isModalActive = false;
             if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
@@ -1847,7 +1862,7 @@
         }
 
         function openGuardModal() {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1865,7 +1880,7 @@
         }
 
         function applyGuard(targetName) {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             document.getElementById('item-modal').style.display = 'none';
             isModalActive = false;
             if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
@@ -1884,7 +1899,7 @@
         }
 
         function showGuardNoticePopup(casterName, targetName) {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
@@ -1903,7 +1918,7 @@
 
             document.getElementById('guard-notice-ok').onclick = (ev) => {
                 ev.stopPropagation();
-                playSE('ui'); // ① UI音
+                playSE('ui'); 
                 modal.style.display = 'none';
                 isModalActive = false;
                 if (currentTurnIndex === myTurnIndex && !isGameOver) {
@@ -1916,7 +1931,7 @@
         let selectedDstColor = null;
 
         function openColorChangeModal() {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             stopLocalTurnTimer();
             isModalActive = true;
             selectedSrcColor = null;
@@ -1958,19 +1973,19 @@
         }
 
         function selectSourceColorDirect(c) {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             selectedSrcColor = c;
             updateColorChangeModalContent();
         }
 
         function selectDestColorDirect(c) {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             selectedDstColor = c;
             updateColorChangeModalContent();
         }
 
         function executeColorChange() {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             document.getElementById('item-modal').style.display = 'none';
             isModalActive = false;
             if (currentTurnIndex === myTurnIndex && !isGameOver) startLocalTurnTimer();
@@ -1980,7 +1995,7 @@
         }
 
         function openMysteryRouletteModal() {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             stopLocalTurnTimer();
             isModalActive = true;
             let modal = document.getElementById('item-modal');
@@ -1997,7 +2012,7 @@
                 <div class="btn" id="mystery-stop-btn">ストップ</div>
             `;
 
-            startRouletteSE(); // ⑥ ルーレット回転音
+            startRouletteSE(); 
 
             let timer = setInterval(() => {
                 if (targets.length === 0) return;
@@ -2008,8 +2023,8 @@
 
             document.getElementById('mystery-stop-btn').onclick = (e) => {
                 e.stopPropagation();
-                playSE('ui'); // ① ストップ音
-                stopRouletteSE(); // ⑥ 回転音停止
+                playSE('ui'); 
+                stopRouletteSE(); 
                 clearInterval(timer);
 
                 if (targets.length === 0) {
@@ -2040,7 +2055,7 @@
 
                 document.getElementById('mystery-ok-btn').onclick = (ev) => {
                     ev.stopPropagation();
-                    playSE('ui'); // ① UI音
+                    playSE('ui'); 
                     modal.style.display = 'none';
                     isModalActive = false;
                     
@@ -2058,7 +2073,7 @@
         }
 
         function showMysteryNoticePopup(targetName, effectType, effectName) {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             let modal = document.getElementById('item-modal');
             let content = document.getElementById('item-modal-content');
             modal.style.display = 'flex';
@@ -2074,7 +2089,7 @@
 
             document.getElementById('mystery-notice-ok').onclick = (ev) => {
                 ev.stopPropagation();
-                playSE('ui'); // ① UI音
+                playSE('ui'); 
                 modal.style.display = 'none';
                 isModalActive = false;
                 if (currentTurnIndex === myTurnIndex && !isGameOver) {
@@ -2144,8 +2159,8 @@
             }
 
             if (defIdx === myTurnIndex) {
-                playSE('gameover'); // ⑨ 脱落音
-                stopBGM(); // BGM停止
+                playSE('gameover'); 
+                stopBGM(); 
                 stopLocalTurnTimer();
                 let overlay = document.getElementById('overlay');
                 let text = document.getElementById('overlay-text');
@@ -2176,11 +2191,10 @@
             isGameOver = true;
             isModalActive = true;
             stopLocalTurnTimer();
-            stopBGM(); // BGM停止
-            playSE('gameover'); // ⑨ 勝敗決定音
+            stopBGM(); 
+            playSE('gameover'); 
             document.getElementById('spectate-banner').style.display = 'none';
 
-            // 【仕様変更①】勝者が決まったら勝利数を加算（タイトル画面に戻るまでリセットされない）
             if (winnerName && winnerName !== "引き分け") {
                 playerWins[winnerName] = (playerWins[winnerName] || 0) + 1;
             }
@@ -2224,7 +2238,7 @@
         }
 
         function setGuestVote(vote) {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             rematchVotes[myName] = vote;
             updateGuestRematchUI();
             if (hostConn) {
@@ -2266,7 +2280,7 @@
         }
 
         function hostConfirmRematch() {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             let nextPlayers = playerList.filter(p => p.name === myName || rematchVotes[p.name] === 'REMATCH');
             if (nextPlayers.length < 2) {
                 alert("再戦人数が2名未満（参加者が不足）のため開始できません。解散してください。");
@@ -2286,7 +2300,7 @@
         }
 
         function hostDisbandGroup() {
-            playSE('ui'); // ① UI音
+            playSE('ui'); 
             broadcast({ type: 'DISBAND' });
             handleDisband();
         }
