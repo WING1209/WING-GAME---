@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>〇六実パズル対戦〇 Ver 1.1</title>
+    <title>〇六実パズル対戦〇 Ver 1.5</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { 
@@ -189,7 +189,7 @@
     <!-- 1. タイトル画面 -->
     <div id="title-screen" class="screen active" onclick="showGameMenu()">
         <h1 class="main-title">〇六実<br>パズル対戦〇</h1>
-        <div class="version-tag">Ver 1.1</div>
+        <div class="version-tag">Ver 1.5</div>
         <div class="blink" style="color:#00ffff; font-size:1.3rem; font-weight:bold; letter-spacing:2px; margin-top:10px;">スタート</div>
     </div>
 
@@ -335,11 +335,9 @@
         // ==========================================
         function createFlexibleAudio(basePath) {
             let audio = new Audio();
-            // まず .mp3 の読み込みを試みる
             audio.src = basePath + '.mp3';
             
             audio.onerror = function() {
-                // mp3でエラー（ファイルがない等）が発生した場合、自動的に .wav に切り替える
                 if (!audio.src.endsWith('.wav')) {
                     audio.src = basePath + '.wav';
                     audio.load();
@@ -367,7 +365,6 @@
             gameover: createFlexibleAudio('audio/se/se_gameover')
         };
 
-        // BGM設定
         audioAssets.bgm.forEach(b => { b.loop = true; b.volume = 0.5; });
         let currentBGM = null;
 
@@ -439,7 +436,6 @@
         let playerWins = {}; 
         let rematchVotes = {};
 
-        // ガードおよび順番反転関連の状態
         let guardActiveTarget = null;
         let guardCasterIndex = -1;
         let guardStartTurnIndex = -1;
@@ -535,6 +531,14 @@
 
         function initPeerHost() {
             peer = new Peer(PEER_PREFIX + roomCode);
+            peer.on('error', err => {
+                console.error("Host Peer Error:", err);
+                if (err.type === 'unavailable-id') {
+                    alert("ルームコードが重複しました。もう一度やり直してください。");
+                    location.reload();
+                }
+            });
+
             peer.on('connection', conn => {
                 conn.on('open', () => {
                     if (playerList.length >= maxPlayers) {
@@ -548,6 +552,9 @@
                 });
 
                 conn.on('data', data => handleDataFromGuest(conn, data));
+                conn.on('error', err => {
+                    console.error("Connection Error with guest:", err);
+                });
                 conn.on('close', () => {
                     connections = connections.filter(c => c !== conn);
                     playerList = playerList.filter(p => p.id !== conn.peer);
@@ -560,12 +567,25 @@
 
         function initPeerGuest() {
             peer = new Peer();
+            peer.on('error', err => {
+                console.error("Guest Peer Error:", err);
+                alert("接続エラーが発生しました: " + err.type);
+            });
+
             peer.on('open', () => {
-                hostConn = peer.connect(PEER_PREFIX + roomCode);
+                hostConn = peer.connect(PEER_PREFIX + roomCode, { reliable: true });
                 hostConn.on('open', () => {
                     hostConn.send({ type: 'JOIN', name: myName });
                 });
                 hostConn.on('data', handleDataFromHost);
+                hostConn.on('error', err => {
+                    console.error("Host Connection Error:", err);
+                    alert("ホストへの接続に失敗しました。ルームコードを確認してください。");
+                });
+                hostConn.on('close', () => {
+                    alert("ホストとの接続が切断されました。");
+                    location.reload();
+                });
             });
         }
 
